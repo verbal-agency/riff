@@ -59,6 +59,9 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G22](G22-postgres-configuration-and-persistence-verification.md) | Configure Postgres and verify persistence boundaries | G00, G04, G21 |
 | [G23](G23-chatgpt-tool-loop-client.md) | Wire the ChatGPT tool-loop client | G14, G22 |
 | [G24](G24-chatgpt-connector-and-e2e-acceptance.md) | Connect ChatGPT and run end-to-end conversation | G22, G23 |
+| [G25](G25-meaningful-github-discovery-and-integration.md) | Make GitHub discovery meaningful and pipeline-integrated | G18, G20, G22 |
+| [G26](G26-github-project-understanding.md) | Build an evidence-backed understanding of user GitHub projects | G03, G22, G25 |
+| [G27](G27-project-aware-personalized-recommendations.md) | Recommend extensions to existing projects | G08, G11, G12, G23, G24, G26 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -85,6 +88,9 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Engineer-authored RSS selection and pipeline integration | G17, G19 |
 | GitHub discovery recall, precision, and bounded-query policy | G18 |
 | Bounded GitHub discovery and reviewed scope promotion | G18, G20 |
+| Meaningful GitHub discovery and pipeline integration | G25 |
+| User-owned GitHub project understanding | G26 |
+| Project-aware personalized recommendations | G27 |
 | Automated job collection and listing URL intake | G04, G21 |
 
 ## Canonical project scenarios
@@ -107,6 +113,9 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-DB-001` — A clean local Postgres database can migrate, persist G21 job flows, and pass the complete database-backed regression suite.
 - `SC-CHATGPT-001` — A bounded model tool loop can read Riff state and render a grounded conversational response.
 - `SC-CHATGPT-002` — A supported ChatGPT connector can complete the approved read-and-promote workflow against persisted Riff state.
+- `SC-GITHUB-DISCOVERY-002` — Riff discovers user-relevant GitHub candidates and integrates only explicitly promoted scopes into evidence collection.
+- `SC-PROJECT-MAP-001` — Riff maintains a versioned, evidence-backed understanding of selected user GitHub projects.
+- `SC-EXTEND-001` — Riff recommends extending an existing project when the evidence supports it, while preserving a greenfield alternative.
 
 ## Current handoff
 
@@ -114,7 +123,9 @@ G00 through G21 are complete. G22 is the next ready goal: configure a
 reproducible local Postgres path and run the complete persistence suite,
 including G21's job collection and URL-intake flows. After G22, G23 wires the
 provider-neutral model tool loop and G24 connects it to a supported ChatGPT
-surface for end-to-end evaluation. G17's engineer-source
+surface for end-to-end evaluation. After that, G25 broadens GitHub discovery,
+G26 builds the user project map, and G27 makes recommendations project-aware.
+G17's engineer-source
 roster and attribution contract were approved by the user; all source entries remain disabled pending
 individual terms review. G19 added the fail-closed selection and attribution
 seam but did not enable any feed. G20 implements bounded topic/search discovery
