@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Attribution drift fixture feed</title>
+    <item>
+      <guid isPermaLink="true">https://example.com/drift-entry</guid>
+      <title>Attribution changed</title>
+      <link>https://example.com/drift-entry</link>
+      <author>Unverified Author</author>
+      <pubDate>Mon, 14 Sep 2026 11:00:00 GMT</pubDate>
+      <description>Should be quarantined rather than guessed.</description>
+    </item>
+  </channel>
+</rss>

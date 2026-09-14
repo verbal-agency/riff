@@ -18,6 +18,13 @@ from .db import migrate
 from .daily import load_fixture, run_fixture
 from .evidence import SourceType
 from .engineer_sources import load_manifest as load_engineer_source_manifest
+from .engineer_rss import (
+    EngineerRssSelectionError,
+    load_selection_manifest,
+    project_registries,
+    selection_report,
+    write_json,
+)
 from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
 from .github_discovery import evaluate_fixture as evaluate_github_discovery_fixture
@@ -67,6 +74,18 @@ def build_parser() -> argparse.ArgumentParser:
     source_validate.add_argument("--manifest", default="config/ingestion_sources.json")
     source_validate_engineers = source_subparsers.add_parser("validate-engineer-manifest", help="validate the engineer-authored source manifest")
     source_validate_engineers.add_argument("--manifest", default="config/engineer_sources.json")
+    source_engineer_rss = source_subparsers.add_parser("engineer-rss", help="review and project engineer-authored RSS selections")
+    engineer_rss_subparsers = source_engineer_rss.add_subparsers(dest="engineer_rss_command", required=True)
+    engineer_rss_validate = engineer_rss_subparsers.add_parser("validate", help="validate the engineer RSS selection manifest")
+    engineer_rss_validate.add_argument("--manifest", default="config/engineer_rss_selections.json")
+    engineer_rss_preview = engineer_rss_subparsers.add_parser("preview", help="show pending, blocked, and eligible selections")
+    engineer_rss_preview.add_argument("--manifest", default="config/engineer_rss_selections.json")
+    engineer_rss_project = engineer_rss_subparsers.add_parser("project", help="project enabled selections into both source registries")
+    engineer_rss_project.add_argument("--manifest", default="config/engineer_rss_selections.json")
+    engineer_rss_project.add_argument("--technical-registry", default="config/technical_sources.json")
+    engineer_rss_project.add_argument("--ingestion-manifest", default="config/ingestion_sources.json")
+    engineer_rss_project.add_argument("--selection-id", action="append")
+    engineer_rss_project.add_argument("--apply", action="store_true", help="write the projected registries")
     github = subparsers.add_parser("github", help="evaluate bounded GitHub discovery")
     github_subparsers = github.add_subparsers(dest="github_command", required=True)
     github_discovery = github_subparsers.add_parser("evaluate-discovery", help="evaluate a recorded discovery benchmark")
@@ -199,6 +218,33 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"engineer source manifest error: {exc}") from exc
         print(json.dumps({"schema_version": manifest["schema_version"], "sources": len(manifest["sources"]), "valid": True}, sort_keys=True))
         return 0
+    if args.command == "source" and args.source_command == "engineer-rss":
+        try:
+            selection = load_selection_manifest(args.manifest)
+            if args.engineer_rss_command == "validate":
+                print(json.dumps({"schema_version": selection["schema_version"], "selections": len(selection["selections"]), "valid": True}, sort_keys=True))
+                return 0
+            if args.engineer_rss_command == "preview":
+                print(json.dumps(selection_report(selection), sort_keys=True))
+                return 0
+            technical = json.loads(Path(args.technical_registry).read_text(encoding="utf-8"))
+            ingestion_manifest = json.loads(Path(args.ingestion_manifest).read_text(encoding="utf-8"))
+            projected_technical, projected_ingestion = project_registries(
+                selection,
+                technical,
+                ingestion_manifest,
+                selection_ids=args.selection_id,
+            )
+            if args.apply:
+                write_json(args.technical_registry, projected_technical)
+                write_json(args.ingestion_manifest, projected_ingestion)
+                result = {"status": "applied", "technical_sources": len(projected_technical["sources"]), "ingestion_sources": len(projected_ingestion["sources"])}
+            else:
+                result = {"status": "dry_run", "technical_sources": len(projected_technical["sources"]), "ingestion_sources": len(projected_ingestion["sources"])}
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        except (OSError, ValueError, EngineerRssSelectionError) as exc:
+            raise SystemExit(f"engineer RSS selection error: {exc}") from exc
     try:
         settings = Settings.from_env()
     except ValueError as exc:
@@ -254,6 +300,11 @@ def main(argv: list[str] | None = None) -> int:
                     entry["name"],
                     enabled=bool(entry.get("enabled", True)),
                     source_id=entry.get("source_id"),
+                    canonical_root=(
+                        entry.get("source_root")
+                        if str(entry.get("source_root", "")).lower().startswith(("http://", "https://"))
+                        else None
+                    ),
                 )
                 synced.append(
                     ingestion.configure_source(
@@ -265,6 +316,15 @@ def main(argv: list[str] | None = None) -> int:
                             "cursor_kind",
                             "github:releases" if source.source_type == SourceType.GITHUB else "updated_at",
                         ),
+                        metadata={
+                            key: entry[key]
+                            for key in (
+                                "engineer_source_id", "person_id", "person_name", "source_ownership",
+                                "organization_at_publication", "source_root", "correlation_group",
+                                "attribution_policy", "syndication_root",
+                            )
+                            if key in entry
+                        },
                     )
                 )
             print(json.dumps({"synced": len(synced)}, sort_keys=True))

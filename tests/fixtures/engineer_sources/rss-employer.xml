@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Employer engineer fixture feed</title>
+    <item>
+      <guid isPermaLink="true">https://example.com/employer-entry</guid>
+      <title>Tracing an agent workflow</title>
+      <link>https://example.com/employer-entry</link>
+      <author>Harrison Chase</author>
+      <pubDate>Mon, 14 Sep 2026 10:00:00 GMT</pubDate>
+      <description>Employer-owned engineering article.</description>
+    </item>
+  </channel>
+</rss>

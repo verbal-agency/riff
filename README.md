@@ -45,6 +45,26 @@ The full verification command is:
 .venv/bin/python -m pytest
 ```
 
+### Engineer-authored RSS selection
+
+The G17 roster is separate from collection approval. Review the per-source
+selection manifest before projecting any engineer feed into the technical
+writing registries:
+
+```sh
+uv run riff source engineer-rss validate
+uv run riff source engineer-rss preview
+uv run riff source engineer-rss project --selection-id <selection-id>
+uv run riff source engineer-rss project --selection-id <selection-id> --apply
+uv run riff source sync --registry config/technical_sources.json
+```
+
+Only a selection with `collection_decision=ENABLE`, confirmed permission, a
+reviewer, and a review date can be projected. The manifest is fail-closed and
+all roster selections remain disabled until these per-source terms and
+retention decisions are recorded. Engineer identity, ownership, organization,
+and correlation metadata are carried into RSS retrieval metadata.
+
 ## GitHub collection
 
 Configure one explicit repository per `GITHUB` source in

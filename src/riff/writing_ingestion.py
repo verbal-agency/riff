@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from .evidence import EvidenceSubmission
 from .evidence_repository import EvidenceRepository
 from .ingestion import FeedEntry, FeedError, FeedFetcher, PermanentFeedError, TransientFeedError, cursor_marker, marker_after, parse_feed
@@ -85,6 +87,14 @@ class WritingIngestionRunner:
                     self.ingestion.update_cursor(source.source_id, source.cursor_kind, current_cursor)
                     continue
                 raw_content = entry.content or entry.raw_xml
+                retrieval_metadata = dict(source.metadata)
+                if source.metadata.get("engineer_source_id"):
+                    disposition = _attribution_disposition(source.metadata, entry.authors)
+                    if disposition in {"ATTRIBUTION_DRIFT", "MISSING_AUTHOR"}:
+                        raise PermanentFeedError(disposition)
+                    retrieval_metadata["attribution_disposition"] = disposition
+                    retrieval_metadata["item_authors"] = list(entry.authors)
+                retrieval_metadata.update({"adapter": "rss_atom", "config_version": source.config_version})
                 submission = EvidenceSubmission(
                     source_id=source.source_id,
                     canonical_url=entry.link,
@@ -92,7 +102,7 @@ class WritingIngestionRunner:
                     title=entry.title,
                     published_at=entry.observed_at,
                     raw_content=raw_content,
-                    retrieval_metadata={"adapter": "rss_atom", "config_version": source.config_version},
+                    retrieval_metadata=retrieval_metadata,
                 )
                 result = self.evidence.ingest(submission)
                 outcome = ItemOutcome.STORED if result.created else ItemOutcome.DUPLICATE
@@ -132,3 +142,19 @@ class WritingIngestionRunner:
 
 def _error_code(error: Exception) -> str:
     return type(error).__name__.upper()
+
+
+def _attribution_disposition(metadata: dict[str, object], authors: tuple[str, ...]) -> str:
+    expected = str(metadata.get("person_name") or "").strip().casefold()
+    normalized = {re.sub(r"[^a-z0-9]+", " ", author.casefold()).strip() for author in authors}
+    expected_normalized = re.sub(r"[^a-z0-9]+", " ", expected).strip()
+    ownership = str(metadata.get("source_ownership") or "PERSONAL")
+    if not authors:
+        return "PERSONAL_SOURCE_OWNED" if ownership == "PERSONAL" else "MISSING_AUTHOR"
+    if expected_normalized not in normalized:
+        return "ATTRIBUTION_DRIFT"
+    if len(authors) > 1:
+        return "CO_AUTHORED" if ownership == "PERSONAL" else "EMPLOYER_CO_AUTHORED"
+    if metadata.get("syndication_root"):
+        return "SYNDICATED"
+    return "PERSONAL_MATCH" if ownership == "PERSONAL" else "EMPLOYER_AUTHOR"

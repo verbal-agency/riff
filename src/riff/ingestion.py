@@ -40,6 +40,7 @@ class FeedEntry:
     content: str | None
     observed_at: datetime
     raw_xml: str
+    authors: tuple[str, ...] = ()
 
 
 class FeedFetcher(Protocol):
@@ -108,6 +109,7 @@ def parse_feed(body: bytes, *, fetched_at: datetime, base_url: str | None = None
         content = _first_text(node, {"content", "encoded", "description", "summary"})
         date_text = _first_text(node, {"updated", "published", "pubDate", "date"})
         observed_at = _parse_datetime(date_text) if date_text else fetched_at
+        authors = tuple(_entry_authors(node))
         entries.append(
             FeedEntry(
                 native_id=native_id,
@@ -116,6 +118,7 @@ def parse_feed(body: bytes, *, fetched_at: datetime, base_url: str | None = None
                 content=content.strip() if content and content.strip() else None,
                 observed_at=observed_at,
                 raw_xml=ET.tostring(node, encoding="unicode"),
+                authors=authors,
             )
         )
     entries.sort(key=lambda entry: (entry.observed_at, entry.native_id))
@@ -158,6 +161,24 @@ def _first_text(node: ET.Element, names: set[str]) -> str | None:
         if _local_name(child.tag) in names and child.text:
             return child.text
     return None
+
+
+def _entry_authors(node: ET.Element) -> list[str]:
+    authors: list[str] = []
+    for child in node.iter():
+        if _local_name(child.tag) not in {"author", "creator"}:
+            continue
+        value = (child.text or "").strip()
+        if value and value not in authors:
+            authors.append(value)
+            continue
+        for nested in child.iter():
+            if _local_name(nested.tag) in {"name", "email"} and nested.text and nested.text.strip():
+                value = nested.text.strip()
+                if value not in authors:
+                    authors.append(value)
+                break
+    return authors
 
 
 def _entry_link(node: ET.Element, *, atom: bool) -> str | None:

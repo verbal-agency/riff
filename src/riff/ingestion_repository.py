@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 from psycopg.types.json import Jsonb
 
@@ -38,6 +38,7 @@ class IngestionSource:
     enabled: bool
     config_version: int
     cursor_kind: str
+    metadata: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +95,7 @@ class IngestionRepository:
         enabled: bool = True,
         config_version: int = 1,
         cursor_kind: str = "updated_at",
+        metadata: Mapping[str, object] | None = None,
     ) -> IngestionSource:
         if not endpoint.strip().lower().startswith(("http://", "https://")):
             raise EvidenceValidationError("endpoint must be an HTTP(S) URL")
@@ -109,18 +111,19 @@ class IngestionRepository:
             conn.execute(
                 """
                 INSERT INTO ingestion_source_configs
-                (source_id, endpoint, enabled, config_version, cursor_kind)
-                VALUES (%s, %s, %s, %s, %s)
+                (source_id, endpoint, enabled, config_version, cursor_kind, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (source_id) DO UPDATE SET
                     endpoint = EXCLUDED.endpoint,
                     enabled = EXCLUDED.enabled,
                     config_version = EXCLUDED.config_version,
-                    cursor_kind = EXCLUDED.cursor_kind
+                    cursor_kind = EXCLUDED.cursor_kind,
+                    metadata = EXCLUDED.metadata
                 """,
-                (source_id, endpoint.strip(), enabled, config_version, cursor_kind.strip()),
+                (source_id, endpoint.strip(), enabled, config_version, cursor_kind.strip(), Jsonb(dict(metadata or {}))),
             )
             conn.execute("UPDATE sources SET enabled = %s WHERE source_id = %s", (enabled, source_id))
-        return IngestionSource(source_id, source_type, name, endpoint.strip(), enabled, config_version, cursor_kind.strip())
+        return IngestionSource(source_id, source_type, name, endpoint.strip(), enabled, config_version, cursor_kind.strip(), dict(metadata or {}))
 
     def set_source_enabled(self, source_id: str, enabled: bool) -> None:
         with connection(self.database_url) as conn:
@@ -150,7 +153,7 @@ class IngestionRepository:
             params.append(source_type.value)
         query = (
             "SELECT s.source_id, s.source_type, s.name, c.endpoint, c.enabled, "
-            "c.config_version, c.cursor_kind FROM sources s JOIN ingestion_source_configs c "
+            "c.config_version, c.cursor_kind, c.metadata FROM sources s JOIN ingestion_source_configs c "
             f"ON {' AND '.join(clauses)} ORDER BY s.name"
         )
         with connection(self.database_url) as conn:
@@ -164,6 +167,7 @@ class IngestionRepository:
                 enabled=bool(row[4]),
                 config_version=int(row[5]),
                 cursor_kind=_text(row[6]),
+                metadata=dict(row[7] or {}),
             )
             for row in rows
         ]

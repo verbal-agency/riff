@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Engineer fixture feed</title>
+    <item>
+      <guid isPermaLink="true">https://example.com/simon-entry</guid>
+      <title>Building a bounded agent tool</title>
+      <link>https://example.com/simon-entry</link>
+      <dc:creator>Simon Willison</dc:creator>
+      <pubDate>Mon, 14 Sep 2026 09:00:00 GMT</pubDate>
+      <description>A practical project note.</description>
+    </item>
+    <item>
+      <guid isPermaLink="true">https://example.com/coauthored-entry</guid>
+      <title>Evaluating agent systems</title>
+      <link>https://example.com/coauthored-entry</link>
+      <dc:creator>Simon Willison</dc:creator>
+      <dc:creator>Research Partner</dc:creator>
+      <pubDate>Tue, 15 Sep 2026 09:00:00 GMT</pubDate>
+      <description>A co-authored evaluation note.</description>
+    </item>
+  </channel>
+</rss>

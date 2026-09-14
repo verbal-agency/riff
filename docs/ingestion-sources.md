@@ -54,6 +54,13 @@ For each source, the operator should:
    after the review. Enable individual sources explicitly with
    `uv run riff source enable --source-id <source-id>`.
 
+Engineer-authored feeds use the separate
+`config/engineer_rss_selections.json` bridge. Validate and preview selections
+with `riff source engineer-rss`; only a selection with confirmed permission,
+reviewer/date, and `collection_decision=ENABLE` may be projected into this
+registry. The projection preserves engineer identity and correlation metadata
+for the existing RSS runner and never auto-enables a pending roster entry.
+
 ## Correlation and retention rules
 
 - Canonical URL and native ID deduplication happen within a source; content

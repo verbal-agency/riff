@@ -101,19 +101,18 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 
 ## Current handoff
 
-G00 through G18 are complete. G17's engineer-source roster and attribution
+G00 through G19 are complete. G17's engineer-source roster and attribution
 contract were approved by the user; all source entries remain disabled pending
-individual terms review. G19 is the next roadmap goal and integrates only
-per-source-approved engineer RSS feeds. G20 is the selected follow-up from G18
-and implements bounded topic/search discovery after G19. The earlier
+individual terms review. G19 added the fail-closed selection and attribution
+seam but did not enable any feed. G20 is the next roadmap goal and implements
+bounded topic/search discovery from the G18 decision. The earlier
 durable-execution/observability mini-project and workflow-reconciliation
 investigation remain in `docs/backlog.md`.
 
 ```text
-Implement `docs/goals/G19-engineer-rss-integration.md` only after each selected
-source has its own terms/retention decision. Then implement
-`docs/goals/G20-bounded-github-discovery.md` using the G18 benchmark decision;
-do not auto-promote discovered repositories.
+Implement `docs/goals/G20-bounded-github-discovery.md` using the G18 benchmark
+decision; do not auto-promote discovered repositories. Engineer RSS entries
+remain disabled unless a later operator action records per-source approval.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.

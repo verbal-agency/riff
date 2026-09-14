@@ -1,6 +1,6 @@
 # G19 — Integrate approved engineer-authored RSS sources
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G16, G17
 **Unlocks:** Engineer-attributed technical-writing collection and richer source selection
 **PRD references:** Sections 7–8, 22, 24.3, 26–29, 33
@@ -66,28 +66,28 @@ source owner, organization-at-publication, and correlation group.
 
 ## Acceptance criteria
 
-- [ ] A schema-versioned selection manifest references at least three G17
+- [x] A schema-versioned selection manifest references at least three G17
   engineer sources and records `engineer_source_id`, collection decision,
   permission/terms review, reviewer/date, retention mode, and fixture plan.
-- [ ] A valid, confirmed selection can be previewed and projected into both
+- [x] A valid, confirmed selection can be previewed and projected into both
   source registries without losing canonical URL, source root, owner,
   attribution, or correlation metadata; projection is idempotent.
-- [ ] Pending, unavailable, `NONE_FOUND`, malformed, duplicate, or
+- [x] Pending, unavailable, `NONE_FOUND`, malformed, duplicate, or
   credential-bearing selections are rejected before registry mutation or a
   network request, with a source-specific error.
-- [ ] Selected feeds use the existing incremental RSS/Atom runner and preserve
+- [x] Selected feeds use the existing incremental RSS/Atom runner and preserve
   `engineer_source_id`, person identity, source ownership, organization, and
   correlation group in every stored evidence record's retrieval metadata.
-- [ ] Personal, employer-authored, co-authored, syndicated, missing-author,
+- [x] Personal, employer-authored, co-authored, syndicated, missing-author,
   and attribution-drift fixture cases produce the documented provenance and
   quarantine/skip outcomes; no case is guessed into independent evidence.
-- [ ] A selected source remains disabled unless its selection explicitly has a
+- [x] A selected source remains disabled unless its selection explicitly has a
   collection-enable decision; the CLI reports enabled, pending, blocked, and
   dry-run outcomes distinctly.
-- [ ] Offline replay demonstrates first-run storage, unchanged rerun
+- [x] Offline replay demonstrates first-run storage, unchanged rerun
   idempotence, cursor advancement after durable writes, and retry behavior for
   transient versus permanent feed failures.
-- [ ] Documentation gives the operator a review checklist, promotion command,
+- [x] Documentation gives the operator a review checklist, promotion command,
   rollback/disable procedure, and a statement that no live collection occurs
   without per-source approval.
 
@@ -199,3 +199,13 @@ enabled. Sources that remain pending or lack a permitted machine-readable
 endpoint stay in the engineer roster and do not enter collection. Any
 author-specific non-RSS adapters remain a separate follow-up rather than being
 silently substituted here.
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m riff source engineer-rss validate --manifest config/engineer_rss_selections.json` — 3 selections valid.
+- `.venv/bin/python -m riff source engineer-rss preview --manifest config/engineer_rss_selections.json` — all 3 reported `pending`; none enabled or fetched.
+- `.venv/bin/python -m pytest -q tests/test_engineer_rss_integration.py tests/test_writing_ingestion.py tests/test_rss_source_expansion.py tests/test_engineer_sources.py` — 19 passed, 2 skipped (PostgreSQL marker).
+- `RIFF_DATABASE_URL=... .venv/bin/python -m pytest -m postgres tests/test_engineer_rss_integration.py tests/test_writing_ingestion_fixtures.py tests/test_ingestion_sources.py tests/test_migrations.py` — 10 passed.
+- `.venv/bin/python -m pytest -q -m 'not postgres'` — full offline suite passed.
+- `uv lock --check`, JSON validation, and `git diff --check` passed.
+- The temporary PostgreSQL run used an isolated database; no live feed request or credential was used.

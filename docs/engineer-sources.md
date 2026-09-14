@@ -70,3 +70,28 @@ The attribution fixture at
 `tests/fixtures/engineer_sources/attribution_cases.json` covers personal,
 employer-owned, co-authored, syndicated, and attribution-drift cases. It is
 deliberately deterministic and does not contact any source.
+
+## RSS selection and enablement
+
+`config/engineer_rss_selections.json` is the bridge from this qualification
+roster to the existing RSS registry. It references stable G17 source IDs and
+keeps every selection `PENDING` and disabled until its own endpoint, terms,
+retention, reviewer, and date are recorded.
+
+Use the local review workflow:
+
+```sh
+uv run riff source engineer-rss validate
+uv run riff source engineer-rss preview
+uv run riff source engineer-rss project --selection-id <selection-id> --apply
+uv run riff source sync --registry config/technical_sources.json
+```
+
+The projection command is fail-closed: pending, unavailable, `NONE_FOUND`,
+duplicate, malformed, or credential-bearing selections cannot mutate either
+registry. Projection is idempotent and preserves `engineer_source_id`, person,
+owner, organization-at-publication, source root, and correlation group. The
+normal RSS runner then stores these fields in retrieval metadata and applies
+the attribution disposition rules above. Disable a source with the existing
+`riff source disable --source-id ...` command; disabling does not erase prior
+retrievals or provenance.
