@@ -1,6 +1,6 @@
 # G01 — Build the provenance-first evidence store
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G00  
 **Unlocks:** G02  
 **PRD references:** Sections 7–9, 21–22, 26–27
@@ -57,13 +57,13 @@ Given repeated and overlapping evidence inputs, an operator can see which record
 
 ## Acceptance criteria
 
-- [ ] Re-ingesting the same source-native item, canonical URL, and content produces no duplicate raw-evidence row and reports an idempotent result.
-- [ ] Changed content at the same canonical source creates a linked version while preserving the earlier snapshot and retrieval record.
-- [ ] Two pages that point to the same root artifact can retain separate discovery provenance while sharing the identified root source.
-- [ ] Evidence is retrievable by stable ID with canonical URL, source, dates, hash, and raw content/snapshot reference intact.
-- [ ] Search can filter by source type and date and can find representative stored text without a separate vector database.
-- [ ] Canonicalization does not merge materially different source-native items merely because their normalized URLs are similar.
-- [ ] Postgres integration tests prove uniqueness, versioning, provenance traversal, and search behavior.
+- [x] Re-ingesting the same source-native item, canonical URL, and content produces no duplicate raw-evidence row and reports an idempotent result.
+- [x] Changed content at the same canonical source creates a linked version while preserving the earlier snapshot and retrieval record.
+- [x] Two pages that point to the same root artifact can retain separate discovery provenance while sharing the identified root source.
+- [x] Evidence is retrievable by stable ID with canonical URL, source, dates, hash, and raw content/snapshot reference intact.
+- [x] Search can filter by source type and date and can find representative stored text without a separate vector database.
+- [x] Canonicalization does not merge materially different source-native items merely because their normalized URLs are similar.
+- [x] Postgres integration tests prove uniqueness, versioning, provenance traversal, and search behavior.
 
 ## Verification evidence
 
@@ -72,6 +72,13 @@ Use a fixture set that includes tracking-parameter URL variants, an updated arti
 ## Implementation latitude
 
 The exact table layout and whether raw content is stored inline or behind a storage interface are implementation choices. For v0.1, local/Postgres storage is preferable to adding object-storage infrastructure unless size evidence demands otherwise.
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest` → **15 passed, 7 skipped** without a configured database; skips are the opt-in Postgres tests.
+- Against an isolated temporary PostgreSQL instance, `.venv/bin/python -m riff migrate` applied `001_initial` and `002_evidence_store`; `.venv/bin/python -m pytest -m postgres` → **7 passed**.
+- The Postgres suite covered `test_duplicate_source_item_is_idempotent`, `test_changed_content_creates_version`, `test_discovery_edge_preserves_root`, `test_retrieve_by_id_and_search_metadata`, `test_url_variants_do_not_merge_distinct_native_items`, and `test_evidence_constraints_and_transaction_rollback`, plus the foundation migration idempotence test.
+- `git diff --check` and `.venv/bin/python -m compileall -q src tests` passed.
 
 ## Execution contract for the next Luna run
 
@@ -100,6 +107,7 @@ Use schema version `1` for this goal. The persisted contract must expose these c
 | Same source-native ID, canonical URL, and content hash | Return the existing `evidence_id`; create no duplicate evidence/version; retain one new retrieval outcome if supplied. |
 | Same source item and URL, changed content hash | Create one new immutable version linked by `VERSION_OF`; preserve the prior version. |
 | Tracking/query URL variants that canonicalize identically | Resolve to one source-item identity and follow the same idempotence rule. |
+| Distinct non-null provider-native IDs sharing one normalized URL | Keep separate source items; native identity takes precedence over URL-only matching. |
 | Identical content at two distinct root URLs | Keep distinct source items and provenance; optionally add `CONTENT_EQUIVALENT`, never collapse roots. |
 | Discovery page linking to an original artifact | Persist the discovery item and an explicit `DISCOVERED_THROUGH` edge to the original/root item. |
 | Missing source type, URL/native identity, hash, or content/snapshot | Reject/quarantine with a typed validation outcome and perform no partial evidence write. |
