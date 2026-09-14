@@ -90,14 +90,10 @@ G20 keeps discovery separate from collection. Review the disabled-by-default
 policy in `config/github_discovery.json`, then run the recorded search fixture:
 
 ```sh
-uv run riff github discover \
-  --policy config/github_discovery.json \
-  --fixture tests/fixtures/github/discovery/search-responses-v1.json \
-  --output /tmp/riff-github-queue.json
+uv run riff github discover --policy config/github_discovery.json --fixture tests/fixtures/github/discovery/search-responses-v1.json --output /tmp/riff-github-queue.json
 uv run riff github queue --file /tmp/riff-github-queue.json
 uv run riff github review --file /tmp/riff-github-queue.json --candidate-id repo:5001 --apply
-uv run riff github promote --queue /tmp/riff-github-queue.json \
-  --candidate-id repo:5001 --confirm PROMOTE --apply
+uv run riff github promote --queue /tmp/riff-github-queue.json --candidate-id repo:5001 --confirm PROMOTE --apply
 ```
 
 Promotion writes a disabled, provenance-bearing scope to
@@ -123,6 +119,79 @@ evidence version; changed descriptions create a `VERSION_OF` chain. Missing
 compensation, seniority, and dates remain unknown, and expired postings are
 retained. Fixtures under `tests/fixtures/jobs/` are the normal development and
 evaluation path and require no credentials or network access.
+
+### Automated collection and URL intake
+
+G21 adds a versioned, fail-closed policy in `config/job_sources.json`. Validate
+it without a database or network, then use the same one-shot command from a
+terminal or cron:
+
+```sh
+uv run riff job validate-policy
+uv run riff job collect --source-id <reviewed-source-id>
+# Example: 05:15 every day
+15 5 * * * cd /path/to/riff && uv run riff job collect --source-id <reviewed-source-id>
+```
+
+For a single listing, configure the `USER_URL` source and submit exactly one
+permitted public URL:
+
+```sh
+uv run riff job submit-url --source-id jobs-user-url --url https://jobs.example/listings/123
+```
+
+Local development can use recorded fixtures with `--fixture --dry-run`; tests
+never contact a job site. URL intake validates the allowlist and public-network
+boundary, revalidates redirects, prefers `JobPosting` JSON-LD, preserves a raw
+snapshot, and stores normalized posting fields through the same G04 evidence
+and versioning path. Unreviewed live sources remain disabled.
+
+#### Terminal smoke scenarios
+
+From the repository root, these commands require no database, credentials, or
+network and are safe to repeat:
+
+```sh
+# Validate the source policy and bounds
+.venv/bin/python -m riff job validate-policy
+
+# Collect the recorded API fixture without writing evidence
+.venv/bin/python -m riff job collect --source-id jobs-permitted-api --fixture --dry-run
+
+# Decompose one recorded public listing without writing evidence
+.venv/bin/python -m riff job submit-url --source-id jobs-user-url --url https://jobs.example/listings/url-1 --fixture --dry-run
+
+# Run all offline tests
+.venv/bin/python -m pytest -q
+```
+
+The collection smoke report is `SUCCEEDED` with one fixture item. The URL
+smoke report is `DRY_RUN` and includes the normalized title, employer,
+compensation/location when stated, parser version, and synthesis-ready fields.
+Use `uv run riff` instead of `.venv/bin/python -m riff` when the local `uv`
+cache is available.
+
+For database-backed persistence, start Postgres, apply migrations, and create
+the two local source rows once (they may remain disabled because fixture mode
+does not contact a provider):
+
+```sh
+export RIFF_POSTGRES_PASSWORD=riff-local-only
+docker compose up -d postgres
+uv run riff migrate
+uv run riff source add --source-id jobs-permitted-api --source-type JOBS --name "Permitted job API" --endpoint https://jobs.example/api/listings --disabled
+uv run riff source add --source-id jobs-user-url --source-type JOBS --name "User-submitted job URL" --endpoint https://jobs.example/listings --disabled
+uv run riff job collect --source-id jobs-permitted-api --fixture
+uv run riff job submit-url --source-id jobs-user-url --url https://jobs.example/listings/url-1 --fixture
+```
+
+Only enable a live source after recording its terms/robots, allowlist,
+retention, and request-bound review in `config/job_sources.json`. Cron should
+invoke the same one-shot command, for example:
+
+```cron
+15 5 * * * cd /path/to/riff && uv run riff job collect --source-id <reviewed-source-id>
+```
 
 ## Evidence Receipts
 

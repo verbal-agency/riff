@@ -1,4 +1,38 @@
 {
-  "schema_version": 1,
-  "sources": []
+  "schema_version": 2,
+  "policy_id": "jobs-bounded-v2",
+  "sources": [
+    {
+      "source_id": "jobs-permitted-api",
+      "name": "Permitted job API (operator reviewed)",
+      "source_kind": "API",
+      "endpoint": "https://jobs.example/api/listings",
+      "enabled": false,
+      "allowlist": ["jobs.example"],
+      "terms_review": "PENDING_REVIEW",
+      "robots_review": "PENDING_REVIEW",
+      "cadence": "daily",
+      "bounds": {"max_requests": 2, "max_pages": 2, "max_items": 100, "max_body_bytes": 2000000, "max_redirects": 2, "timeout_seconds": 15},
+      "retry_policy": {"max_attempts": 2, "retry_statuses": [429, 500, 502, 503, 504]},
+      "retention": "Store bounded posting content and canonical URL when the provider permits it.",
+      "fixture_reference": "tests/fixtures/jobs/http/api-v1.json",
+      "fallback": "USER_PROVIDED_EXPORT"
+    },
+    {
+      "source_id": "jobs-user-url",
+      "name": "User-submitted public job listing",
+      "source_kind": "USER_URL",
+      "endpoint": null,
+      "enabled": true,
+      "allowlist": ["jobs.example"],
+      "terms_review": "USER_PROVIDED",
+      "robots_review": "USER_PROVIDED",
+      "cadence": "operator-triggered",
+      "bounds": {"max_requests": 1, "max_pages": 1, "max_items": 1, "max_body_bytes": 1000000, "max_redirects": 2, "timeout_seconds": 15},
+      "retry_policy": {"max_attempts": 1, "retry_statuses": [429, 500, 502, 503, 504]},
+      "retention": "Retain the submitted listing snapshot and normalized fields in the local evidence store.",
+      "fixture_reference": "tests/fixtures/jobs/url/jobposting-v1.html",
+      "fallback": "REJECT_UNAPPROVED_OR_UNAVAILABLE_URL"
+    }
+  ]
 }

@@ -41,6 +41,25 @@ identity and reversible aliases separately from posting evidence, and preserves
 retrieval history for exact reposts and expired listings. Missing job metadata
 remains null; no compensation, seniority, or date is inferred.
 
+## G21 automated job collection and URL intake
+
+G21 keeps job collection as one Python one-shot service so terminal execution
+and cron invoke identical logic. A schema-versioned job policy describes the
+access method, terms/robots review, allowlist, cadence, request/page/item/body/
+redirect bounds, retries, retention, and fixture reference. The repository
+defaults keep live sources disabled until review; a `USER_URL` source permits
+one operator-submitted public listing without enabling a crawl.
+
+`HttpJobFetcher` validates schemes, credentials, DNS results, allowlists, and
+every redirect before a bounded read-only request. Recorded fixtures use the
+same fetch/decomposition interface. `JobPosting` JSON-LD is preferred, with a
+bounded HTML fallback when the policy permits it. Normalized fields and raw
+content flow through the G04 importer/evidence store, preserving retrieval
+history, exact-repost deduplication, changed-content versions, employer
+identity, parser/policy metadata, and synthesis-ready receipt inputs. No
+credentials, browser session, private-network access, arbitrary link following,
+application action, or model call is part of this seam.
+
 ## G20 bounded GitHub discovery
 
 Discovery is a bounded, file-backed review queue in front of the existing G03

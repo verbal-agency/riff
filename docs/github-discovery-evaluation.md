@@ -129,8 +129,7 @@ reduced without exceeding the same privacy and request budget.
 The reproducible evaluation command is:
 
 ```sh
-.venv/bin/python -m riff github evaluate-discovery \
-  --file tests/fixtures/github/discovery-benchmark-v1.json
+.venv/bin/python -m riff github evaluate-discovery --file tests/fixtures/github/discovery-benchmark-v1.json
 ```
 
 The command reads only the recorded fixture and emits the same JSON metrics on
@@ -143,14 +142,10 @@ The implementation keeps discovery output in a review queue before any source
 registry change. Run the fixture path locally with:
 
 ```sh
-uv run riff github discover \
-  --policy config/github_discovery.json \
-  --fixture tests/fixtures/github/discovery/search-responses-v1.json \
-  --output /tmp/riff-github-queue.json
+uv run riff github discover --policy config/github_discovery.json --fixture tests/fixtures/github/discovery/search-responses-v1.json --output /tmp/riff-github-queue.json
 uv run riff github queue --file /tmp/riff-github-queue.json
 uv run riff github review --file /tmp/riff-github-queue.json --candidate-id repo:5001 --apply
-uv run riff github promote --queue /tmp/riff-github-queue.json \
-  --candidate-id repo:5001 --confirm PROMOTE --apply
+uv run riff github promote --queue /tmp/riff-github-queue.json --candidate-id repo:5001 --confirm PROMOTE --apply
 ```
 
 The promotion step writes a disabled scope with discovery run/query metadata;

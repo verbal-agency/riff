@@ -42,6 +42,10 @@ from .github_discovery import (
 from .ingestion import HttpFeedFetcher
 from .ingestion_repository import IngestionRepository, RunStatus
 from .job_ingestion import JobIngestionRunner
+from .job_source_policy import JobPolicyError, load_policy as load_job_source_policy
+from .job_collection import JobCollectionRunner, dry_run_fixture
+from .job_fetch import FixtureJobFetcher, HttpJobFetcher, JobFetchError
+from .job_url_intake import JobUrlIntakeRunner
 from .logging import configure_logging, event
 from .profile import ProfileRepository
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
@@ -127,6 +131,19 @@ def build_parser() -> argparse.ArgumentParser:
     job_import.add_argument("--source-id", required=True)
     job_import.add_argument("--file", required=True)
     job_import.add_argument("--content-limit", type=int, default=20_000)
+    job_collect = job_subparsers.add_parser("collect", help="collect one bounded configured job source")
+    job_collect.add_argument("--source-id", action="append")
+    job_collect.add_argument("--policy", default="config/job_sources.json")
+    job_collect.add_argument("--fixture", action="store_true", help="use each policy source's recorded fixture")
+    job_collect.add_argument("--dry-run", action="store_true", help="parse and report without writing evidence")
+    job_submit = job_subparsers.add_parser("submit-url", help="fetch and decompose one permitted public listing URL")
+    job_submit.add_argument("--url", required=True)
+    job_submit.add_argument("--source-id", required=True)
+    job_submit.add_argument("--policy", default="config/job_sources.json")
+    job_submit.add_argument("--fixture", action="store_true", help="use the configured recorded listing fixture")
+    job_submit.add_argument("--dry-run", action="store_true", help="decompose without writing evidence")
+    job_validate = job_subparsers.add_parser("validate-policy", help="validate the versioned job-source policy")
+    job_validate.add_argument("--policy", default="config/job_sources.json")
     receipt = subparsers.add_parser("receipt", help="process and evaluate Evidence Receipts")
     receipt_subparsers = receipt.add_subparsers(dest="receipt_command", required=True)
     receipt_process = receipt_subparsers.add_parser("process", help="process pending evidence with the local extractor")
@@ -266,6 +283,34 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except (OSError, ValueError, DiscoveryPolicyError) as exc:
             raise SystemExit(f"GitHub discovery error: {exc}") from exc
+    if args.command == "job" and args.job_command == "validate-policy":
+        try:
+            policy = load_job_source_policy(args.policy)
+        except (OSError, ValueError, JobPolicyError) as exc:
+            raise SystemExit(f"job policy error: {exc}") from exc
+        print(json.dumps({"policy_id": policy.policy_id, "schema_version": policy.schema_version, "sources": len(policy.sources), "valid": True}, sort_keys=True))
+        return 0
+    if args.command == "job" and args.job_command == "collect" and args.fixture and args.dry_run:
+        try:
+            policy = load_job_source_policy(args.policy)
+            report = dry_run_fixture(policy, source_id=args.source_id[0] if args.source_id else None)
+        except (OSError, ValueError, JobPolicyError, JobFetchError) as exc:
+            raise SystemExit(f"job collection error: {exc}") from exc
+        print(json.dumps(report.to_dict(), sort_keys=True, default=str))
+        return 0
+    if args.command == "job" and args.job_command == "submit-url" and args.fixture and args.dry_run:
+        try:
+            policy = load_job_source_policy(args.policy)
+            result = JobUrlIntakeRunner(
+                IngestionRepository("postgresql://offline/unused"),
+                EvidenceRepository("postgresql://offline/unused"),
+                policy,
+                FixtureJobFetcher(),
+            ).run(args.url, source_id=args.source_id, dry_run=True)
+        except (OSError, ValueError, JobPolicyError, JobFetchError) as exc:
+            raise SystemExit(f"job URL intake error: {exc}") from exc
+        print(json.dumps(result, sort_keys=True, default=str))
+        return 0
     if args.command == "source" and args.source_command == "validate-manifest":
         try:
             manifest = load_manifest(args.manifest)
@@ -416,6 +461,34 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(asdict(summary), sort_keys=True, default=str))
         return 0 if summary.status != RunStatus.FAILED else 1
     if args.command == "job":
+        if args.job_command == "collect":
+            try:
+                policy = load_job_source_policy(args.policy)
+                fetcher = FixtureJobFetcher() if args.fixture else HttpJobFetcher()
+                report = JobCollectionRunner(
+                    IngestionRepository(settings.database_url),
+                    EvidenceRepository(settings.database_url),
+                    policy,
+                    fetcher,
+                ).run(source_ids=args.source_id, fixture_mode=args.fixture, dry_run=args.dry_run)
+            except (OSError, ValueError, JobPolicyError, JobFetchError) as exc:
+                raise SystemExit(f"job collection error: {exc}") from exc
+            print(json.dumps(report.to_dict(), sort_keys=True, default=str))
+            return 0 if report.summary.status != RunStatus.FAILED else 1
+        if args.job_command == "submit-url":
+            try:
+                policy = load_job_source_policy(args.policy)
+                fetcher = FixtureJobFetcher() if args.fixture else HttpJobFetcher()
+                result = JobUrlIntakeRunner(
+                    IngestionRepository(settings.database_url),
+                    EvidenceRepository(settings.database_url),
+                    policy,
+                    fetcher,
+                ).run(args.url, source_id=args.source_id, dry_run=args.dry_run)
+            except (OSError, ValueError, JobPolicyError, JobFetchError) as exc:
+                raise SystemExit(f"job URL intake error: {exc}") from exc
+            print(json.dumps(result, sort_keys=True, default=str))
+            return 0 if result.get("status") not in {RunStatus.FAILED, "FAILED"} else 1
         if args.job_command != "import":
             raise SystemExit(f"unsupported job command: {args.job_command}")
         summary = JobIngestionRunner(

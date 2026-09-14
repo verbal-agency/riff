@@ -222,6 +222,7 @@ class JobIngestionRunner:
         content = "\n\n".join(part for part in content_parts if part)
         if not content:
             content = json.dumps({"role_title": title, "company_name": company_name}, sort_keys=True)
+        supplied_metadata = record.get("metadata") if isinstance(record.get("metadata"), Mapping) else {}
         return JobPosting(
             provider_posting_id=provider_id,
             canonical_url=canonical_url,
@@ -241,10 +242,11 @@ class JobIngestionRunner:
                 "company_id": record.get("company_id") or record.get("employer_id"),
                 "employer_ambiguous": bool(record.get("employer_ambiguous") or record.get("identity_state") == "AMBIGUOUS"),
                 "employer_confidence": record.get("employer_confidence"),
+                **dict(supplied_metadata),
             },
         )
 
-    def _store(self, run_id: str, source, posting: JobPosting, counts: dict[str, int]) -> None:
+    def _store(self, run_id: str, source, posting: JobPosting, counts: dict[str, int]) -> str:
         record = {
             "company_name": posting.company_name,
             "employer_id": posting.metadata.get("company_id"),
@@ -271,6 +273,7 @@ class JobIngestionRunner:
         outcome = ItemOutcome.STORED if result.created else ItemOutcome.DUPLICATE
         self.ingestion.record_item_result(run_id, source.source_id, outcome, canonical_url=posting.canonical_url, source_native_id=posting.provider_posting_id, evidence_id=result.evidence_id)
         counts["stored" if result.created else "duplicates"] += 1
+        return result.evidence_id
 
 
 def _optional_text(value: Any) -> str | None:

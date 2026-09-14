@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-14T08:00:00Z",
+  "postings": [
+    {
+      "provider_posting_id": "api-1",
+      "canonical_url": "https://jobs.example/listings/api-1",
+      "role_title": "Durable Systems Engineer",
+      "company_name": "Acme Systems",
+      "seniority": "Senior",
+      "location": "Remote",
+      "description": "Build reliable workflow infrastructure and orchestration systems.",
+      "published_at": "2026-09-13T00:00:00Z"
+    }
+  ]
+}

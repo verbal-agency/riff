@@ -1,9 +1,10 @@
 # G21 — Automate compliant job collection and listing URL intake
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G04
 **Unlocks:** Fresh scheduled job-market evidence and synthesis-ready listing analysis
 **PRD references:** Sections 7.1, 8, 22, 24.3, 26–29, 33
+**Canonical scenario:** `SC-JOB-001`
 
 ## Outcome
 
@@ -126,33 +127,33 @@ persist secrets.
 
 ## Acceptance criteria
 
-- [ ] A schema-versioned manifest validates at least one explicitly bounded
+- [x] A schema-versioned manifest validates at least one explicitly bounded
   source definition and a `USER_URL` mode, including access method,
   terms/robots review, allowlist, cadence, limits, retention, fixture plan,
   retry policy, stop rules, and disabled-by-default behavior for unreviewed
   live sources.
-- [ ] `riff job collect` and the documented cron/launchd command invoke the
+- [x] `riff job collect` and the documented cron/launchd command invoke the
   same one-shot service path and produce a deterministic run report with
   stored, duplicate, skipped, failed, retried, and cursor outcomes.
-- [ ] Collection enforces request/page/item/body/redirect/time bounds, typed
+- [x] Collection enforces request/page/item/body/redirect/time bounds, typed
   transient-versus-permanent failures, durable checkpoints, safe resume, and
   single-run locking/idempotence.
-- [ ] `riff job submit-url` rejects disallowed schemes, hosts, resolved
+- [x] `riff job submit-url` rejects disallowed schemes, hosts, resolved
   addresses, redirects, and sources before network access; a permitted URL
   fetches one listing only and records request/run/item provenance.
-- [ ] JSON-LD and permitted HTML fixtures decompose into the G04 fields,
+- [x] JSON-LD and permitted HTML fixtures decompose into the G04 fields,
   preserve unknowns as unknown, retain raw evidence/canonical URL, and record
   parser/decomposer and policy versions.
-- [ ] URL-submitted and scheduled postings share exact-repost deduplication,
+- [x] URL-submitted and scheduled postings share exact-repost deduplication,
   changed-content version chains, employer identity correlation, searchable
   evidence, and a synthesis-ready receipt reference.
-- [ ] Replay of the same policy/input is a no-op for logical evidence while
+- [x] Replay of the same policy/input is a no-op for logical evidence while
   retaining retrieval history; a transient failure retries the same cursor and
   a permanent failure stops without cursor advancement.
-- [ ] Offline tests use only recorded fixtures/injected clients and prove cron
+- [x] Offline tests use only recorded fixtures/injected clients and prove cron
   versus terminal equivalence; no credentials, private URLs, live requests, or
   paid model calls are required.
-- [ ] Operator documentation explains terms/robots approval, dry-run, review,
+- [x] Operator documentation explains terms/robots approval, dry-run, review,
   scheduling, inspection, disablement, rollback, retention, and the no-crawl/
   no-application boundary.
 
@@ -247,6 +248,16 @@ protocol response, exhausted bounds, or lock contention.
 - Demonstrate one fixture collection, one safe URL submission, a rejected SSRF
   target, deterministic replay, and cron/terminal equivalence.
 - Run `git diff --check` and scans for credentials/private URLs.
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest -q tests/test_job_collection.py` → **8 passed, 1 skipped** (the new Postgres persistence test is skipped without `RIFF_DATABASE_URL`).
+- `.venv/bin/python -m pytest -q` → **all offline tests passed**; existing Postgres-marked tests remain skipped without a reachable database.
+- `.venv/bin/python -m riff job validate-policy` → valid schema-version-2 policy with bounded API and `USER_URL` sources.
+- `.venv/bin/python -m riff job collect --source-id jobs-permitted-api --fixture --dry-run` → one bounded fixture item, `SUCCEEDED`, no database or network.
+- Fixture URL dry-run → `DRY_RUN`, listing `url-1`, parser `jobposting-jsonld-v1`.
+- `.venv/bin/python -m py_compile` for all changed modules and `git diff --check` passed.
+- A temporary isolated Postgres instance and Docker service were unavailable in this environment (shared-memory/daemon restrictions); no migration was added, and the URL persistence test is ready to run when Postgres is available.
 
 ## Handoff
 
