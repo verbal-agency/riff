@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import json
+import math
+import time
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Mapping, Protocol, Sequence
 
 
 class ChatLoopError(ValueError):
     """The model/tool conversation cannot continue safely."""
+
+    def __init__(self, message: str, *, code: str = "CHAT_LOOP_ERROR"):
+        super().__init__(message)
+        self.code = code
 
 
 class ConfirmationRequired(ChatLoopError):
@@ -63,12 +69,15 @@ class ToolLoopPolicy:
     max_tool_calls: int = 12
     max_result_chars: int = 30_000
     max_message_chars: int = 40_000
+    max_seconds: float = 30.0
 
     def __post_init__(self) -> None:
         if self.max_turns < 1 or self.max_tool_calls < 1:
             raise ValueError("tool-loop bounds must be positive")
         if self.max_result_chars < 256 or self.max_message_chars < 256:
             raise ValueError("tool-loop character bounds are too small")
+        if not math.isfinite(self.max_seconds) or self.max_seconds <= 0:
+            raise ValueError("tool-loop timeout must be a finite positive number")
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,11 +161,13 @@ class ChatToolLoop:
         *,
         policy: ToolLoopPolicy | None = None,
         confirmation_provider: ConfirmationProvider | None = None,
+        clock: Callable[[], float] = time.monotonic,
     ):
         self.model = model
         self.adapter = adapter
         self.policy = policy or ToolLoopPolicy()
         self.confirmation_provider = confirmation_provider
+        self.clock = clock
 
     def run(self, user_message: str, *, system_prompt: str | None = None) -> ChatLoopResult:
         if not user_message.strip():
@@ -169,11 +180,29 @@ class ChatToolLoop:
         by_name = {item["name"]: item for item in tools}
         trace: list[ToolTrace] = []
         total_calls = 0
+        deadline = self.clock() + self.policy.max_seconds
 
         for turn in range(1, self.policy.max_turns + 1):
+            self._check_deadline(deadline)
+            if _encoded_chars(messages) > self.policy.max_message_chars:
+                raise ChatLoopError(
+                    "model context exceeded the configured bound",
+                    code="CONTEXT_BUDGET_EXHAUSTED",
+                )
             response = self.model.complete(tuple(messages), tuple(tools))
+            self._check_deadline(deadline)
             if not isinstance(response, ModelResponse):
-                raise ChatLoopError("model client returned an invalid response")
+                raise ChatLoopError("model client returned an invalid response", code="INVALID_MODEL_RESPONSE")
+            if response.finish_reason.lower() in {"refusal", "error"}:
+                raise ChatLoopError(
+                    (response.content or "model declined the request").strip(),
+                    code="MODEL_REFUSAL",
+                )
+            if response.content and len(response.content) > self.policy.max_message_chars:
+                raise ChatLoopError(
+                    "model response exceeded the configured bound",
+                    code="RESPONSE_BUDGET_EXHAUSTED",
+                )
             calls = tuple(response.tool_calls)
             assistant: dict[str, Any] = {"role": "assistant", "content": response.content or ""}
             if calls:
@@ -191,11 +220,12 @@ class ChatToolLoop:
             for call in calls:
                 total_calls += 1
                 if total_calls > self.policy.max_tool_calls:
-                    raise ChatLoopError("tool-call budget exhausted")
+                    raise ChatLoopError("tool-call budget exhausted", code="TOOL_CALL_BUDGET_EXHAUSTED")
                 if call.name not in by_name:
                     result = {"error": {"code": "UNKNOWN_TOOL", "message": f"unknown tool: {call.name}"}}
                 else:
                     result = self._invoke(call, by_name[call.name])
+                self._check_deadline(deadline)
                 bounded = _bounded_result(result, self.policy.max_result_chars)
                 trace.append(ToolTrace(call.call_id, call.name, dict(call.arguments), bounded))
                 messages.append(
@@ -205,7 +235,11 @@ class ChatToolLoop:
                         "content": json.dumps(bounded, sort_keys=True, default=str),
                     }
                 )
-        raise ChatLoopError("turn budget exhausted")
+        raise ChatLoopError("turn budget exhausted", code="TURN_BUDGET_EXHAUSTED")
+
+    def _check_deadline(self, deadline: float) -> None:
+        if self.clock() > deadline:
+            raise ChatLoopError("tool-loop timeout", code="TIMEOUT")
 
     def _invoke(self, call: ModelToolCall, definition: Mapping[str, Any]) -> dict[str, Any]:
         args = call.arguments
@@ -241,6 +275,10 @@ def _bounded_result(result: Mapping[str, Any], limit: int) -> dict[str, Any]:
             "original_chars": len(encoded),
         }
     }
+
+
+def _encoded_chars(messages: Sequence[Mapping[str, Any]]) -> int:
+    return len(json.dumps(list(messages), sort_keys=True, default=str))
 
 
 class ScriptedModelClient:

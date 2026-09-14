@@ -315,10 +315,12 @@ uv run riff chat replay --file tests/fixtures/chat/tool-loop-v1.json --scenario 
 uv run riff chat replay --file tests/fixtures/chat/tool-loop-v1.json --scenario confirmation-required
 ```
 
-The replay prints the bounded tool trace and final model text. A real ChatGPT
-connector will supply the model client and call the same adapter endpoints; it
-must provide explicit user confirmation separately from model-generated tool
-arguments.
+The replay prints the bounded tool trace and final model text. The loop defaults
+to 8 turns, 12 tool calls, 30,000 result characters, 40,000 context/response
+characters, and a 30-second deadline; refusal, timeout, and exhausted-budget
+paths return typed errors. A real ChatGPT connector will supply the model client
+and call the same adapter endpoints; it must provide explicit user confirmation
+separately from model-generated tool arguments.
 
 The G15 dogfood packet is fixture-only and replayable: use
 `tests/fixtures/dogfood/manifest.json` and inspect

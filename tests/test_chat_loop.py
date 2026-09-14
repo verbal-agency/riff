@@ -3,11 +3,13 @@ from pathlib import Path
 
 import pytest
 
+from riff.adapter import TOOL_SCHEMAS
 from riff.chat_loop import (
     ChatLoopError,
     ChatToolLoop,
     FixtureToolAdapter,
     ModelToolCall,
+    ModelResponse,
     ScriptedModelClient,
     ToolLoopPolicy,
     load_chat_fixture,
@@ -22,6 +24,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "chat" / "tool-loop-v1.json"
 def test_tool_definitions_are_typed_and_annotate_mutations():
     fixture = load_chat_fixture(str(FIXTURE))
     definitions = model_tool_definitions(fixture["tools"])
+    assert {item["name"] for item in definitions} == set(TOOL_SCHEMAS)
     daily = next(item for item in definitions if item["name"] == "daily_riffs")
     create = next(item for item in definitions if item["name"] == "create_exploration")
     assert daily["parameters"]["required"] == ["run_date"]
@@ -40,6 +43,19 @@ def test_daily_tool_loop_returns_final_model_text_and_trace():
     assert result.trace[0].name == "daily_riffs"
     assert adapter.calls[0]["arguments"] == {"run_date": "2026-09-14"}
     assert model.calls[1]["messages"][-1]["role"] == "tool"
+
+
+def test_investigation_follow_up_returns_only_fixture_provenance_slice():
+    fixture = load_chat_fixture(str(FIXTURE))
+    scenario = next(item for item in fixture["scenarios"] if item["id"] == "investigate")
+    model = ScriptedModelClient(scenario["turns"])
+    adapter = FixtureToolAdapter(fixture["tools"], scenario["adapter_results"])
+    result = ChatToolLoop(model, adapter).run(scenario["user_message"])
+    assert result.status == "SUCCEEDED"
+    assert result.trace[0].name == "investigate_riff"
+    bounded = result.trace[0].result["result"]
+    assert set(bounded) == {"riff_id", "strongest_evidence", "counterevidence", "provenance"}
+    assert bounded["provenance"]["supporting_receipt_ids"] == ["receipt-1"]
 
 
 def test_model_supplied_confirmation_token_is_not_trusted():
@@ -79,6 +95,19 @@ def test_unknown_and_invalid_tools_are_returned_as_bounded_tool_errors():
     assert adapter.calls == []
 
 
+def test_adapter_failures_are_returned_as_deterministic_tool_errors():
+    tools = [{"name": "daily_riffs", "description": "Read daily Riffs.", "required": ("run_date",)}]
+    model = ScriptedModelClient(
+        [
+            {"tool_calls": [{"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}}]},
+            {"content": "The adapter could not provide the requested result."},
+        ]
+    )
+    adapter = FixtureToolAdapter(tools, {})
+    result = ChatToolLoop(model, adapter).run("Read today's Riffs.")
+    assert result.trace[0].result["error"]["code"] == "CHATLOOPERROR"
+
+
 def test_tool_loop_enforces_turn_and_result_bounds():
     tools = [{"name": "daily_riffs", "description": "Read daily Riffs.", "required": ("run_date",)}]
     model = ScriptedModelClient(
@@ -94,6 +123,42 @@ def test_tool_loop_enforces_turn_and_result_bounds():
         {"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}},
         {"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}},
     ]
+
+
+def test_tool_loop_reports_deterministic_timeout_code():
+    now = [0.0]
+
+    class SlowModel:
+        def complete(self, messages, tools):
+            now[0] = 2.0
+            return ModelResponse(content="too late")
+
+    with pytest.raises(ChatLoopError, match="timeout") as error:
+        ChatToolLoop(
+            SlowModel(),
+            FixtureToolAdapter([], {}),
+            policy=ToolLoopPolicy(max_seconds=1),
+            clock=lambda: now[0],
+        ).run("Wait.")
+    assert error.value.code == "TIMEOUT"
+
+
+def test_tool_loop_rejects_model_refusal_and_oversized_response():
+    tools = []
+    adapter = FixtureToolAdapter(tools, {})
+    refusal = ScriptedModelClient([{"content": "No.", "finish_reason": "refusal"}])
+    with pytest.raises(ChatLoopError, match="No") as error:
+        ChatToolLoop(refusal, adapter).run("Do something unsafe.")
+    assert error.value.code == "MODEL_REFUSAL"
+
+    oversized = ScriptedModelClient([{"content": "x" * 257}])
+    with pytest.raises(ChatLoopError, match="response exceeded") as error:
+        ChatToolLoop(
+            oversized,
+            adapter,
+            policy=ToolLoopPolicy(max_message_chars=256),
+        ).run("Say it.")
+    assert error.value.code == "RESPONSE_BUDGET_EXHAUSTED"
 
 
 def test_chat_replay_cli_is_offline_and_prints_trace(capsys):

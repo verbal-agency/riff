@@ -122,8 +122,8 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 G00 through G21 are complete. G22 is the next ready goal: configure a
 reproducible local Postgres path and run the complete persistence suite,
 including G21's job collection and URL-intake flows. G23's offline
-provider-neutral model tool loop is in progress; after G22 it will add the real
-model client, and G24 connects it to a supported ChatGPT
+provider-neutral model tool loop is implemented but remains incomplete pending
+the G22 Postgres-backed adapter exercise; G24 connects it to a supported ChatGPT
 surface for end-to-end evaluation. After that, G25 broadens GitHub discovery,
 G26 builds the user project map, and G27 makes recommendations project-aware.
 G17's engineer-source

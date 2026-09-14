@@ -14,9 +14,69 @@
       "required": ["riff_id"]
     },
     {
+      "name": "search_riffs",
+      "description": "Search persisted Riffs by capability or text.",
+      "required": ["query"]
+    },
+    {
+      "name": "profile_lookup",
+      "description": "Read the public profile slice and gap classification for one capability.",
+      "required": ["capability_id"]
+    },
+    {
+      "name": "capability_lookup",
+      "description": "Read normalized capability and technology relationships.",
+      "required": ["capability_id"]
+    },
+    {
+      "name": "record_decision",
+      "description": "Persist a user decision and semantic reason.",
+      "required": ["riff_id", "decision", "reason"]
+    },
+    {
       "name": "create_exploration",
       "description": "Create an Exploration after explicit user approval.",
       "required": ["riff_id", "confirmation_token"]
+    },
+    {
+      "name": "get_exploration",
+      "description": "Read one Exploration and its experiment options.",
+      "required": ["exploration_id"]
+    },
+    {
+      "name": "refine_exploration",
+      "description": "Reject and refine one experiment after user feedback.",
+      "required": ["exploration_id", "experiment_id", "reason", "confirmation_token"]
+    },
+    {
+      "name": "select_experiment",
+      "description": "Select one Exploration experiment after user confirmation.",
+      "required": ["exploration_id", "experiment_id", "confirmation_token"]
+    },
+    {
+      "name": "approve_prd",
+      "description": "Record the distinct user approval for PRD generation.",
+      "required": ["exploration_id", "reason", "confirmation_token"]
+    },
+    {
+      "name": "generate_prd",
+      "description": "Generate the approved Exploration's persisted PRD and goals.",
+      "required": ["exploration_id"]
+    },
+    {
+      "name": "get_project",
+      "description": "Read a generated project PRD and goals.",
+      "required": ["project_id"]
+    },
+    {
+      "name": "export_project",
+      "description": "Export a generated project as stable Markdown.",
+      "required": ["project_id"]
+    },
+    {
+      "name": "operation_report",
+      "description": "Read a durable daily pipeline run report.",
+      "required": ["run_id"]
     }
   ],
   "scenarios": [
