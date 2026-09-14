@@ -1,6 +1,6 @@
 # G14 — Expose Riff through a conversational ChatGPT adapter
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G10, G11, G12, G13  
 **Unlocks:** G15  
 **PRD references:** Sections 4, 10, 15, 27, 32–33
@@ -48,18 +48,25 @@ The user can ask “What are today’s Riffs?”, challenge an argument, inspect
 
 ## Acceptance criteria
 
-- [ ] “What are today’s Riffs?” returns the persisted daily zero-to-three result rather than generating an untracked answer in the adapter.
-- [ ] The user can ask for strongest evidence, counterevidence, profile gap, companies/sources, and raw provenance for a chosen Riff.
-- [ ] Reject/watch/archive actions persist the user's semantic reason and return the resulting lifecycle state.
-- [ ] No tool-call sequence lacking explicit user approval can create an Exploration or PRD.
-- [ ] With approvals, a scripted flow reaches Riff -> Exploration -> selected experiment -> PRD/export and every object retains provenance.
-- [ ] An adapter restart loses no canonical product state.
-- [ ] Tool payloads omit unrelated private profile evidence and tests cover accidental overfetch/leakage.
-- [ ] The adapter can be installed and exercised locally using only documented steps and deterministic fixture data.
+- [x] “What are today’s Riffs?” returns the persisted daily zero-to-three result rather than generating an untracked answer in the adapter.
+- [x] The user can ask for strongest evidence, counterevidence, profile gap, companies/sources, and raw provenance for a chosen Riff.
+- [x] Reject/watch/archive actions persist the user's semantic reason and return the resulting lifecycle state.
+- [x] No tool-call sequence lacking explicit user approval can create an Exploration or PRD.
+- [x] With approvals, a scripted flow reaches Riff -> Exploration -> selected experiment -> PRD/export and every object retains provenance.
+- [x] An adapter restart loses no canonical product state.
+- [x] Tool payloads omit unrelated private profile evidence and tests cover accidental overfetch/leakage.
+- [x] The adapter can be installed and exercised locally using only documented steps and deterministic fixture data.
 
 ## Verification evidence
 
-Record scripted happy-path, rejection, zero-Riff, invalid approval, missing evidence, and restart flows. Include created object IDs/statuses and prove the same state is queryable directly through the application API.
+`tests/test_adapter.py` records the scripted happy path, invalid confirmation, rejection, persisted daily read, missing approval, restart, tool listing, and direct-core-API compatibility. PostgreSQL verification: `.venv/bin/python -m pytest -q -m postgres tests/test_adapter.py` (2 passed); the complete suite is run before handoff.
+
+## Implementation contract delivered
+
+- `src/riff/adapter.py` defines the restart-safe `riff-tools-v1` catalog and dispatches daily Riffs, search, investigation/provenance, public profile/capability lookup, decisions, Explorations, PRD generation/export, and operation reports through existing repositories.
+- Mutating promotion calls require the literal `USER_CONFIRMED` token in addition to the persisted G10/G11/G12 approval records. The adapter never stores conversation state or duplicates product rules.
+- API operations are `GET /adapter/tools` and `POST /adapter/tools/{tool_name}`. Payloads omit profile slices and expose public profile evidence only; selected Riff evidence includes only the requested Riff's provenance.
+- The local setup is the existing `uv` environment and `riff api`; no external account, network call, or credential is required for deterministic tests.
 
 ## Implementation latitude
 

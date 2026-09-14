@@ -153,3 +153,13 @@ completed stages are skipped on resume. A row-locked claim makes concurrent
 attempts inspectable no-ops, while policy changes intentionally fork a new run.
 The worker's fixture mode and the documented scheduler invoke the same
 one-shot path, and `/operations/{run_id}` exposes the operator report.
+
+## G14 conversational adapter
+
+The `riff-tools-v1` adapter is a stateless dispatch layer over the application
+repositories. It returns persisted daily results, bounded Riff investigation
+and provenance, public profile/capability slices, decisions, Explorations,
+PRDs, exports, and operation reports. Promotion mutations require a literal
+user confirmation token plus the core persisted approval, so model text cannot
+silently cross either boundary. Restarting the adapter loses no canonical
+state.

@@ -14,6 +14,7 @@ from .decisions import DecisionRepository, DecisionError
 from .explorations import ExplorationRepository, ExplorationError
 from .prds import ProjectRepository, PrdError
 from .operations import PipelineRepository
+from .adapter import RiffToolAdapter, AdapterError
 
 
 def get_settings() -> Settings:
@@ -204,6 +205,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return PipelineRepository(effective_settings.database_url).report(run_id)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.get("/adapter/tools", tags=["adapter"])
+    def adapter_tools() -> dict:
+        return {"protocol": "riff-tools-v1", "tools": RiffToolAdapter(resolve_settings().database_url).list_tools()}
+
+    @app.post("/adapter/tools/{tool_name}", tags=["adapter"])
+    def adapter_call(
+        tool_name: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return RiffToolAdapter(effective_settings.database_url).call(tool_name, payload)
+        except AdapterError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     return app
 

@@ -1,6 +1,6 @@
 # G15 — Pass the Riff v0.1 dogfood release gate
 
-**Status:** Queued  
+**Status:** Ready
 **Depends on:** G00–G14  
 **Unlocks:** Riff v0.1 usability claim  
 **PRD references:** Sections 5, 24, 30–35
@@ -67,6 +67,46 @@ The system consumes several weeks of job, GitHub, and curated technical-writing 
 ## Verification evidence
 
 Archive the exact corpus manifest, configuration/policy versions, commands, funnel report, generated Riffs, user rubric responses, transition audit, Exploration/PRD exports, and traceability matrix. Redact private experience descriptions while retaining proof that privacy and personalization checks ran.
+
+## Execution contract
+
+Expected implementation surface: a versioned corpus manifest/import recipe under
+`tests/fixtures/dogfood/` or `config/`, evaluation/report modules under
+`src/riff/`, focused tests in `tests/test_dogfood.py`, and release artifacts in
+`docs/reports/` plus this goal file. Reuse the G05–G14 stage and approval APIs;
+do not fork domain logic into the report generator.
+
+Canonical artifacts are immutable-by-reference: corpus manifest with capture
+dates/terms/storage mode, policy-version manifest, funnel report, generated
+Riff/decision/transition records, Exploration/PRD/goal exports, human rubric,
+and Section 33 traceability matrix. Reports must distinguish `PASS`, `ITERATE`,
+and `STOP` recommendations and preserve uncertainty/redaction notes.
+
+Behavior matrix:
+
+| Condition | Required result |
+|---|---|
+| Complete permitted corpus | Production-equivalent funnel report and zero–three persisted Riffs |
+| Missing/expired terms or provenance | Import/evaluation failure with the affected source named; no silent inclusion |
+| Adversarial fixture expectation fails | Mechanical evaluation failure recorded; release cannot pass by aggregate score |
+| User rejects a Riff | Later unchanged run does not resurface it; material evidence change explains return |
+| No user approval | Exploration/PRD transition is rejected and traceable |
+| User approves both boundaries | One provenance-linked Exploration, selected experiment, PRD, and agent-ready goals |
+| User does not confirm the qualitative “aha” | Recommendation is `ITERATE` or `STOP`, never self-certified pass |
+
+Authority and side effects: collection must honor each manifest's storage and
+terms decision; private profile text is redacted from exported artifacts;
+network/live sources are disabled unless the manifest explicitly permits them;
+the user's qualitative judgment is required and cannot be inferred by Luna.
+Evaluation fixtures are deterministic and offline where possible, and reports
+must include command, policy, input fingerprint, and artifact IDs for replay.
+
+Criterion map: `test_corpus_manifest_provenance`,
+`test_adversarial_expectations`, `test_production_funnel_report`,
+`test_rejection_memory_and_resurface`, `test_approval_boundaries`,
+`test_delivery_traceability`, and `test_human_release_decision_required` map
+to the acceptance criteria above. Include positive, malformed, contradictory,
+private-redaction, missing-approval, zero-Riff, and partial-failure fixtures.
 
 ## Implementation latitude
 
