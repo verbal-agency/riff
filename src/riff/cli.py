@@ -26,6 +26,7 @@ from .logging import configure_logging, event
 from .profile import ProfileRepository
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
 from .signal_evaluation import evaluate_fixture as evaluate_signal_fixture
+from .source_manifest import load_manifest
 from .riff_evaluation import evaluate_fixture as evaluate_riff_fixture
 from .signals import SignalObservation, SignalRanker, SignalRepository
 from .receipt_evaluation import evaluate_labeled_fixture
@@ -56,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
     source_toggle.add_argument("--source-id", required=True)
     source_toggle = source_subparsers.add_parser("disable", help="disable a configured source")
     source_toggle.add_argument("--source-id", required=True)
+    source_validate = source_subparsers.add_parser("validate-manifest", help="validate the reviewed ingestion-source manifest")
+    source_validate.add_argument("--manifest", default="config/ingestion_sources.json")
     ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
@@ -159,6 +162,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "riff" and args.riff_command == "evaluate":
         print(json.dumps(evaluate_riff_fixture(args.file), sort_keys=True))
+        return 0
+    if args.command == "source" and args.source_command == "validate-manifest":
+        try:
+            manifest = load_manifest(args.manifest)
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"source manifest error: {exc}") from exc
+        print(json.dumps({"schema_version": manifest["schema_version"], "sources": len(manifest["sources"]), "valid": True}, sort_keys=True))
         return 0
     try:
         settings = Settings.from_env()

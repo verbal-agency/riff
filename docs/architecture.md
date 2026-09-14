@@ -103,3 +103,11 @@ For local verification, `riff daily generate --file ...` seeds only the
 fixture's raw evidence and successful receipts, then runs the same persisted
 service used by the API. Repeating the command with the same date, fixture, and
 policy returns the existing run without provider calls or duplicate rows.
+
+## G09b source selection
+
+The source plan is kept in a separate, secret-free manifest so access terms,
+retention, fixture replay, and fallback decisions are reviewable before G02–G04
+collection is enabled. `source validate-manifest` performs structural and
+credential checks without contacting any source. Pending live sources remain
+disabled until an operator records a terms/retention review.

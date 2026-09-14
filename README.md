@@ -174,4 +174,10 @@ uv run riff daily generate --file tests/fixtures/riffs/daily_inputs.json
 
 The second invocation reports `cached: true` and reuses the same daily run.
 
+The reviewed concrete source plan is validated without a database or network:
+
+```sh
+uv run riff source validate-manifest --manifest config/ingestion_sources.json
+```
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.

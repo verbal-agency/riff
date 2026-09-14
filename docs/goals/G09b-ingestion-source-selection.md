@@ -1,8 +1,8 @@
 # G09b — Identify and qualify concrete ingestion sources
 
-**Status:** Ready  
-**Depends on:** G09a  
-**Unlocks:** G13, G15  
+**Status:** Complete
+**Depends on:** G09a
+**Unlocks:** G13, G15
 **PRD references:** Sections 7–8, 22, 24.3, 26–29, 33
 
 ## Outcome
@@ -103,3 +103,11 @@ live evidence. It mutates only the local manifest, ADR, notes, and tests.
 | No secrets | `test_manifest_rejects_credentials` |
 | Fixture and bounded policy | `test_manifest_fixture_and_rate_policy` |
 | Explicit fallback/duplicate policy | `test_manifest_records_fallbacks_and_correlation_policy` |
+
+## Cycle verification
+
+- `.venv/bin/python -m riff source validate-manifest --manifest config/ingestion_sources.json` — 5 sources valid.
+- `.venv/bin/python -m pytest -q -m 'not postgres'` — 45 passed.
+- `git diff --check` passed.
+- Live source access was not performed; pending entries remain explicitly
+  `PENDING_REVIEW` until terms and retention are confirmed by the operator.

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-09-14",
+  "owner": "riff-operator",
+  "duplicate_policy": "Canonical URL/provider ID deduplication; syndicated copies share a root source and never count as independent confirmation.",
+  "sources": [
+    {
+      "source_id": "writing-openai-news",
+      "name": "OpenAI News",
+      "source_type": "TECHNICAL_WRITING",
+      "endpoint_or_scope": "https://openai.com/news/rss.xml",
+      "access_method": "RSS/Atom source-owned feed",
+      "permission_status": "PENDING_REVIEW",
+      "retention_mode": "Store bounded article text when permitted; otherwise retain URL and snapshot reference.",
+      "cadence": "daily",
+      "expected_artifacts": ["article", "release announcement"],
+      "identity_fields": ["canonical_url", "published_at", "title"],
+      "fixture_plan": "Recorded RSS pages plus malformed-entry and unchanged-rerun fixtures.",
+      "rate_limit_policy": "One bounded feed request per scheduled run; honor response caching and retry-after.",
+      "fallback": "UNAVAILABLE until source terms permit retention; keep URL-only discovery out of trend scoring."
+    },
+    {
+      "source_id": "writing-google-ai",
+      "name": "Google AI Blog",
+      "source_type": "TECHNICAL_WRITING",
+      "endpoint_or_scope": "https://blog.google/technology/ai/rss/",
+      "access_method": "RSS/Atom source-owned feed",
+      "permission_status": "PENDING_REVIEW",
+      "retention_mode": "Store bounded article text when permitted; otherwise retain URL and snapshot reference.",
+      "cadence": "daily",
+      "expected_artifacts": ["article", "research/product announcement"],
+      "identity_fields": ["canonical_url", "published_at", "title", "author"],
+      "fixture_plan": "Recorded RSS pages plus missing-date/title and duplicate-syndication fixtures.",
+      "rate_limit_policy": "One bounded feed request per scheduled run; stop on repeated 429/5xx responses.",
+      "fallback": "UNAVAILABLE until source terms permit retention; do not replace with scraped search results."
+    },
+    {
+      "source_id": "github-langgraph",
+      "name": "LangGraph repository",
+      "source_type": "GITHUB",
+      "endpoint_or_scope": "https://api.github.com/repos/langchain-ai/langgraph",
+      "access_method": "Read-only GitHub REST API for one explicit public repository",
+      "permission_status": "PENDING_REVIEW",
+      "retention_mode": "Store bounded releases, README/key-document changes, and issue/discussion metadata with canonical URLs.",
+      "cadence": "daily",
+      "expected_artifacts": ["repository", "release", "README_CHANGE", "issue", "discussion"],
+      "identity_fields": ["provider_repository_id", "artifact_id", "organization", "repository", "author"],
+      "fixture_plan": "Recorded repository, release, rename, fork, bot, pagination, and rate-limit fixtures.",
+      "rate_limit_policy": "Use authenticated token only when explicitly configured; bound pages/items and honor reset headers.",
+      "fallback": "USER_PROVIDED GitHub export fixture; no broad search or repository mirroring."
+    },
+    {
+      "source_id": "github-temporal-sdk-python",
+      "name": "Temporal Python SDK repository",
+      "source_type": "GITHUB",
+      "endpoint_or_scope": "https://api.github.com/repos/temporalio/sdk-python",
+      "access_method": "Read-only GitHub REST API for one explicit public repository",
+      "permission_status": "PENDING_REVIEW",
+      "retention_mode": "Store bounded releases, README/key-document changes, and issue/discussion metadata with canonical URLs.",
+      "cadence": "daily",
+      "expected_artifacts": ["repository", "release", "README_CHANGE", "issue", "discussion"],
+      "identity_fields": ["provider_repository_id", "artifact_id", "organization", "repository", "author"],
+      "fixture_plan": "Recorded repository, release, rename, fork, bot, pagination, and rate-limit fixtures.",
+      "rate_limit_policy": "Use authenticated token only when explicitly configured; bound pages/items and honor reset headers.",
+      "fallback": "USER_PROVIDED GitHub export fixture; no broad search or repository mirroring."
+    },
+    {
+      "source_id": "jobs-user-provided-export",
+      "name": "User-provided permitted job export",
+      "source_type": "JOBS",
+      "endpoint_or_scope": "tests/fixtures/jobs/initial.json",
+      "access_method": "Local schema-versioned JSON export supplied by the operator",
+      "permission_status": "USER_PROVIDED",
+      "retention_mode": "Retain the supplied posting content and retrieval provenance locally; do not fetch a job site implicitly.",
+      "cadence": "operator-triggered",
+      "expected_artifacts": ["job_posting", "employer_identity"],
+      "identity_fields": ["provider_posting_id", "canonical_url", "employer", "title", "published_at"],
+      "fixture_plan": "Initial, unchanged replay, repost/change, one-company burst, ambiguous employer, and expired-posting fixtures.",
+      "rate_limit_policy": "No network requests; bound imported records and content length per G04 policy.",
+      "fallback": "UNAVAILABLE until the operator supplies a permitted export or explicitly approves a documented provider."
+    }
+  ]
+}
