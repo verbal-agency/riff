@@ -74,3 +74,14 @@ assessments are recomputable snapshots with retained rationale and uncertainty.
 Corrections, archives, and semantic feedback append history rather than
 erasing evidence. GitHub or Riff-artifact mentions remain candidate/unknown
 evidence until an explicit assessment establishes a stronger level.
+
+## G08 signal engine
+
+The signal engine groups receipt evidence by normalized capability and computes
+versioned, deterministic feature vectors. Frequency remains separate from
+independence: repeated items sharing an employer, repository, author, or root
+source are down-weighted, while source-type diversity and recent change support
+trend eligibility. Every rank run stores its input fingerprint, correlation
+groups, feature values, weights, contributions, and an explicit trend versus
+observation decision. Replaying the same inputs and policy returns the existing
+run without duplicate candidates.

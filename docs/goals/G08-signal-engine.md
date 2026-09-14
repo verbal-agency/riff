@@ -1,6 +1,6 @@
 # G08 — Generate and rank candidate weak signals
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G06, G07  
 **Unlocks:** G09  
 **PRD references:** Sections 8.4, 16, 22, 24.3, 25, 28–29
@@ -50,14 +50,14 @@ An operator can inspect why a candidate ranked where it did: recency/change, ind
 
 ## Acceptance criteria
 
-- [ ] Forty reposts of one announcement do not outrank a smaller cross-source, multi-root fixture solely by count.
-- [ ] Twenty postings from one employer are materially down-weighted versus evidence from unrelated employers.
-- [ ] High steady volume for an established technology does not create a high novelty score without meaningful recent change.
-- [ ] Different frameworks implementing one underlying pattern contribute to a capability signal rather than fragmenting into unrelated skill signals.
-- [ ] A capability the user already publicly demonstrates is down-ranked for personal novelty; a supported signaling gap can remain relevant with an artifact-oriented implication.
-- [ ] Ten articles citing one paper retain one primary root-source group.
-- [ ] A one-source-type candidate is labeled an observation/insufficient-trend-evidence unless a versioned explicit policy says otherwise.
-- [ ] Re-running identical inputs and rank version yields the same ordering, explanations, and no duplicate rank records.
+- [x] Forty reposts of one announcement do not outrank a smaller cross-source, multi-root fixture solely by count.
+- [x] Twenty postings from one employer are materially down-weighted versus evidence from unrelated employers.
+- [x] High steady volume for an established technology does not create a high novelty score without meaningful recent change.
+- [x] Different frameworks implementing one underlying pattern contribute to a capability signal rather than fragmenting into unrelated skill signals.
+- [x] A capability the user already publicly demonstrates is down-ranked for personal novelty; a supported signaling gap can remain relevant with an artifact-oriented implication.
+- [x] Ten articles citing one paper retain one primary root-source group.
+- [x] A one-source-type candidate is labeled an observation/insufficient-trend-evidence unless a versioned explicit policy says otherwise.
+- [x] Re-running identical inputs and rank version yields the same ordering, explanations, and no duplicate rank records.
 
 ## Verification evidence
 
@@ -67,7 +67,7 @@ Produce a human-readable adversarial report showing rankings before and after in
 
 A weighted rule-based ranker is preferred for v0.1 because it is inspectable and cheap. Statistical or learned ranking is unnecessary until product feedback produces sufficient labeled data.
 
-## Execution contract for the next Luna run
+## Execution contract (satisfied in this cycle)
 
 ### Expected implementation surface
 
@@ -134,3 +134,15 @@ and explicit item/call limits.
 | Shared roots | `test_shared_root_articles_form_one_group` |
 | Source-type policy | `test_one_source_type_is_observation` |
 | Deterministic rerun | `test_identical_rank_run_is_idempotent` |
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest` — **28 passed, 54 skipped** (offline suite).
+- Fresh Postgres with migration `009_signal_engine.sql`, then
+  `.venv/bin/python -m pytest -m postgres` — **54 passed**.
+- `.venv/bin/python -m riff signal evaluate --file tests/fixtures/signals/adversarial.json`
+  — four adversarial cases, all correct.
+- `git diff --check` and `.venv/bin/python -m compileall -q src tests` pass.
+- Integration tests verify repost and employer correlation penalties, steady
+  volume novelty suppression, framework convergence, profile adjustment,
+  shared-root grouping, source-type eligibility, and idempotent rank runs.

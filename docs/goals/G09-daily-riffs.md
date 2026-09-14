@@ -1,6 +1,6 @@
 # G09 — Construct and publish zero to three daily Riffs
 
-**Status:** Queued  
+**Status:** Ready
 **Depends on:** G08  
 **Unlocks:** G10, G13  
 **PRD references:** Sections 4, 8.5, 9–10, 21–23, 28–29, 33
@@ -67,3 +67,68 @@ Run the golden suite and show the zero-, one-, and three-Riff results, citation 
 ## Implementation latitude
 
 The deep model and prompt shape are replaceable. Prefer structured generation followed by deterministic validation and rendering over accepting free-form output as persisted truth.
+
+## Execution contract for the next Luna run
+
+### Expected implementation surface
+
+Extend `src/riff` with deep-analysis context assembly, structured Riff records,
+citation validation, publication gating, and a stable daily-result query. Add a
+numbered migration, focused tests in `tests/test_daily_riffs.py`, golden cases
+under `tests/fixtures/riffs/`, and a deterministic fake/recorded reasoning
+provider. Document the daily operator/API path in `README.md` and
+`docs/architecture.md`; add an ADR for publication or prompt-version policy.
+
+### Canonical domain and persistence contract
+
+| Concept | Required fields | Invariants |
+|---|---|---|
+| Riff | `riff_id`, `daily_run_id`, `status`, `observation`, `hypothesis`, `recommendation`, `confidence`, `created_at` | Observation, hypothesis, and recommendation are distinct typed fields. |
+| Evidence citation | `riff_id`, `receipt_id`, `claim_type`, `statement` | Receipt IDs must exist and resolve through G05 to raw evidence; unknown/ineligible IDs block publication. |
+| Daily run | `daily_run_id`, `run_date`, `generation_policy_version`, `input_fingerprint` | Same date, inputs, and policy are idempotent; published count is 0–3. |
+| Deep context | bounded receipt IDs, profile slice, decision IDs | Context contains only candidate-relevant data and never the full corpus/profile. |
+
+Allowed Riff statuses: `DRAFT`, `PUBLISHED`, `REJECTED`, `SKIPPED`. A
+publication gate requires supporting evidence, counterargument, alternative
+explanation, falsification conditions, user relevance, and a confidence value.
+
+### Deterministic behavior matrix
+
+| Input condition | Required result |
+|---|---|
+| More than three eligible candidates | Analyze bounded top set and publish at most three. |
+| No candidate above quality threshold | Publish zero with an honest empty-result explanation. |
+| Invalid or ineligible citation | Reject that Riff; never publish an unsupported claim. |
+| Weak or absent counterargument | Reject or reduce output count; never fill quota with fabricated balance. |
+| Signaling gap | Recommend an artifact-oriented intervention rather than beginner learning. |
+| Implementation/knowledge gap | Preserve the gap type and tailor the recommendation accordingly. |
+| Identical daily rerun | Return the same result without duplicate Riffs or unnecessary model calls. |
+
+### Authority and side-effect boundaries
+
+Read only ranked candidates, relevant receipts, the selected capability/profile
+slice, and relevant decision history. Mutate daily-run, analysis, citation, and
+published-Riff state only. Do not create Explorations or PRDs, change profile or
+receipt data, publish externally, or send full corpus/profile context to a
+provider. Provider credentials and model calls are injected and redacted.
+
+### Offline fixtures and state controls
+
+Provide publish-three, publish-one, publish-zero, invalid-citation,
+weak-counterargument, signaling-gap, implementation-gap, context-bound,
+malformed-provider, provider-timeout, and duplicate-rerun fixtures. Verify
+publication count, field completeness, citation chains, context item counts,
+model-call counts, policy/version fingerprints, and stop conditions.
+
+### Criterion-to-test/artifact map
+
+| G09 criterion | Required proof artifact |
+|---|---|
+| Zero-to-three gate | `test_daily_result_is_bounded_to_three` |
+| Complete argument fields | `test_published_riff_has_required_fields` |
+| Citation validation | `test_invalid_citation_blocks_publication` |
+| Honest zero result | `test_no_eligible_candidate_publishes_zero` |
+| Gap personalization | `test_gap_type_changes_recommendation` |
+| Bounded context | `test_context_contains_only_relevant_slices` |
+| Idempotent rerun | `test_daily_rerun_reuses_published_result` |
+| Typed presentation | `test_observation_hypothesis_recommendation_are_distinct` |

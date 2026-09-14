@@ -7,6 +7,7 @@ import json
 import logging
 import os
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
 from .api import create_app
@@ -23,6 +24,8 @@ from .job_ingestion import JobIngestionRunner
 from .logging import configure_logging, event
 from .profile import ProfileRepository
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
+from .signal_evaluation import evaluate_fixture as evaluate_signal_fixture
+from .signals import SignalObservation, SignalRanker, SignalRepository
 from .receipt_evaluation import evaluate_labeled_fixture
 from .receipts import KeywordExtractor, ReceiptProcessor, ReceiptRepository
 from .worker import run_worker
@@ -119,6 +122,12 @@ def build_parser() -> argparse.ArgumentParser:
     ledger_update.add_argument("--employer-or-context")
     ledger_archive = ledger_subparsers.add_parser("archive")
     ledger_archive.add_argument("--ledger-id", required=True)
+    signal = subparsers.add_parser("signal", help="generate and inspect ranked candidate signals")
+    signal_subparsers = signal.add_subparsers(dest="signal_command", required=True)
+    signal_evaluate = signal_subparsers.add_parser("evaluate", help="evaluate adversarial ranking fixtures")
+    signal_evaluate.add_argument("--file", required=True)
+    signal_rank = signal_subparsers.add_parser("rank", help="rank observations from a bounded JSON fixture")
+    signal_rank.add_argument("--file", required=True)
     return parser
 
 
@@ -132,6 +141,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "profile" and args.profile_command == "evaluate":
         print(json.dumps(evaluate_profile_fixture(args.file), sort_keys=True))
+        return 0
+    if args.command == "signal" and args.signal_command == "evaluate":
+        print(json.dumps(evaluate_signal_fixture(args.file), sort_keys=True))
         return 0
     try:
         settings = Settings.from_env()
@@ -280,6 +292,14 @@ def main(argv: list[str] | None = None) -> int:
             result = repository.archive_ledger_entry(args.ledger_id)
         else:
             raise SystemExit(f"unsupported profile command: {args.profile_command}")
+        print(json.dumps(asdict(result), sort_keys=True, default=str))
+        return 0
+    if args.command == "signal" and args.signal_command == "rank":
+        payload = json.loads(Path(args.file).read_text(encoding="utf-8"))
+        if payload.get("schema_version") != 1 or not isinstance(payload.get("observations"), list):
+            raise SystemExit("signal fixture requires schema_version 1 and observations")
+        observations = [SignalObservation(observed_at=datetime.fromisoformat(item["observed_at"]), **{key: item[key] for key in item if key != "observed_at"}) for item in payload["observations"]]
+        result = SignalRanker(SignalRepository(settings.database_url)).rank(observations, window_start=datetime.fromisoformat(payload["window_start"]), window_end=datetime.fromisoformat(payload["window_end"]))
         print(json.dumps(asdict(result), sort_keys=True, default=str))
         return 0
 

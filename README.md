@@ -133,4 +133,19 @@ Public views exclude private descriptions and ledger entries. Corrections and
 archives are recorded in profile history, and completed Riff artifacts remain
 unknown candidate evidence until explicitly assessed.
 
+## Candidate signals
+
+G08 ranks capability-based weak signals with separate explanations for recency,
+change, source diversity, independence, novelty, relevance, volume, and profile
+adjustment. Correlated reposts, single-employer bursts, established steady
+volume, and one-source-type candidates are explicitly penalized or labeled
+insufficient:
+
+```sh
+uv run riff signal evaluate --file tests/fixtures/signals/adversarial.json
+```
+
+Rank runs are versioned and fingerprinted so identical inputs are idempotent;
+stored correlation groups and explanations make each ordering inspectable.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.

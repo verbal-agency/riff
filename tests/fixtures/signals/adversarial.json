@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {"id": "repost-burst", "expected_order": ["cross-source"], "predicted_order": ["cross-source"]},
+    {"id": "single-employer", "expected_order": ["independent-employers"], "predicted_order": ["independent-employers"]},
+    {"id": "steady-established", "expected_order": ["recent-change"], "predicted_order": ["recent-change"]},
+    {"id": "shared-root", "expected_order": ["one-root-group"], "predicted_order": ["one-root-group"]}
+  ]
+}
