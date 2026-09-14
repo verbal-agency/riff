@@ -1,6 +1,6 @@
 # G13 — Operate the complete daily funnel reliably
 
-**Status:** Queued  
+**Status:** Ready
 **Depends on:** G09, G09a, G09b, G10, G11, G12
 **Unlocks:** G14, G15  
 **PRD references:** Sections 8, 26–29, 33
@@ -63,6 +63,50 @@ An operator can trigger or schedule one daily run, inspect stage-by-stage counts
 ## Verification evidence
 
 Run the deterministic pipeline successfully, with one injected extraction failure, with one injected deep-reasoning failure, and with concurrent duplicate attempts. Report record/model-call counts before and after resume.
+
+## Execution contract
+
+Expected implementation surface: `src/riff/worker.py` and a new persisted
+pipeline-run repository/orchestrator module; migration `014_pipeline_runs.sql`;
+focused tests in `tests/test_operations.py` plus deterministic boundary
+fixtures under `tests/fixtures/operations/`; and operator documentation in
+`README.md` and `docs/architecture.md`. Equivalent module names are acceptable
+only if these persistence, CLI, fixture, and documentation contracts remain.
+
+Canonical persistence contract: one logical `(run_date, policy_version)` run
+has stages `COLLECT`, `RECEIPT`, `CAPABILITY`, `PROFILE`, `SIGNAL`, `RIFF`, and
+`PUBLISH`, each with `PENDING`, `RUNNING`, `COMPLETE`, or `FAILED` status,
+attempt count, input/output counts, policy/version, timestamps, and error
+details. A run is `SUCCEEDED`, `EMPTY`, or `FAILED`; only a durable `COMPLETE`
+stage may advance its cursor. Duplicate identities are no-ops, not a second
+publication.
+
+Behavior matrix:
+
+| Condition | Required result |
+|---|---|
+| Clean fixture | Each stage completes and publishes zero–three Riffs |
+| Failure in any stage | Stage is `FAILED`; run report exposes the error; resume retries only incomplete work |
+| Same date/policy rerun | Existing run/result returned with no duplicate records or completed provider calls |
+| Concurrent same identity | One writer publishes; loser reports inspectable no-op/conflict |
+| Input volume above configured bounds | Collection may continue, but expensive receipt/reasoning stages enforce independent caps |
+| Policy version changes | New run identity/version; prior results remain queryable |
+| Successful zero-Riff result | Run is `EMPTY`, distinct from `FAILED` |
+
+Authority and side effects: the orchestrator may call only the existing stage
+interfaces and local configured providers; it must not bypass repository
+validation, invent evidence, or silently retry paid model calls. Tests use
+offline fixtures and injected failures; no network, credentials, scheduler
+daemon, or subprocess is required for verification. The one-shot CLI is the
+same path used by the documented scheduler example.
+
+Fixtures and criterion map: provide positive, zero-Riff, malformed-input,
+partial-failure, repeated-run, concurrent-attempt, policy-change, and
+unsupported-stage fixtures. `test_successful_funnel`,
+`test_resume_after_each_stage_failure`, `test_concurrent_duplicate_run`,
+`test_independent_caps`, `test_failed_vs_empty`, and `test_policy_version_fork`
+must map directly to the acceptance criteria above and report stage/model-call
+counts.
 
 ## Implementation latitude
 

@@ -132,3 +132,14 @@ assumptions, selection-rule assessments, and an artifact or measurement.
 Exploration versions and events retain semantic refinement/rejection history.
 The API can create, inspect, refine, and select an experiment; selection is a
 deliberation endpoint and does not create a PRD or approve one.
+
+## G12 learning PRDs and goals
+
+PRD generation has a second, independent user approval boundary after an
+Exploration experiment is selected. The deterministic project generator emits
+every Section 19 field plus an ordered, acyclic set of goals with objective
+acceptance checks, verification evidence, and a 4–20 focused-hour budget.
+Projects retain source Exploration and approval IDs, support stable structured
+and Markdown export, and regeneration appends a new project version rather
+than erasing prior provenance. This layer does not execute agents or publish
+artifacts.

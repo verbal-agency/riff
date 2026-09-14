@@ -193,4 +193,9 @@ selection operations at `/explorations/{exploration_id}/refine` and
 `/explorations/{exploration_id}/select`. Selecting an experiment stops before
 PRD creation; G12 owns that separate approval boundary.
 
+For a selected Exploration experiment, the distinct PRD approval and project
+surfaces are `POST /explorations/{exploration_id}/prd-approvals`,
+`POST /explorations/{exploration_id}/prd`, `GET /projects/{project_id}`, and
+`GET /projects/{project_id}/markdown`.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.

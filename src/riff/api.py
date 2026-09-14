@@ -12,6 +12,7 @@ from .db import database_ready
 from .riffs import RiffRepository
 from .decisions import DecisionRepository, DecisionError
 from .explorations import ExplorationRepository, ExplorationError
+from .prds import ProjectRepository, PrdError
 
 
 def get_settings() -> Settings:
@@ -141,6 +142,57 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ).to_dict()
         except ExplorationError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.post("/explorations/{exploration_id}/prd-approvals", tags=["projects"])
+    def approve_prd(
+        exploration_id: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            approval_id = ProjectRepository(effective_settings.database_url).approve_prd(
+                exploration_id,
+                str(payload.get("reason", "")),
+                actor=str(payload.get("actor", "user")),
+                actor_kind=str(payload.get("actor_kind", "USER")),
+            )
+            return {"approval_id": approval_id, "exploration_id": exploration_id, "status": "APPROVED"}
+        except PrdError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.post("/explorations/{exploration_id}/prd", tags=["projects"])
+    def generate_prd(
+        exploration_id: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return ProjectRepository(effective_settings.database_url).generate(
+                exploration_id,
+                actor=str(payload.get("actor", "generator")),
+            ).to_dict()
+        except PrdError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.get("/projects/{project_id}", tags=["projects"])
+    def get_project(
+        project_id: str,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return ProjectRepository(effective_settings.database_url).get(project_id).to_dict()
+        except PrdError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.get("/projects/{project_id}/markdown", tags=["projects"])
+    def export_project_markdown(
+        project_id: str,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return {"project_id": project_id, "markdown": ProjectRepository(effective_settings.database_url).export_markdown(project_id)}
+        except PrdError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     return app
 

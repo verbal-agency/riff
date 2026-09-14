@@ -1,6 +1,6 @@
 # G12 — Generate learning PRDs and executable goals
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G11  
 **Unlocks:** G13, G14, G15  
 **PRD references:** Sections 15, 19–20, 33
@@ -52,18 +52,29 @@ The user can review a selected experiment, approve “make it a project,” and 
 
 ## Acceptance criteria
 
-- [ ] PRD generation fails without a distinct explicit user-originated approval and succeeds idempotently after approval.
-- [ ] Generated PRDs contain all required Section 19 headings with nonempty, experiment-specific content.
-- [ ] The useful first version is credibly bounded to 4–20 focused hours or generation returns a reduce/reframe decision.
-- [ ] Generated goals form a valid directed acyclic dependency graph and collectively cover the PRD's scope, evaluation, and evidence output.
-- [ ] Every goal contains outcome, inputs, deliverable, dependencies, non-goals, acceptance criteria, and verification evidence.
-- [ ] Acceptance criteria reject vague completion statements such as “works well” unless paired with an explicit rubric/evaluator.
-- [ ] A clean-context consumer review can state what to implement and how to prove completion using only the project PRD, one active goal, and repository state.
-- [ ] Markdown export is stable, readable, and contains source Riff/Exploration/approval provenance without exposing private evidence unnecessarily.
+- [x] PRD generation fails without a distinct explicit user-originated approval and succeeds idempotently after approval.
+- [x] Generated PRDs contain all required Section 19 headings with nonempty, experiment-specific content.
+- [x] The useful first version is credibly bounded to 4–20 focused hours or generation returns a reduce/reframe decision.
+- [x] Generated goals form a valid directed acyclic dependency graph and collectively cover the PRD's scope, evaluation, and evidence output.
+- [x] Every goal contains outcome, inputs, deliverable, dependencies, non-goals, acceptance criteria, and verification evidence.
+- [x] Acceptance criteria reject vague completion statements such as “works well” unless paired with an explicit rubric/evaluator.
+- [x] A clean-context consumer review can state what to implement and how to prove completion using only the project PRD, one active goal, and repository state.
+- [x] Markdown export is stable, readable, and contains source Riff/Exploration/approval provenance without exposing private evidence unnecessarily.
+
+## Verification plan
+
+Generate projects from at least two distinct Exploration fixtures, including a signaling-gap artifact. Run structural validation, dependency-cycle/orphan tests, budget validation, and a documented clean-context agent-readiness review.
 
 ## Verification evidence
 
-Generate projects from at least two distinct Exploration fixtures, including a signaling-gap artifact. Run structural validation, dependency-cycle/orphan tests, budget validation, and a documented clean-context agent-readiness review.
+`tests/test_prds.py` covers two distinct experiment-derived PRDs, public/signaling-gap artifact preservation, the explicit approval boundary, idempotent generation, budget validation, dependency-cycle validation, vague-criteria rejection, stable Markdown export, API operations, and regeneration versioning. Offline verification: `.venv/bin/python -m pytest -q -m 'not postgres'` (51 passed). PostgreSQL verification: `.venv/bin/python -m pytest -q -m postgres tests/test_prds.py` (2 passed); the complete PostgreSQL suite is run before handoff.
+
+## Implementation contract delivered
+
+- `src/riff/migrations/013_prds_and_goals.sql` stores user PRD approvals, one generated project per Exploration, ordered goals, and immutable project versions.
+- `src/riff/prds.py` generates all Section 19 fields, validates the 4–20 hour budget and acyclic goal graph, rejects vague criteria, exports stable Markdown, and supports regeneration with preserved approval provenance.
+- API operations are `POST /explorations/{exploration_id}/prd-approvals`, `POST /explorations/{exploration_id}/prd`, `GET /projects/{project_id}`, and `GET /projects/{project_id}/markdown`.
+- G13 owns scheduled orchestration; G12 does not run agents, create branches, or publish portfolio material.
 
 ## Implementation latitude
 
