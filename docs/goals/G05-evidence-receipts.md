@@ -1,6 +1,6 @@
 # G05 — Produce compact, versioned Evidence Receipts
 
-**Status:** Queued  
+**Status:** Ready
 **Depends on:** G02, G03, G04  
 **Unlocks:** G06  
 **PRD references:** Sections 8.2, 21, 24.1, 28–29
@@ -66,3 +66,71 @@ Run the labeled fixture evaluation with a deterministic extractor and, if config
 ## Implementation latitude
 
 Exact quality thresholds should be baselined here rather than invented without data. The report must expose per-field errors so later work can set justified gates. Avoid optimizing a single aggregate score that hides provenance failures.
+
+## Execution contract for the next Luna run
+
+### Expected implementation surface
+
+Extend `src/riff` with receipt dataclasses/schema validation, a replaceable
+structured-extraction client, cache-aware receipt persistence, and a bounded
+one-shot processor for pending evidence. Add migration `006_evidence_receipts.sql`,
+focused tests in `tests/test_evidence_receipts.py`, and a labeled corpus under
+`tests/fixtures/receipts/`. Add an evaluation command/report and document the
+operator path in `README.md` plus `docs/architecture.md` (or a receipt note).
+Equivalent paths are acceptable when the completion report names them.
+
+### Canonical domain and persistence contract
+
+Use receipt schema version `1` and preserve raw-evidence identity:
+
+| Concept | Required fields | Invariants |
+|---|---|---|
+| Evidence receipt | `receipt_id`, `evidence_id`, `content_hash`, `extractor_version`, `schema_version`, `status`, `summary`, `relevant_spans`, `capability_candidates`, `technology_candidates`, `claims`, `signal_strength`, `source_metadata`, `uncertainty` | One receipt is tied to exactly one evidence version; every span is bounded by that evidence. |
+| Relevant span | `start`, `end`, `excerpt` (or exact locator) | Off-source, reversed, or mismatched spans are rejected; offsets use one documented text encoding. |
+| Claim | `text`, `span_ids`, `claim_type`, `uncertainty` | Claims cannot cite missing spans or become hypotheses/recommendations in this goal. |
+| Processing attempt | `attempt_id`, `evidence_id`, `extractor_version`, `status`, `error_code`, `started_at`, `finished_at` | Terminal states are `SUCCEEDED`, `FAILED_VALIDATION`, `FAILED_TRANSIENT`, or `SKIPPED_CACHED`; failed output never replaces a valid receipt. |
+| Cache key | `content_hash`, `extractor_version`, `prompt/schema_version` | Unchanged content/version is processed once; an explicit force operation is auditable. |
+
+### Deterministic behavior matrix
+
+| Input condition | Required result |
+|---|---|
+| Representative jobs, GitHub, and technical-writing evidence | Produce schema-valid receipts with correct evidence/source IDs. |
+| Valid span and claim output | Persist receipt and allow exact excerpt/offset resolution. |
+| Unchanged evidence and extractor version | Perform zero extraction calls and return `SKIPPED_CACHED`. |
+| Changed extractor version or content hash | Persist a new receipt version while retaining the prior receipt. |
+| Missing field, malformed JSON, or unknown enum | Record `FAILED_VALIDATION` with actionable field errors; do not invent defaults. |
+| Span outside raw evidence or mismatched excerpt | Reject the receipt and retain the validation failure. |
+| Transient provider failure | Record `FAILED_TRANSIENT`, preserve pending state, and retry safely. |
+| Missing raw body with snapshot reference only | Mark processing unavailable/uncertain unless an injected snapshot resolver supplies text; never load unrelated corpus data. |
+| Batch limit reached | Stop at the explicit item/token/call bound and leave remaining evidence pending. |
+
+### Authority and side-effect boundaries
+
+This goal may read local raw evidence and call only an injected structured
+extraction client; it may mutate only local receipt/attempt state. It must not
+merge canonical capabilities, rank trends, construct Riffs, publish output,
+execute target code, or send a full profile/corpus to a provider. Model/provider
+credentials are injected and redacted. Normal tests use deterministic fakes or
+recorded responses and never require paid APIs or live network access.
+
+### Offline fixtures and state controls
+
+Provide labeled fixtures for all three source types, valid spans/claims,
+contradictory or uncertain claims, malformed/missing fields, out-of-range and
+mismatched spans, transient provider failure, cached replay, extractor-version
+change, missing raw body, and batch-bound exhaustion. Verify cache keys, retry
+counts, duplicate calls, receipt version retention, span resolution, and stop
+conditions. Keep per-item and total-call budgets explicit.
+
+### Criterion-to-test/artifact map
+
+| G05 criterion | Required proof artifact |
+|---|---|
+| Three source types | `test_receipts_cover_all_source_types` |
+| Span grounding | `test_spans_resolve_to_raw_evidence` |
+| Cache behavior | `test_unchanged_evidence_is_not_reprocessed` |
+| Version change | `test_extractor_version_creates_new_receipt` |
+| Validation/retry | `test_invalid_and_transient_outputs_are_inspectable` |
+| Field-level evaluation | `test_evaluation_report_scores_each_field` |
+| Raw-body boundary | `test_receipt_retrieval_does_not_load_raw_by_default` |

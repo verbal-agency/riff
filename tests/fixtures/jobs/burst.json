@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-14T12:00:00Z",
+  "postings": [
+    {"provider_posting_id": "burst-01", "canonical_url": "https://jobs.example/acme/burst-01", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 01", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-02", "canonical_url": "https://jobs.example/acme/burst-02", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 02", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-03", "canonical_url": "https://jobs.example/acme/burst-03", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 03", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-04", "canonical_url": "https://jobs.example/acme/burst-04", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 04", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-05", "canonical_url": "https://jobs.example/acme/burst-05", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 05", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-06", "canonical_url": "https://jobs.example/acme/burst-06", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 06", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-07", "canonical_url": "https://jobs.example/acme/burst-07", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 07", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-08", "canonical_url": "https://jobs.example/acme/burst-08", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 08", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-09", "canonical_url": "https://jobs.example/acme/burst-09", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 09", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-10", "canonical_url": "https://jobs.example/acme/burst-10", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 10", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-11", "canonical_url": "https://jobs.example/acme/burst-11", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 11", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-12", "canonical_url": "https://jobs.example/acme/burst-12", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 12", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-13", "canonical_url": "https://jobs.example/acme/burst-13", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 13", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-14", "canonical_url": "https://jobs.example/acme/burst-14", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 14", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-15", "canonical_url": "https://jobs.example/acme/burst-15", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 15", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-16", "canonical_url": "https://jobs.example/acme/burst-16", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 16", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-17", "canonical_url": "https://jobs.example/acme/burst-17", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 17", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-18", "canonical_url": "https://jobs.example/acme/burst-18", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 18", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-19", "canonical_url": "https://jobs.example/acme/burst-19", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 19", "description": "Build AI systems."},
+    {"provider_posting_id": "burst-20", "canonical_url": "https://jobs.example/acme/burst-20", "company_name": "Acme AI", "company_id": "acme-1", "role_title": "AI Engineer 20", "description": "Build AI systems."}
+  ]
+}

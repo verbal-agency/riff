@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-14T12:00:00Z",
+  "postings": [
+    {"provider_posting_id": "amb-1", "canonical_url": "https://jobs.example/ambiguous/1", "company_name": "Acme Incorporated", "employer_ambiguous": true, "role_title": "AI Engineer", "description": "Build AI systems."}
+  ]
+}

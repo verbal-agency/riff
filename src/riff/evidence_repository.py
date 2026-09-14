@@ -232,6 +232,9 @@ class EvidenceRepository:
         github_repository_id: str | None = None,
         github_organization: str | None = None,
         github_artifact_type: str | None = None,
+        job_employer_id: str | None = None,
+        job_employer_name: str | None = None,
+        job_role_text: str | None = None,
         limit: int = 100,
     ) -> list[EvidenceRecord]:
         if limit < 1 or limit > 500:
@@ -264,6 +267,9 @@ class EvidenceRepository:
                 " JOIN github_artifacts ga ON ga.evidence_id = e.evidence_id "
                 " JOIN github_repositories gr ON gr.provider_repository_id = ga.provider_repository_id"
             )
+        if job_employer_id or job_employer_name or job_role_text:
+            joins += " JOIN job_postings jp ON jp.evidence_id = e.evidence_id"
+            joins += " LEFT JOIN job_employers je ON je.employer_id = jp.employer_id"
         if github_repository_id:
             clauses.append("ga.provider_repository_id = %s")
             params.append(github_repository_id)
@@ -273,6 +279,16 @@ class EvidenceRepository:
         if github_artifact_type:
             clauses.append("ga.artifact_type = %s")
             params.append(github_artifact_type)
+        if job_employer_id:
+            clauses.append("jp.employer_id = %s")
+            params.append(job_employer_id)
+        if job_employer_name:
+            clauses.append("(je.display_name ILIKE %s OR jp.employer_display_name ILIKE %s)")
+            needle = f"%{job_employer_name}%"
+            params.extend([needle, needle])
+        if job_role_text:
+            clauses.append("jp.role_title ILIKE %s")
+            params.append(f"%{job_role_text}%")
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
         query = self._record_query(where, joins=joins) + " ORDER BY e.retrieved_at DESC LIMIT %s"
         params.append(limit)

@@ -17,6 +17,7 @@ from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
 from .ingestion import HttpFeedFetcher
 from .ingestion_repository import IngestionRepository, RunStatus
+from .job_ingestion import JobIngestionRunner
 from .logging import configure_logging, event
 from .worker import run_worker
 from .writing_ingestion import WritingIngestionRunner
@@ -47,6 +48,12 @@ def build_parser() -> argparse.ArgumentParser:
     ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
+    job = subparsers.add_parser("job", help="import permitted job-market data")
+    job_subparsers = job.add_subparsers(dest="job_command", required=True)
+    job_import = job_subparsers.add_parser("import", help="import a schema-versioned JSON fixture/export")
+    job_import.add_argument("--source-id", required=True)
+    job_import.add_argument("--file", required=True)
+    job_import.add_argument("--content-limit", type=int, default=20_000)
     return parser
 
 
@@ -128,6 +135,16 @@ def main(argv: list[str] | None = None) -> int:
                 source_ids=args.source_id,
                 source_type=source_type,
             )
+        print(json.dumps(asdict(summary), sort_keys=True, default=str))
+        return 0 if summary.status != RunStatus.FAILED else 1
+    if args.command == "job":
+        if args.job_command != "import":
+            raise SystemExit(f"unsupported job command: {args.job_command}")
+        summary = JobIngestionRunner(
+            IngestionRepository(settings.database_url),
+            EvidenceRepository(settings.database_url),
+            content_limit=args.content_limit,
+        ).run_file(args.file, source_ids=[args.source_id])
         print(json.dumps(asdict(summary), sort_keys=True, default=str))
         return 0 if summary.status != RunStatus.FAILED else 1
 

@@ -31,3 +31,12 @@ mirror flags, and bounded content. G02 page cursors advance only after a whole
 page is durable; replaying a completed page is safe because G01 deduplicates
 provider items and content hashes. Credentials are process-only (`GITHUB_TOKEN`)
 and never persisted.
+
+## G04 job-market ingestion
+
+Job evidence enters through a schema-versioned JSON export/import seam so
+development and evaluation do not depend on a fragile or non-permitted job
+site. The runner uses the G02 run/cursor/item contracts, stores employer
+identity and reversible aliases separately from posting evidence, and preserves
+retrieval history for exact reposts and expired listings. Missing job metadata
+remains null; no compensation, seniority, or date is inferred.

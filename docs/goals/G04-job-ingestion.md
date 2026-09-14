@@ -1,6 +1,6 @@
 # G04 — Ingest incremental job-market evidence
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G02  
 **Unlocks:** G05  
 **PRD references:** Sections 7.1, 8, 22, 24.3
@@ -49,13 +49,13 @@ An operator can run a bounded job collection, see canonical postings with compan
 
 ## Acceptance criteria
 
-- [ ] Initial, unchanged, and incremented fixture runs store only the expected new or changed job evidence.
-- [ ] An exact repost is linked/collapsed without deleting its retrieval history; a materially changed description is versioned.
-- [ ] Twenty distinct postings from one employer retain one correlated employer identity rather than twenty apparent organizations.
-- [ ] Ambiguous employer aliases remain inspectable and reversible instead of being irreversibly merged.
-- [ ] Compensation, seniority, or dates absent from a source remain null/unknown and are not synthesized.
-- [ ] Stored postings can be searched by employer, role text, date, and source through the evidence store.
-- [ ] A fixture/import workflow can populate representative data without credentials or network access.
+- [x] Initial, unchanged, and incremented fixture runs store only the expected new or changed job evidence.
+- [x] An exact repost is linked/collapsed without deleting its retrieval history; a materially changed description is versioned.
+- [x] Twenty distinct postings from one employer retain one correlated employer identity rather than twenty apparent organizations.
+- [x] Ambiguous employer aliases remain inspectable and reversible instead of being irreversibly merged.
+- [x] Compensation, seniority, or dates absent from a source remain null/unknown and are not synthesized.
+- [x] Stored postings can be searched by employer, role text, date, and source through the evidence store.
+- [x] A fixture/import workflow can populate representative data without credentials or network access.
 
 ## Verification evidence
 
@@ -65,7 +65,7 @@ Run the one-company-burst and repost/change fixtures and report logical posting,
 
 The PRD does not mandate a job provider. Prefer an official API, permitted feed, or user-provided export over brittle scraping. If no live source is safely available, a production-quality import adapter plus clear provider seam meets this goal; G15 must still disclose the dogfood data source.
 
-## Execution contract for the next Luna run
+## Execution contract (satisfied in this cycle)
 
 ### Expected implementation surface
 
@@ -135,3 +135,11 @@ budget is allowed in G04; import/page/item limits must be explicit.
 | Missing metadata | `test_missing_fields_remain_unknown` |
 | Searchability | `test_jobs_are_searchable_by_employer_role_date` |
 | Offline operation | `test_import_fixture_requires_no_network_or_credentials` |
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest` → **23 passed, 28 skipped** without a configured database.
+- Against an isolated temporary PostgreSQL instance, `.venv/bin/python -m riff migrate` applied `005_job_ingestion`; `.venv/bin/python -m pytest -m postgres` → **28 passed**.
+- Fixture tests verified incremental import, exact repost retrieval history, changed-description versioning, twenty-posting employer correlation, reversible ambiguous aliases, null missing metadata, expired evidence retention, malformed-row isolation, and employer/role/date search.
+- The documented `riff source add --source-type JOBS` plus `riff job import --file ...` operator path returned a successful three-posting run without credentials or network access.
+- `git diff --check` and `.venv/bin/python -m compileall -q src tests` passed.

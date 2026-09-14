@@ -64,4 +64,21 @@ Automated tests use recorded responses under `tests/fixtures/github/`; no live
 GitHub request is made by the test suite. A live credential smoke run is an
 explicit operator action, not part of normal verification.
 
+## Job-market import
+
+G04 uses a permitted, offline-first JSON import seam rather than scraping a job
+site. Configure a bounded `JOBS` source in `config/job_sources.json`, obtain a
+compliant export, and import it with:
+
+```sh
+uv run riff job import --source-id <source-id> --file tests/fixtures/jobs/initial.json
+```
+
+The import format is schema version 1 and keeps employer identity separate from
+posting evidence. Exact reposts create another retrieval without a duplicate
+evidence version; changed descriptions create a `VERSION_OF` chain. Missing
+compensation, seniority, and dates remain unknown, and expired postings are
+retained. Fixtures under `tests/fixtures/jobs/` are the normal development and
+evaluation path and require no credentials or network access.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.
