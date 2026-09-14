@@ -42,6 +42,8 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G07](G07-user-capability-profile.md) | Evidence-backed personal capability model | G06 |
 | [G08](G08-signal-engine.md) | Deterministic candidate generation and ranking | G06–G07 |
 | [G09](G09-daily-riffs.md) | Deep arguments and zero-to-three daily Riffs | G08 |
+| [G09a](G09a-local-daily-smoke.md) | Locally executable database-backed daily Riff smoke path | G09 |
+| [G09b](G09b-ingestion-source-selection.md) | Reviewed concrete ingestion-source plan for dogfood | G09a |
 | [G10](G10-decision-loop.md) | Investigation, lifecycle, and semantic decision memory | G09 |
 | [G11](G11-explorations.md) | Human-approved bounded Explorations | G10 |
 | [G12](G12-prds-and-agent-goals.md) | Learning PRDs and executable goal decomposition | G11 |
@@ -86,10 +88,12 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 
 ## Current handoff
 
-G00 through G09 are complete; G10 is ready. Every later goal remains queued behind its listed dependencies. A suitable Luna instruction for the next cycle is:
+G00 through G09 are complete; G09a is ready, G09b follows it, and G10 is queued
+behind the source-selection goal. Every later goal remains queued behind its
+listed dependencies. A suitable Luna instruction for the next cycle is:
 
 ```text
-Implement docs/goals/G10-decision-loop.md. Read the Riff PRD and docs/goals/README.md first, remain within G10 scope, follow its execution contract, verify every acceptance criterion, and return the completion report defined by the roadmap.
+Implement docs/goals/G09a-local-daily-smoke.md. Read the Riff PRD and docs/goals/README.md first, remain within G09a scope, follow its execution contract, verify every acceptance criterion, and return the completion report defined by the roadmap.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.

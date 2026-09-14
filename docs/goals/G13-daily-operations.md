@@ -1,7 +1,7 @@
 # G13 — Operate the complete daily funnel reliably
 
 **Status:** Queued  
-**Depends on:** G09, G10, G11, G12  
+**Depends on:** G09, G09a, G09b, G10, G11, G12
 **Unlocks:** G14, G15  
 **PRD references:** Sections 8, 26–29, 33
 

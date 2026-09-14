@@ -1,7 +1,7 @@
 # G10 — Add investigation, lifecycle, and semantic decision memory
 
-**Status:** Ready
-**Depends on:** G09  
+**Status:** Queued
+**Depends on:** G09b
 **Unlocks:** G11, G14  
 **PRD references:** Sections 9, 15–16, 25, 27, 33
 
