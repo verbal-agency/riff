@@ -1,6 +1,6 @@
 # G15 — Pass the Riff v0.1 dogfood release gate
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G00–G14  
 **Unlocks:** Riff v0.1 usability claim  
 **PRD references:** Sections 5, 24, 30–35
@@ -53,20 +53,20 @@ The system consumes several weeks of job, GitHub, and curated technical-writing 
 
 ## Acceptance criteria
 
-- [ ] The corpus includes several weeks of representative jobs, GitHub activity, and curated technical writing with resolvable provenance.
-- [ ] Extraction and capability-normalization reports expose errors and show no release-blocking provenance failure or systematic over-merging under the documented rubric.
-- [ ] Every PRD Section 24.3 adversarial fixture passes its explicit ranking expectation.
-- [ ] A production-equivalent run publishes zero to three Riffs, and every published claim passes provenance, independence, counterargument, and personalization review.
-- [ ] Rejection reason affects a later run, unchanged rejection is not resurfaced, and a material-change case explains why it returns.
-- [ ] System enforcement prevents unapproved Riff -> Exploration and Exploration -> PRD transitions in end-to-end tests.
-- [ ] If the user approves a result, it reaches a bounded Exploration and PRD whose goals pass the G12 agent-readiness validator.
-- [ ] The Section 33 traceability matrix links every acceptance criterion to a test, report, demonstration, or named human review result.
-- [ ] The user records whether at least one Riff caused the equivalent of “I hadn't framed the problem that way; I want to investigate it.” This criterion cannot be self-certified by Luna.
-- [ ] If the prior criterion fails, the release recommendation is to improve the signal pipeline before broader product development, as required by the PRD.
+- [x] The corpus includes several weeks of representative jobs, GitHub activity, and curated technical writing with resolvable provenance.
+- [x] Extraction and capability-normalization reports expose errors and show no release-blocking provenance failure or systematic over-merging under the documented rubric.
+- [x] Every PRD Section 24.3 adversarial fixture passes its explicit ranking expectation.
+- [x] A production-equivalent run publishes zero to three Riffs, and every published claim passes provenance, independence, counterargument, and personalization review.
+- [x] Rejection reason affects a later run, unchanged rejection is not resurfaced, and a material-change case explains why it returns.
+- [x] System enforcement prevents unapproved Riff -> Exploration and Exploration -> PRD transitions in end-to-end tests.
+- [x] If the user approves a result, it reaches a bounded Exploration and PRD whose goals pass the G12 agent-readiness validator.
+- [x] The Section 33 traceability matrix links every acceptance criterion to a test, report, demonstration, or named human review result.
+- [x] The user records whether at least one Riff caused the equivalent of “I hadn't framed the problem that way; I want to investigate it.” This criterion cannot be self-certified by Luna. Recorded as `YES`; the user wants Riffs 1 and 2 combined into one mini-project.
+- [x] If the prior criterion fails, the release recommendation is to improve the signal pipeline before broader product development, as required by the PRD. N/A because the prior criterion passed; the recorded recommendation is `PASS`, with Riff 3 follow-up routed to the backlog.
 
 ## Verification evidence
 
-Archive the exact corpus manifest, configuration/policy versions, commands, funnel report, generated Riffs, user rubric responses, transition audit, Exploration/PRD exports, and traceability matrix. Redact private experience descriptions while retaining proof that privacy and personalization checks ran.
+Archive the exact corpus manifest, configuration/policy versions, commands, funnel report, generated Riffs, user rubric responses, transition audit, Exploration/PRD exports, and traceability matrix. Redact private experience descriptions while retaining proof that privacy and personalization checks ran. Current machine report: `docs/reports/g15-dogfood-report.json`; user rubric: `docs/reports/g15-human-review.md`. Automated verification: 51 offline tests, 83 PostgreSQL tests, and the focused dogfood integration test passes. The user recorded `YES`; Riffs 1 and 2 are one mini-project, and Riff 3 has a documented evidence-gap follow-up.
 
 ## Execution contract
 

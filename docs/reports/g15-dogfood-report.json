@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "corpus_id": "riff-v0.1-dogfood-fixture-v1",
+  "manifest": "tests/fixtures/dogfood/manifest.json",
+  "commands": [
+    ".venv/bin/python -m pytest -q -m 'not postgres'",
+    ".venv/bin/python -m pytest -q -m postgres",
+    ".venv/bin/python -m pytest -q -m postgres tests/test_dogfood.py"
+  ],
+  "mechanical_evaluation": {
+    "receipts": "PASS",
+    "capabilities": "PASS_WITH_DOCUMENTED_FIXTURE_EXPECTATIONS",
+    "profile": "PASS",
+    "signals": "PASS",
+    "riffs": "PASS",
+    "pipeline": "PASS",
+    "approval_boundaries": "PASS",
+    "privacy_redaction": "PASS"
+  },
+  "integration": {
+    "daily_funnel": "SUCCEEDED",
+    "published_riff_bound": "0-3",
+    "rejection_resurface": "PASS",
+    "exploration_prd_goals": "PASS",
+    "provenance": "PASS"
+  },
+  "recommendation": "PASS",
+  "recommendation_reason": "Mechanical checks and the deterministic end-to-end path pass, and the user recorded YES for the qualitative value gate. Riff 3 remains a documented evidence-gap follow-up; it does not block the v0.1 usability claim.",
+  "human_judgment": {
+    "status": "RECORDED",
+    "value": "YES",
+    "recorded_at": "2026-09-14",
+    "selected_riffs": [
+      "durable-agent-execution",
+      "agent-observability"
+    ],
+    "feedback": "Combine Riffs 1 and 2 into one mini-project; investigate workflow reconciliation further.",
+    "question": "Did at least one Riff reveal a valuable framing you would not otherwise have pursued?",
+    "allowed_values": ["YES", "NO", "UNCERTAIN"]
+  }
+}

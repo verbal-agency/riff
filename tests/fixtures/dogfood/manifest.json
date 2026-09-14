@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "corpus_id": "riff-v0.1-dogfood-fixture-v1",
+  "captured_at": "2026-09-14T00:00:00Z",
+  "storage_mode": "local-recorded-fixtures-only",
+  "terms_review": "No live fetch is enabled; jobs are user-provided and GitHub/writing responses are recorded fixtures.",
+  "coverage_weeks": ["2026-08-31", "2026-09-07", "2026-09-14"],
+  "sources": [
+    {
+      "source_id": "jobs-user-export",
+      "source_type": "JOBS",
+      "permission_status": "USER_PROVIDED",
+      "fixture_plan": ["tests/fixtures/jobs/initial.json", "tests/fixtures/jobs/incremented.json", "tests/fixtures/jobs/malformed.json"],
+      "identity_fields": ["provider_posting_id", "canonical_url", "employer", "title"],
+      "provenance": "operator-supplied schema-versioned export; no network retrieval"
+    },
+    {
+      "source_id": "github-recorded",
+      "source_type": "GITHUB",
+      "permission_status": "RECORDED_FIXTURE",
+      "fixture_plan": ["tests/fixtures/github/repository.json", "tests/fixtures/github/releases-page-1.json", "tests/fixtures/github/readme-v1.json"],
+      "identity_fields": ["provider_repository_id", "artifact_id", "organization", "repository"],
+      "provenance": "recorded public-repository responses; no live API call"
+    },
+    {
+      "source_id": "writing-recorded",
+      "source_type": "TECHNICAL_WRITING",
+      "permission_status": "RECORDED_FIXTURE",
+      "fixture_plan": ["tests/fixtures/feeds/initial.xml", "tests/fixtures/feeds/incremented.xml", "tests/fixtures/feeds/malformed-entry.xml"],
+      "identity_fields": ["canonical_url", "published_at", "title"],
+      "provenance": "recorded source-owned feed responses; no live fetch"
+    }
+  ]
+}

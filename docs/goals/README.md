@@ -88,11 +88,13 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 
 ## Current handoff
 
-G00 through G14 are complete; G15 is ready. Every later goal remains queued
-behind its listed dependencies. A suitable Luna instruction for the next cycle is:
+G00 through G15 are complete. The v0.1 dogfood recommendation is `PASS` after
+the user recorded `YES` for the qualitative value gate. Follow-up product input
+is recorded in `docs/backlog.md`; no additional roadmap goal is currently
+scheduled.
 
 ```text
-Implement docs/goals/G15-dogfood-release-gate.md. Read the Riff PRD and docs/goals/README.md first, remain within G15 scope, follow its execution contract, verify every acceptance criterion, and return the completion report defined by the roadmap.
+Review the recorded G15 decision and use `docs/backlog.md` to scope the next product goal when development resumes.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.
@@ -125,4 +127,5 @@ Acceptance criteria: pass/fail list ...
 Follow-ups: only work not required by this goal ...
 ```
 
-The implementation agent must not mark G15 complete on the user's behalf: its qualitative dogfood criterion explicitly requires the user's judgment.
+G15 was completed only after the user recorded the qualitative judgment; future
+cycles must preserve that human authority for any new release gate.

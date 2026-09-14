@@ -194,6 +194,12 @@ catalog at `GET /adapter/tools` and dispatches calls through
 `riff api` process and deterministic fixture data; promotion calls require the
 explicit `USER_CONFIRMED` token as well as their persisted user approval.
 
+The G15 dogfood packet is fixture-only and replayable: use
+`tests/fixtures/dogfood/manifest.json` and inspect
+`docs/reports/g15-dogfood-report.json` plus the recorded review in
+`docs/reports/g15-human-review.md`. The v0.1 recommendation is `PASS`; follow-up
+product input is tracked in `docs/backlog.md`.
+
 The reviewed concrete source plan is validated without a database or network:
 
 ```sh
