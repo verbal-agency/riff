@@ -1,6 +1,6 @@
 # G25 — Make GitHub discovery meaningful and pipeline-integrated
 
-**Status:** Queued
+**Status:** Incomplete
 **Depends on:** G18, G20, G22
 **Unlocks:** User-relevant GitHub evidence and project understanding
 **PRD references:** Sections 7.2, 7.4, 8, 21–22, 24.3, 27, 33
@@ -78,20 +78,20 @@ it is safe to promote into collection.
 
 ## Acceptance criteria
 
-- [ ] A reviewed manifest can discover candidates from capability, repository,
+- [x] A reviewed manifest can discover candidates from capability, repository,
   engineer, and organization seeds within declared request bounds.
-- [ ] Candidate records retain stable identity, aliases, roots, organizations,
+- [x] Candidate records retain stable identity, aliases, roots, organizations,
   author/engineer attribution, query provenance, correlation metadata, and
   uncertainty.
-- [ ] Duplicate, fork, mirror, bot, popularity-only, malformed, and renamed
+- [x] Duplicate, fork, mirror, bot, popularity-only, malformed, and renamed
   cases are handled deterministically with recorded reasons.
-- [ ] Discovery output remains a review queue; only explicit promotion writes a
+- [x] Discovery output remains a review queue; only explicit promotion writes a
   disabled scope to the GitHub source registry.
 - [ ] A promoted fixture scope is ingested by G03 and its evidence is visible to
   the existing receipt/capability/signal pipeline with provenance intact.
-- [ ] Strategy evaluation reports quality and cost metrics, and replaying the
+- [x] Strategy evaluation reports quality and cost metrics, and replaying the
   same manifest/fixture is idempotent.
-- [ ] Operator documentation covers review, promotion, disablement, rollback,
+- [x] Operator documentation covers review, promotion, disablement, rollback,
   privacy, and live-network boundaries.
 
 ## Handoff
@@ -99,3 +99,21 @@ it is safe to promote into collection.
 Report the selected discovery strategies, bounds, candidate schema, evaluation
 metrics, promoted fixture scope, and any source types requiring a later adapter.
 Keep user-owned project inventory and extension recommendations in G26/G27.
+
+## Current implementation slice (2026-09-14)
+
+- Extended `DiscoveryPolicy` with bounded capability, repository, engineer, and
+  organization inputs plus an explicit `max_queries` bound while preserving the
+  G20 `query_terms` shape.
+- Candidate queues now retain seed kind/value, authors, correlation metadata,
+  deterministic relevance reasons, uncertainty labels, and stable review
+  scores. Promotion carries this provenance into a disabled
+  `config/github_sources.json` scope.
+- Added `config/github_discovery_seed_example.json` and
+  `tests/fixtures/github/discovery/seed-responses-v1.json` for offline replay,
+  including duplicate, rename, attribution, and malformed-result cases.
+- Verification: `.venv/bin/python -m pytest -q tests/test_github_discovery.py`
+  (9 passed); the full offline suite remains green.
+- G25 remains incomplete until a promoted fixture scope is exercised through
+  the real G03/Postgres pipeline after G22. No live GitHub requests or source
+  enablement were performed.

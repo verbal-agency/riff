@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "policy_id": "github-seeded-inputs-example-v1",
+  "query_terms": ["durable execution"],
+  "capability_terms": ["durable execution"],
+  "repository_seeds": ["acme/riff-runtime"],
+  "engineer_seeds": ["alice"],
+  "organization_seeds": ["acme"],
+  "max_queries": 4,
+  "seed_source_ids": ["github-langgraph"],
+  "max_pages_per_query": 2,
+  "max_candidates_per_query": 6,
+  "max_requests": 8,
+  "max_contributor_expansion": 0,
+  "retry_limit": 1,
+  "stop_rules": {
+    "root_concentration_threshold": 0.5,
+    "stop_on_malformed_response": true
+  },
+  "review_required": true,
+  "enabled": false,
+  "popularity_only_stars": 50000
+}

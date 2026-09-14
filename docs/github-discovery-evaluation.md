@@ -105,13 +105,19 @@ The next implementation may use the following limits from the fixture:
 ## Proposed query and candidate schema
 
 The selected implementation should use schema version `1` with a policy record
-containing `policy_id`, `query_terms`, `seed_source_ids`,
+containing `policy_id`, `query_terms` (or `capability_terms`),
+`repository_seeds`, `engineer_seeds`, `organization_seeds`, `max_queries`,
+`seed_source_ids`,
 `max_pages_per_query`, `max_candidates_per_query`, `max_requests`,
 `max_contributor_expansion`, `retry_limit`, `stop_rules`, `review_required`,
 and `enabled`. Each discovered candidate should retain
 `provider_repository_id`, `canonical_url`, `aliases`, `organization`,
 `root_id`, `topics`, `is_fork`, `is_mirror`, `bot_only`, `discovered_by`,
-`seed_source_id`, `filter_reasons`, and a review status. The only legal path to
+`seed_source_id`, `authors`, `correlation_metadata`, `uncertainty`,
+`relevance_reasons`, `rank_score`, `rank_reasons`, `filter_reasons`, and a
+review status. Ranking is deterministic and uses relevance, explicit seed
+provenance, and contamination/uncertainty penalties; popularity never adds
+score. The only legal path to
 production collection is `NEW -> APPROVED -> PROMOTED`, with the final
 transition requiring an explicit user decision and writing one stable scope to
 `config/github_sources.json`.
@@ -152,3 +158,18 @@ The promotion step writes a disabled scope with discovery run/query metadata;
 it does not enable collection. A live run requires both `--live` and an
 `enabled` policy whose source terms, privacy, request bounds, and retention
 have been reviewed. No live request or token is required by tests.
+
+## G25 seeded-input replay
+
+The fixture-backed path also accepts explicit repository, engineer, and
+organization seeds. Each input becomes a bounded GitHub search query and is
+recorded in `discovered_by` with its input kind and seed value. Candidate
+records retain author attribution, root/duplicate correlation metadata,
+deterministic relevance reasons, and uncertainty labels:
+
+```sh
+.venv/bin/riff github discover --policy config/github_discovery_seed_example.json --fixture tests/fixtures/github/discovery/seed-responses-v1.json --output /tmp/riff-g25-seed-queue.json
+```
+
+This remains a review-only queue. The G03 collector/Postgres persistence check
+for a promoted scope is intentionally deferred to G22.

@@ -67,12 +67,16 @@ collector. `config/github_discovery.json` limits query terms, pages, candidates,
 requests, retries, and contributor expansion; it is disabled until an operator
 reviews the policy. The fixture-backed `github discover` command normalizes
 stable provider IDs, aliases, roots, organizations, fork/mirror flags, bot
-markers, and query provenance, then applies deterministic duplicate,
-popularity-only, and root-concentration filters. A candidate must transition
-from `NEW` to `APPROVED` through the review command before the `PROMOTE` token
-can write a single disabled scope to `config/github_sources.json`. The existing
-G03 collector remains the only path that stores GitHub evidence. Live discovery
-is explicit, read-only, token-safe, and never part of normal tests.
+markers, query and seed provenance, author attribution, correlation metadata,
+relevance reasons, and uncertainty, then applies deterministic duplicate,
+popularity-only, and root-concentration filters. Capability, repository,
+engineer, and organization inputs become bounded queries. A candidate must
+transition from `NEW` to `APPROVED` through the review command before the
+`PROMOTE` token can write a single disabled scope to
+`config/github_sources.json`. The existing G03 collector remains the only path
+that stores GitHub evidence. Candidates receive stable relevance scores for
+review ordering; popularity never increases a score. Live discovery is
+explicit, read-only, token-safe, and never part of normal tests.
 
 ## G05 evidence receipts
 

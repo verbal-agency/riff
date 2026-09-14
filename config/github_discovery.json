@@ -6,6 +6,18 @@
     "agent orchestration",
     "workflow runtime"
   ],
+  "capability_terms": [
+    "durable execution",
+    "agent orchestration",
+    "workflow runtime"
+  ],
+  "repository_seeds": [
+    "langchain-ai/langgraph",
+    "temporalio/sdk-python"
+  ],
+  "engineer_seeds": [],
+  "organization_seeds": [],
+  "max_queries": 3,
   "seed_source_ids": [
     "github-langgraph",
     "github-temporal-sdk-python"

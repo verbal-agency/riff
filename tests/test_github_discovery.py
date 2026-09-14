@@ -102,6 +102,62 @@ def test_discovery_policy_bounds_fail_closed():
         load_policy(invalid)
 
 
+def test_seeded_discovery_preserves_input_kind_attribution_and_correlation():
+    fixture = Path(__file__).parent / "fixtures" / "github" / "discovery" / "seed-responses-v1.json"
+    policy = dict(
+        POLICY,
+        query_terms=["durable execution"],
+        capability_terms=["durable execution"],
+        repository_seeds=["acme/riff-runtime"],
+        engineer_seeds=["alice"],
+        organization_seeds=["acme"],
+        max_queries=4,
+        max_pages_per_query=2,
+        max_requests=8,
+    )
+    result = discover(load_policy(policy), FixtureDiscoveryFetcher(fixture), fixture_id="g25-seed-inputs-v1")
+    replay = discover(load_policy(policy), FixtureDiscoveryFetcher(fixture), fixture_id="g25-seed-inputs-v1")
+    assert result == replay
+    assert result["query_count"] == 4
+    candidates = result["candidates"]
+    assert candidates[0]["candidate_id"] == "repo:4242"
+    assert candidates[0]["rank_score"] > candidates[-1]["rank_score"]
+    assert "RELEVANT_MATCH" in candidates[0]["rank_reasons"]
+    kinds = {item["discovered_by"]["kind"] for item in candidates}
+    assert {"capability", "repository", "engineer", "organization"} <= kinds
+    engineer = next(item for item in candidates if item["discovered_by"]["kind"] == "engineer")
+    assert engineer["authors"] == ["alice"]
+    assert engineer["discovered_by"]["seed"] == "alice"
+    duplicate = next(item for item in candidates if item["duplicate_of"])
+    assert duplicate["correlation_metadata"]["duplicate_of"] == duplicate["duplicate_of"]
+    assert all(item["source_scope"]["enabled"] is False for item in candidates)
+
+
+def test_discovery_records_rename_aliases_and_rejects_malformed_items():
+    fixture = {
+        "schema_version": 1,
+        "responses": {
+            "durable execution": {
+                "1": [
+                    {
+                        "id": 9,
+                        "full_name": "newco/runtime",
+                        "previous_full_name": "oldco/runtime",
+                        "owner": {"login": "newco"},
+                        "description": "Durable execution runtime",
+                    },
+                    "not-an-object",
+                ]
+            }
+        },
+    }
+    policy = load_policy(dict(POLICY, query_terms=["durable execution"], max_pages_per_query=1))
+    result = discover(policy, FixtureDiscoveryFetcher(fixture), fixture_id="rename-negative-v1")
+    candidate = result["candidates"][0]
+    assert candidate["aliases"] == ["oldco/runtime"]
+    assert "malformed_item:durable execution:1" in result["stop_reasons"]
+
+
 def test_transient_page_failure_retries_without_advancing_cursor():
     class RetryFetcher:
         def __init__(self):
@@ -139,6 +195,8 @@ def test_review_and_promotion_require_explicit_transitions(tmp_path):
     approve_candidates(queue, ["repo:1"])
     result = promote_candidates(queue, ["repo:1"], confirmation="PROMOTE", config={"schema_version": 1, "sources": []})
     assert result["config"]["sources"][0]["enabled"] is False
+    assert result["config"]["sources"][0]["discovered_by"] == {"query": "agents"}
+    assert result["config"]["sources"][0]["correlation_metadata"] == {}
     assert result["queue"]["candidates"][0]["review_status"] == "PROMOTED"
     path = tmp_path / "queue.json"
     write_queue(path, queue)

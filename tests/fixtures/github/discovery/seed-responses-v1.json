@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "fixture_id": "g25-seed-inputs-v1",
+  "responses": {
+    "durable execution": {
+      "1": [
+        {
+          "id": 4242,
+          "full_name": "acme/riff-runtime",
+          "html_url": "https://github.com/acme/riff-runtime",
+          "owner": {"login": "acme", "type": "Organization"},
+          "description": "Durable execution runtime",
+          "topics": ["durable-execution", "workflow-runtime"],
+          "stargazers_count": 125
+        }
+      ]
+    },
+    "repo:acme/riff-runtime": {
+      "1": [
+        {
+          "id": 4242,
+          "full_name": "acme/riff-runtime",
+          "html_url": "https://github.com/acme/riff-runtime",
+          "owner": {"login": "acme", "type": "Organization"},
+          "description": "Durable execution runtime",
+          "topics": ["durable-execution", "workflow-runtime"],
+          "stargazers_count": 125
+        }
+      ]
+    },
+    "user:alice": {
+      "1": [
+        {
+          "id": 5004,
+          "full_name": "alice/workflow-lab",
+          "html_url": "https://github.com/alice/workflow-lab",
+          "owner": {"login": "alice", "type": "User"},
+          "description": "Workflow correctness lab",
+          "topics": ["workflow-correctness"],
+          "contributors": [{"login": "alice", "type": "User"}],
+          "stargazers_count": 88
+        }
+      ]
+    },
+    "org:acme": {
+      "1": [
+        {
+          "id": 5005,
+          "full_name": "acme/agent-runtime",
+          "html_url": "https://github.com/acme/agent-runtime",
+          "owner": {"login": "acme", "type": "Organization"},
+          "description": "Agent orchestration runtime",
+          "topics": ["agents", "orchestration"],
+          "stargazers_count": 210
+        }
+      ]
+    }
+  }
+}

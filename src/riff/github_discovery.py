@@ -236,6 +236,11 @@ class DiscoveryPolicy:
     review_required: bool
     enabled: bool
     popularity_only_stars: int = 50_000
+    max_queries: int = 3
+    capability_terms: tuple[str, ...] = ()
+    repository_seeds: tuple[str, ...] = ()
+    engineer_seeds: tuple[str, ...] = ()
+    organization_seeds: tuple[str, ...] = ()
 
 
 @dataclass
@@ -259,6 +264,12 @@ class DiscoveryCandidate:
     source_scope: dict[str, Any] = field(default_factory=dict)
     duplicate_of: str | None = None
     relevant: bool = False
+    authors: list[str] = field(default_factory=list)
+    correlation_metadata: dict[str, Any] = field(default_factory=dict)
+    uncertainty: list[str] = field(default_factory=list)
+    relevance_reasons: list[str] = field(default_factory=list)
+    rank_score: int = 0
+    rank_reasons: list[str] = field(default_factory=list)
 
 
 def load_policy(path_or_payload: str | Path | Mapping[str, Any]) -> DiscoveryPolicy:
@@ -272,19 +283,32 @@ def load_policy(path_or_payload: str | Path | Mapping[str, Any]) -> DiscoveryPol
     if payload.get("schema_version") != 1:
         raise DiscoveryPolicyError("discovery policy requires schema_version 1")
     required = {
-        "policy_id", "query_terms", "seed_source_ids", "max_pages_per_query",
+        "policy_id", "seed_source_ids", "max_pages_per_query",
         "max_candidates_per_query", "max_requests", "max_contributor_expansion",
         "retry_limit", "stop_rules", "review_required", "enabled",
     }
     missing = required - set(payload)
     if missing:
         raise DiscoveryPolicyError(f"discovery policy missing: {', '.join(sorted(missing))}")
-    terms = payload["query_terms"]
+    if "query_terms" not in payload and "capability_terms" not in payload:
+        raise DiscoveryPolicyError("discovery policy requires query_terms or capability_terms")
+    terms = payload.get("query_terms", payload.get("capability_terms", []))
     seeds = payload["seed_source_ids"]
     if not isinstance(terms, list) or not 1 <= len(terms) <= 3 or any(not isinstance(item, str) or not item.strip() for item in terms):
-        raise DiscoveryPolicyError("query_terms must contain one to three non-empty strings")
+        raise DiscoveryPolicyError("query_terms or capability_terms must contain one to three non-empty strings")
+    capability_terms = payload.get("capability_terms", terms)
+    if not isinstance(capability_terms, list) or any(not isinstance(item, str) or not item.strip() for item in capability_terms):
+        raise DiscoveryPolicyError("capability_terms must be a string list")
     if not isinstance(seeds, list) or any(not isinstance(item, str) or not item.strip() for item in seeds):
         raise DiscoveryPolicyError("seed_source_ids must be a string list")
+    seed_fields = {
+        "repository_seeds": payload.get("repository_seeds", []),
+        "engineer_seeds": payload.get("engineer_seeds", []),
+        "organization_seeds": payload.get("organization_seeds", []),
+    }
+    for name, values in seed_fields.items():
+        if not isinstance(values, list) or any(not isinstance(item, str) or not item.strip() for item in values):
+            raise DiscoveryPolicyError(f"{name} must be a string list")
     bounds = {
         "max_pages_per_query": (1, 2),
         "max_candidates_per_query": (1, 6),
@@ -296,6 +320,9 @@ def load_policy(path_or_payload: str | Path | Mapping[str, Any]) -> DiscoveryPol
         value = payload[name]
         if not isinstance(value, int) or not minimum <= value <= maximum:
             raise DiscoveryPolicyError(f"{name} must be between {minimum} and {maximum}")
+    max_queries = payload.get("max_queries", len(terms) + sum(len(values) for values in seed_fields.values()))
+    if not isinstance(max_queries, int) or not 1 <= max_queries <= 8:
+        raise DiscoveryPolicyError("max_queries must be between 1 and 8")
     if not isinstance(payload["stop_rules"], Mapping):
         raise DiscoveryPolicyError("stop_rules must be an object")
     if not isinstance(payload["review_required"], bool) or payload["review_required"] is not True:
@@ -319,6 +346,11 @@ def load_policy(path_or_payload: str | Path | Mapping[str, Any]) -> DiscoveryPol
         review_required=True,
         enabled=payload["enabled"],
         popularity_only_stars=popularity,
+        max_queries=max_queries,
+        capability_terms=tuple(item.strip() for item in capability_terms),
+        repository_seeds=tuple(item.strip() for item in seed_fields["repository_seeds"]),
+        engineer_seeds=tuple(item.strip() for item in seed_fields["engineer_seeds"]),
+        organization_seeds=tuple(item.strip() for item in seed_fields["organization_seeds"]),
     )
 
 
@@ -377,6 +409,11 @@ def discover(policy: DiscoveryPolicy | Mapping[str, Any] | str | Path, fetcher: 
         "policy_id": policy.policy_id,
         "query_terms": policy.query_terms,
         "seed_source_ids": policy.seed_source_ids,
+        "capability_terms": policy.capability_terms,
+        "repository_seeds": policy.repository_seeds,
+        "engineer_seeds": policy.engineer_seeds,
+        "organization_seeds": policy.organization_seeds,
+        "max_queries": policy.max_queries,
         "fixture_id": fixture_id,
     }
     run_id = "discovery-" + hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
@@ -384,8 +421,8 @@ def discover(policy: DiscoveryPolicy | Mapping[str, Any] | str | Path, fetcher: 
     requests = retries = pages = 0
     stop_reasons: list[str] = []
     cursor_state: dict[str, int] = {}
-    for term_index, query in enumerate(policy.query_terms):
-        seed = policy.seed_source_ids[term_index % len(policy.seed_source_ids)] if policy.seed_source_ids else None
+    queries = _discovery_queries(policy)
+    for term_index, (query, seed, discovery_kind, seed_value) in enumerate(queries[: policy.max_queries]):
         query_count = 0
         for page in range(1, policy.max_pages_per_query + 1):
             if requests >= policy.max_requests:
@@ -422,7 +459,15 @@ def discover(policy: DiscoveryPolicy | Mapping[str, Any] | str | Path, fetcher: 
                     stop_reasons.append(f"candidate_bound_reached:{query}")
                     break
                 try:
-                    candidate = _normalize_discovery_candidate(raw, query=query, page=page, seed_source_id=seed, policy=policy)
+                    candidate = _normalize_discovery_candidate(
+                        raw,
+                        query=query,
+                        page=page,
+                        seed_source_id=seed,
+                        discovery_kind=discovery_kind,
+                        seed_value=seed_value,
+                        policy=policy,
+                    )
                 except DiscoveryPermanentError:
                     stop_reasons.append(f"malformed_item:{query}:{page}")
                     continue
@@ -437,22 +482,64 @@ def discover(policy: DiscoveryPolicy | Mapping[str, Any] | str | Path, fetcher: 
             break
     _deduplicate_candidates(candidates)
     _apply_root_concentration(candidates, policy)
+    _rank_candidates(candidates)
     return {
         "schema_version": 1,
         "run_id": run_id,
         "policy_id": policy.policy_id,
         "policy_version": "github-discovery-v1",
         "query_terms": list(policy.query_terms),
+        "discovery_inputs": {
+            "capability_terms": list(policy.capability_terms),
+            "repository_seeds": list(policy.repository_seeds),
+            "engineer_seeds": list(policy.engineer_seeds),
+            "organization_seeds": list(policy.organization_seeds),
+        },
+        "query_count": min(len(queries), policy.max_queries),
         "request_count": requests,
         "retry_count": retries,
         "pages_examined": pages,
         "cursor_state": cursor_state,
         "stop_reasons": sorted(set(stop_reasons)) or ["query_and_page_bound_reached"],
-        "candidates": [asdict(item) for item in candidates],
+        "candidates": [asdict(item) for item in sorted(candidates, key=_candidate_sort_key)],
     }
 
 
-def _normalize_discovery_candidate(raw: Any, *, query: str, page: int, seed_source_id: str | None, policy: DiscoveryPolicy) -> DiscoveryCandidate:
+def _discovery_queries(policy: DiscoveryPolicy) -> list[tuple[str, str | None, str, str]]:
+    """Build bounded GitHub search queries with explicit seed provenance."""
+
+    queries: list[tuple[str, str | None, str, str]] = []
+    seen: set[str] = set()
+    for term_index, term in enumerate(policy.capability_terms or policy.query_terms):
+        if term in seen:
+            continue
+        seen.add(term)
+        seed = policy.seed_source_ids[term_index % len(policy.seed_source_ids)] if policy.seed_source_ids else None
+        queries.append((term, seed, "capability", term))
+    for kind, values, prefix in (
+        ("repository", policy.repository_seeds, "repo"),
+        ("engineer", policy.engineer_seeds, "user"),
+        ("organization", policy.organization_seeds, "org"),
+    ):
+        for value in values:
+            query = value if value.startswith(f"{prefix}:") else f"{prefix}:{value}"
+            if query in seen:
+                continue
+            seen.add(query)
+            queries.append((query, None, kind, value))
+    return queries
+
+
+def _normalize_discovery_candidate(
+    raw: Any,
+    *,
+    query: str,
+    page: int,
+    seed_source_id: str | None,
+    discovery_kind: str,
+    seed_value: str,
+    policy: DiscoveryPolicy,
+) -> DiscoveryCandidate:
     if not isinstance(raw, Mapping):
         raise DiscoveryPermanentError("repository search item must be an object")
     provider_id = str(raw.get("id") or raw.get("provider_repository_id") or "").strip()
@@ -485,6 +572,25 @@ def _normalize_discovery_candidate(raw: Any, *, query: str, page: int, seed_sour
         reasons.append("BOT")
     if stars is not None and stars >= policy.popularity_only_stars and not relevant:
         reasons.append("POPULARITY_ONLY")
+    relevance_reasons: list[str] = []
+    if relevant:
+        relevance_reasons.append("EXPLICIT_RELEVANCE" if "relevant" in raw else "QUERY_TERM_MATCH")
+    else:
+        relevance_reasons.append("NO_QUERY_TERM_MATCH")
+    uncertainty: list[str] = []
+    if not description and not topics:
+        uncertainty.append("LIMITED_METADATA")
+    if discovery_kind in {"engineer", "organization"} and not raw.get("contributors") and not raw.get("authors"):
+        uncertainty.append("ATTRIBUTION_NOT_VERIFIED")
+    authors_raw = raw.get("authors", raw.get("contributors", raw.get("maintainers", [])))
+    authors = sorted({str(item.get("login") if isinstance(item, Mapping) else item).strip() for item in authors_raw if str(item.get("login") if isinstance(item, Mapping) else item).strip()}) if isinstance(authors_raw, list) else []
+    correlation_metadata = {
+        "root_id": root_id,
+        "provider_repository_id": provider_id,
+        "duplicate_of": None,
+        "artifact_ids": raw.get("artifact_ids", []),
+        "fork_or_mirror": is_fork or is_mirror,
+    }
     aliases = raw.get("aliases") if isinstance(raw.get("aliases"), list) else []
     aliases = sorted({str(item).strip() for item in aliases if str(item).strip()} | ({str(raw["previous_full_name"])} if raw.get("previous_full_name") else set()))
     return DiscoveryCandidate(
@@ -500,13 +606,61 @@ def _normalize_discovery_candidate(raw: Any, *, query: str, page: int, seed_sour
         is_fork=is_fork,
         is_mirror=is_mirror,
         bot_only=bot_only,
-        discovered_by={"query": query, "page": page},
+        discovered_by={"query": query, "page": page, "kind": discovery_kind, "seed": seed_value},
         seed_source_id=seed_source_id,
         filter_reasons=reasons,
         review_status="FILTERED" if reasons else "NEW",
         source_scope={"endpoint": f"https://api.github.com/repos/{full_name}", "enabled": False},
         relevant=relevant,
+        authors=authors,
+        correlation_metadata=correlation_metadata,
+        uncertainty=uncertainty,
+        relevance_reasons=relevance_reasons,
+        rank_score=_rank_score(relevant=relevant, filter_reasons=reasons, uncertainty=uncertainty, discovery_kind=discovery_kind),
+        rank_reasons=_rank_reasons(relevant=relevant, filter_reasons=reasons, uncertainty=uncertainty, discovery_kind=discovery_kind),
     )
+
+
+def _rank_score(*, relevant: bool, filter_reasons: list[str], uncertainty: list[str], discovery_kind: str) -> int:
+    score = 3 if relevant else 0
+    if discovery_kind in {"repository", "engineer", "organization"}:
+        score += 1
+    score -= 2 * len(filter_reasons)
+    score -= len(uncertainty)
+    return score
+
+
+def _rank_reasons(*, relevant: bool, filter_reasons: list[str], uncertainty: list[str], discovery_kind: str) -> list[str]:
+    reasons: list[str] = []
+    if relevant:
+        reasons.append("RELEVANT_MATCH")
+    if discovery_kind != "capability":
+        reasons.append(f"SEEDED_{discovery_kind.upper()}")
+    reasons.extend(f"FILTERED_{item}" for item in filter_reasons)
+    reasons.extend(f"UNCERTAIN_{item}" for item in uncertainty)
+    return reasons or ["UNSCORED"]
+
+
+def _candidate_sort_key(candidate: DiscoveryCandidate) -> tuple[int, str, str]:
+    return (-candidate.rank_score, candidate.candidate_id, candidate.full_name)
+
+
+def _rank_candidates(candidates: list[DiscoveryCandidate]) -> None:
+    """Attach stable scores without allowing popularity to create relevance."""
+
+    for candidate in candidates:
+        candidate.rank_score = _rank_score(
+            relevant=candidate.relevant,
+            filter_reasons=candidate.filter_reasons,
+            uncertainty=candidate.uncertainty,
+            discovery_kind=str(candidate.discovered_by.get("kind", "capability")),
+        )
+        candidate.rank_reasons = _rank_reasons(
+            relevant=candidate.relevant,
+            filter_reasons=candidate.filter_reasons,
+            uncertainty=candidate.uncertainty,
+            discovery_kind=str(candidate.discovered_by.get("kind", "capability")),
+        )
 
 
 def _deduplicate_candidates(candidates: list[DiscoveryCandidate]) -> None:
@@ -516,6 +670,7 @@ def _deduplicate_candidates(candidates: list[DiscoveryCandidate]) -> None:
         existing = by_provider.get(candidate.provider_repository_id)
         if existing and existing is not candidate:
             candidate.duplicate_of = existing.candidate_id
+            candidate.correlation_metadata["duplicate_of"] = existing.candidate_id
             candidate.filter_reasons.append("DUPLICATE_PROVIDER_ID")
             candidate.review_status = "FILTERED"
             existing.aliases = sorted(set(existing.aliases + candidate.aliases + [candidate.full_name]))
@@ -525,6 +680,7 @@ def _deduplicate_candidates(candidates: list[DiscoveryCandidate]) -> None:
         duplicate = next((by_alias[item] for item in aliases if item in by_alias), None)
         if duplicate and duplicate is not candidate:
             candidate.duplicate_of = duplicate.candidate_id
+            candidate.correlation_metadata["duplicate_of"] = duplicate.candidate_id
             candidate.filter_reasons.append("DUPLICATE_ALIAS")
             candidate.review_status = "FILTERED"
         for item in aliases:
@@ -634,6 +790,9 @@ def promote_candidates(queue: dict[str, Any], candidate_ids: list[str], *, confi
             "fixture_plan": "Recorded discovery and collector fixtures",
             "discovery_run_id": queue.get("run_id"),
             "discovered_by": item.get("discovered_by"),
+            "authors": item.get("authors", []),
+            "correlation_metadata": item.get("correlation_metadata", {}),
+            "uncertainty": item.get("uncertainty", []),
             "provider_repository_id": item["provider_repository_id"],
         }
         item["review_status"] = "PROMOTED"
