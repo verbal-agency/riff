@@ -52,3 +52,14 @@ excerpts, and claims may cite only validated span IDs. Extraction providers sit
 behind an injected interface, while validation and retry outcomes are recorded
 in receipt attempts. Receipt retrieval is compact by default and never loads
 the raw body; callers explicitly join to evidence when they need source text.
+
+## G06 capability normalization
+
+G06 keeps transferable capabilities and concrete technologies as separate,
+stable entities. Receipt candidates are preserved as immutable mappings with
+confidence, rationale, and explicit proposed/accepted/rejected/superseded
+states. Technology-to-capability relationships are many-to-many. Review actions
+append decisions, so accept, reject, remap, split, and undo are reversible
+without rewriting receipts or losing provenance. The shipped normalizer is a
+bounded deterministic alias seam; model-assisted normalization can be injected
+later without changing the relational contract.

@@ -98,4 +98,22 @@ provider can be injected behind the same extractor interface later. Failed
 validation and transient attempts are retained for inspection and retry; a
 receipt read returns compact fields and does not load the raw body.
 
+## Capability normalization
+
+G06 normalizes receipt candidates into separate, reversible capability and
+technology records. Deterministic aliases group bounded synonyms such as
+checkpoint recovery, resumable agents, and workflow replay under durable
+execution while preserving the original candidate and receipt provenance:
+
+```sh
+uv run riff capability normalize --limit 100
+uv run riff capability inspect --capability-id <capability-id>
+uv run riff capability review accept --mapping-id <mapping-id> --reason "confirmed"
+uv run riff capability evaluate --file tests/fixtures/capabilities/normalization.json
+```
+
+Review decisions are append-only and support accept, reject, remap, split, and
+undo. Technology relationships are many-to-many; low-confidence mappings remain
+proposed and never silently alter canonical capability counts.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.

@@ -10,6 +10,8 @@ from dataclasses import asdict
 from pathlib import Path
 
 from .api import create_app
+from .capability_evaluation import evaluate_fixture
+from .capabilities import CapabilityRepository, DeterministicNormalizer, NormalizationService
 from .config import Settings
 from .db import migrate
 from .evidence import SourceType
@@ -64,6 +66,30 @@ def build_parser() -> argparse.ArgumentParser:
     receipt_process.add_argument("--force", action="store_true")
     receipt_evaluate = receipt_subparsers.add_parser("evaluate", help="evaluate a labeled receipt fixture")
     receipt_evaluate.add_argument("--file", required=True)
+    capability = subparsers.add_parser("capability", help="normalize and review capabilities")
+    capability_subparsers = capability.add_subparsers(dest="capability_command", required=True)
+    capability_normalize = capability_subparsers.add_parser("normalize", help="normalize successful receipts")
+    capability_normalize.add_argument("--receipt-id", action="append")
+    capability_normalize.add_argument("--limit", type=int, default=100)
+    capability_normalize.add_argument("--force", action="store_true")
+    capability_evaluate = capability_subparsers.add_parser("evaluate", help="evaluate a labeled normalization fixture")
+    capability_evaluate.add_argument("--file", required=True)
+    capability_inspect = capability_subparsers.add_parser("inspect", help="inspect a capability and its provenance")
+    capability_inspect.add_argument("--capability-id", required=True)
+    review = capability_subparsers.add_parser("review", help="record a reversible mapping decision")
+    review_subparsers = review.add_subparsers(dest="review_action", required=True)
+    for action in ("accept", "reject", "remap", "undo"):
+        command = review_subparsers.add_parser(action)
+        command.add_argument("--mapping-id", required=True)
+        command.add_argument("--actor", default="operator")
+        command.add_argument("--reason", required=True)
+        if action == "remap":
+            command.add_argument("--entity-id", required=True)
+    split = review_subparsers.add_parser("split")
+    split.add_argument("--mapping-id", required=True)
+    split.add_argument("--name", action="append", required=True)
+    split.add_argument("--actor", default="operator")
+    split.add_argument("--reason", required=True)
     return parser
 
 
@@ -71,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "receipt" and args.receipt_command == "evaluate":
         print(json.dumps(evaluate_labeled_fixture(args.file), sort_keys=True))
+        return 0
+    if args.command == "capability" and args.capability_command == "evaluate":
+        print(json.dumps(evaluate_fixture(args.file), sort_keys=True))
         return 0
     try:
         settings = Settings.from_env()
@@ -172,6 +201,35 @@ def main(argv: list[str] | None = None) -> int:
         ).process(evidence_ids, force=args.force)
         print(json.dumps(asdict(summary), sort_keys=True, default=str))
         return 0 if not (summary.failed_validation or summary.failed_transient) else 1
+    if args.command == "capability":
+        repository = CapabilityRepository(settings.database_url)
+        if args.capability_command == "normalize":
+            if not 1 <= args.limit <= 500:
+                raise SystemExit("--limit must be between 1 and 500")
+            summary = NormalizationService(
+                ReceiptRepository(settings.database_url), repository, DeterministicNormalizer()
+            ).normalize(args.receipt_id, limit=args.limit, force=args.force)
+            print(json.dumps(asdict(summary), sort_keys=True, default=str))
+            return 0
+        if args.capability_command == "inspect":
+            inspection = repository.inspect_capability(args.capability_id)
+            if inspection is None:
+                raise SystemExit("capability not found")
+            print(json.dumps(asdict(inspection), sort_keys=True, default=str))
+            return 0
+        if args.capability_command == "review":
+            if args.review_action == "split":
+                result = repository.split(args.mapping_id, args.name, actor=args.actor, reason=args.reason)
+            else:
+                result = repository.review(
+                    args.mapping_id,
+                    args.review_action.upper(),
+                    actor=args.actor,
+                    reason=args.reason,
+                    entity_id=getattr(args, "entity_id", None),
+                )
+            print(json.dumps(asdict(result), sort_keys=True, default=str))
+            return 0
 
     import uvicorn
 

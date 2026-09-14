@@ -1,6 +1,6 @@
 # G06 — Separate and reversibly normalize capabilities and technologies
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G05  
 **Unlocks:** G07, G08  
 **PRD references:** Sections 8.3, 11–12, 24.2–24.3
@@ -50,13 +50,13 @@ Given fixture phrases such as “checkpoint recovery,” “resumable agents,”
 
 ## Acceptance criteria
 
-- [ ] The checkpoint/replay/recovery fixture maps to a coherent durable-execution capability at the expected confidence/status.
-- [ ] Agent memory and workflow persistence are not automatically merged in the negative fixture.
-- [ ] Multiple frameworks implementing one bounded pattern strengthen one capability candidate without becoming separate capability nodes solely because names differ.
-- [ ] A reviewer can accept, reject, remap, split, and undo a mapping while all original receipt provenance remains intact.
-- [ ] Technology-to-capability relationships are many-to-many and queryable in both directions.
-- [ ] Reprocessing unchanged candidates does not create duplicate nodes or relationships.
-- [ ] The evaluation report presents under-merging and over-merging separately and includes the exact failing cases.
+- [x] The checkpoint/replay/recovery fixture maps to a coherent durable-execution capability at the expected confidence/status.
+- [x] Agent memory and workflow persistence are not automatically merged in the negative fixture.
+- [x] Multiple frameworks implementing one bounded pattern strengthen one capability candidate without becoming separate capability nodes solely because names differ.
+- [x] A reviewer can accept, reject, remap, split, and undo a mapping while all original receipt provenance remains intact.
+- [x] Technology-to-capability relationships are many-to-many and queryable in both directions.
+- [x] Reprocessing unchanged candidates does not create duplicate nodes or relationships.
+- [x] The evaluation report presents under-merging and over-merging separately and includes the exact failing cases.
 
 ## Verification evidence
 
@@ -66,7 +66,7 @@ Demonstrate the PRD's durable-execution and agent-memory examples plus at least 
 
 Relational adjacency tables are sufficient. Semantic retrieval may use Postgres/pgvector only if justified by observed normalization needs; deterministic aliases and constrained model reasoning should be considered first.
 
-## Execution contract for the next Luna run
+## Execution contract (satisfied in this cycle)
 
 ### Expected implementation surface
 
@@ -132,3 +132,16 @@ per-item and total-call limits explicit.
 | Technology many-to-many | Bidirectional query test |
 | Idempotent reprocessing | Repeated-run test |
 | Under/over-merging report | Evaluation command with exact failing cases |
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest` — **26 passed, 38 skipped** (offline suite).
+- Isolated Postgres with migration `007_capability_model.sql`, then
+  `.venv/bin/python -m pytest -m postgres` — **38 passed**.
+- `.venv/bin/python -m riff capability evaluate --file tests/fixtures/capabilities/normalization.json`
+  — six cases; under-merging and over-merging are reported separately with
+  exact failing case IDs and missing/extra groups.
+- `git diff --check` and `.venv/bin/python -m compileall -q src tests` pass.
+- Integration tests demonstrate durable-execution alias grouping, negative
+  separation, framework fragmentation, reversible review lifecycle,
+  many-to-many technology links, provenance retention, and cached reruns.

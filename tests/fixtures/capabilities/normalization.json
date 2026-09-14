@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "durable-execution-synonyms",
+      "expected_groups": [["durable execution"]],
+      "predicted_groups": [["durable execution"]]
+    },
+    {
+      "id": "agent-memory-is-distinct",
+      "expected_groups": [["agent memory"], ["workflow persistence"]],
+      "predicted_groups": [["agent memory"], ["workflow persistence"]]
+    },
+    {
+      "id": "framework-fragmentation",
+      "expected_groups": [["durable execution"]],
+      "predicted_groups": [["durable execution"]]
+    },
+    {
+      "id": "ambiguous-candidate",
+      "expected_groups": [["evaluation"]],
+      "predicted_groups": [["evaluation"]]
+    },
+    {
+      "id": "under-merge-example",
+      "expected_groups": [["durable execution"], ["agent memory"]],
+      "predicted_groups": [["durable execution"]]
+    },
+    {
+      "id": "over-merge-example",
+      "expected_groups": [["workflow persistence"]],
+      "predicted_groups": [["workflow persistence"], ["agent memory"]]
+    }
+  ]
+}
