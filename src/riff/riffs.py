@@ -203,13 +203,13 @@ class RiffRepository:
             for rank, draft, status in drafts:
                 riff_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{run_id}:{rank}"))
                 conn.execute(
-                    """INSERT INTO riffs (riff_id, daily_run_id, rank, status, observation, hypothesis, why_now,
+                    """INSERT INTO riffs (riff_id, daily_run_id, candidate_id, rank, status, observation, hypothesis, why_now,
                        why_it_matters, user_relevance, underlying_capability, recommendation, confidence,
                        strongest_counterargument, alternative_explanation, falsification_conditions,
                        associated_technologies, supporting_receipt_ids, counter_receipt_ids)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                        ON CONFLICT (daily_run_id, rank) DO NOTHING""",
-                    (riff_id, run_id, rank, status, draft.observation, draft.hypothesis, draft.why_now, draft.why_it_matters, draft.user_relevance, draft.underlying_capability, draft.recommendation, draft.confidence, draft.strongest_counterargument, draft.alternative_explanation, Jsonb(list(draft.falsification_conditions)), Jsonb(list(draft.associated_technologies)), Jsonb(list(draft.supporting_receipt_ids)), Jsonb(list(draft.counter_receipt_ids))),
+                    (riff_id, run_id, contexts[rank - 1].candidate_id if rank <= len(contexts) else None, rank, status, draft.observation, draft.hypothesis, draft.why_now, draft.why_it_matters, draft.user_relevance, draft.underlying_capability, draft.recommendation, draft.confidence, draft.strongest_counterargument, draft.alternative_explanation, Jsonb(list(draft.falsification_conditions)), Jsonb(list(draft.associated_technologies)), Jsonb(list(draft.supporting_receipt_ids)), Jsonb(list(draft.counter_receipt_ids))),
                 )
                 if status == "PUBLISHED":
                     for citation in draft.citations:

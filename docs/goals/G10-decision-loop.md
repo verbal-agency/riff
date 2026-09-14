@@ -1,6 +1,6 @@
 # G10 — Add investigation, lifecycle, and semantic decision memory
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G09b
 **Unlocks:** G11, G14  
 **PRD references:** Sections 9, 15–16, 25, 27, 33
@@ -51,14 +51,14 @@ After the user rejects a Riff as vendor churn around an existing capability, fut
 
 ## Acceptance criteria
 
-- [ ] Rejecting a Riff stores the exact user reason plus inspectable semantic implications and changes later rank inputs accordingly.
-- [ ] “Too framework-specific but the underlying capability matters” penalizes framework-adoption framing without suppressing the capability itself in the corresponding fixture.
-- [ ] “I already understand this professionally” can create a proposed profile update and affects novelty only after the defined confirmation path.
-- [ ] Repeating unchanged evidence does not resurface a rejected Riff.
-- [ ] A material-change fixture can resurface it with a message that states the prior rejection reason and cites what changed.
-- [ ] Only an explicit user-originated approval can transition a Riff toward `EXPLORING`; model/system-originated attempts are rejected.
-- [ ] Invalid and concurrent transition attempts preserve a consistent status and complete audit history.
-- [ ] Investigation queries resolve evidence and counterevidence without loading unrelated corpus/profile data.
+- [x] Rejecting a Riff stores the exact user reason plus inspectable semantic implications and changes later rank inputs accordingly.
+- [x] “Too framework-specific but the underlying capability matters” penalizes framework-adoption framing without suppressing the capability itself in the corresponding fixture.
+- [x] “I already understand this professionally” can create a proposed profile update and affects novelty only after the defined confirmation path.
+- [x] Repeating unchanged evidence does not resurface a rejected Riff.
+- [x] A material-change fixture can resurface it with a message that states the prior rejection reason and cites what changed.
+- [x] Only an explicit user-originated approval can transition a Riff toward `EXPLORING`; model/system-originated attempts are rejected.
+- [x] Invalid and concurrent transition attempts preserve a consistent status and complete audit history.
+- [x] Investigation queries resolve evidence and counterevidence without loading unrelated corpus/profile data.
 
 ## Verification evidence
 
@@ -67,3 +67,36 @@ Exercise the full transition table, the PRD vendor-churn rejection, a no-change 
 ## Implementation latitude
 
 Semantic implications may begin as an explicit constrained vocabulary plus structured model extraction. Preserve the raw reason so the interpretation can be improved later.
+
+## Execution contract (satisfied in this cycle)
+
+### Implementation surface
+
+Added migration `011_decision_loop.sql`, `src/riff/decisions.py`, decision and
+investigation endpoints in `src/riff/api.py`, and focused Postgres coverage in
+`tests/test_decision_loop.py`.
+
+### Lifecycle and decision contract
+
+Legal transitions are `PUBLISHED|NEW -> WATCHING|REJECTED|ARCHIVED|EXPLORING`,
+`WATCHING -> WATCHING|REJECTED|ARCHIVED|EXPLORING`, `EXPLORING -> ARCHIVED`,
+and `REJECTED -> ARCHIVED`; rejected Riffs return to `WATCHING` only through a
+material-change resurface event. `APPROVE_EXPLORATION` requires `actor_kind=USER`.
+Decision reasons are immutable; corrections append with `supersedes_decision_id`.
+
+### Criterion-to-test map
+
+| Criterion | Proof |
+|---|---|
+| Reason and semantic implications | `test_rejection_stores_reason_and_framework_implications` |
+| Profile confirmation path | `test_professional_knowledge_requires_confirmation` |
+| No-change/material resurface | `test_unchanged_rejection_does_not_resurface_but_material_change_does` |
+| Explicit user approval | `test_only_user_can_approve_exploration_and_invalid_transition_is_safe` |
+| Investigation scope | `test_investigation_returns_only_linked_evidence` |
+| API operations | `test_decision_and_investigation_api_operations` |
+
+## Cycle verification
+
+- `.venv/bin/python -m pytest -q -m 'not postgres'` — 45 passed.
+- Isolated Postgres G10 integration suite — 6 passed.
+- `git diff --check` passed.

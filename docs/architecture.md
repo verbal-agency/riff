@@ -111,3 +111,13 @@ retention, fixture replay, and fallback decisions are reviewable before G02–G0
 collection is enabled. `source validate-manifest` performs structural and
 credential checks without contacting any source. Pending live sources remain
 disabled until an operator records a terms/retention review.
+
+## G10 decision loop
+
+Decision records preserve the exact user reason, structured semantic
+implications, evidence snapshot, policy version, and append-only correction
+history. Lifecycle transitions are validated under row lock and mirrored in a
+status-history table. Investigation joins only the Riff's supporting and
+counterevidence plus its bounded context; it does not load the corpus. A
+material-change resurface records the prior rejection, new receipt IDs, and a
+versioned explanation. Model/system actors cannot approve exploration.

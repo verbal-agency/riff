@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from datetime import date
+from dataclasses import asdict
 
 from fastapi import Depends, FastAPI, HTTPException, status
 
 from .config import Settings
 from .db import database_ready
 from .riffs import RiffRepository
+from .decisions import DecisionRepository, DecisionError
 
 
 def get_settings() -> Settings:
@@ -50,6 +52,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if result is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="daily Riff result not found")
         return result.to_dict()
+
+    @app.get("/riffs/{riff_id}/investigation", tags=["riffs"])
+    def investigate_riff(
+        riff_id: str,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return asdict(DecisionRepository(effective_settings.database_url).investigation(riff_id))
+        except DecisionError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.post("/riffs/{riff_id}/decisions", tags=["riffs"])
+    def decide_riff(
+        riff_id: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            decision = DecisionRepository(effective_settings.database_url).record_decision(
+                riff_id,
+                str(payload.get("decision", "")),
+                str(payload.get("reason", "")),
+                actor=str(payload.get("actor", "user")),
+                actor_kind=str(payload.get("actor_kind", "USER")),
+                structured_reason=payload.get("structured_reason"),
+                policy_version=str(payload.get("policy_version", "decision-policy-v1")),
+            )
+            return asdict(decision)
+        except DecisionError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     return app
 

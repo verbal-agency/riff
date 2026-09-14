@@ -1,6 +1,6 @@
 # G11 — Turn approved Riffs into bounded Explorations
 
-**Status:** Queued  
+**Status:** Ready
 **Depends on:** G10  
 **Unlocks:** G12  
 **PRD references:** Sections 12, 15, 17–18, 33

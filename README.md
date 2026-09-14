@@ -180,4 +180,10 @@ The reviewed concrete source plan is validated without a database or network:
 uv run riff source validate-manifest --manifest config/ingestion_sources.json
 ```
 
+G10 exposes investigation and explicit decision operations through the API:
+`GET /riffs/{riff_id}/investigation` and
+`POST /riffs/{riff_id}/decisions`. Only a user-originated
+`APPROVE_EXPLORATION` decision can move a Riff toward exploration; rejected
+Riffs resurface only when new evidence is recorded as a material change.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.
