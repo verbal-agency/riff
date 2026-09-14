@@ -306,6 +306,20 @@ catalog at `GET /adapter/tools` and dispatches calls through
 `riff api` process and deterministic fixture data; promotion calls require the
 explicit `USER_CONFIRMED` token as well as their persisted user approval.
 
+The provider-neutral offline tool loop can be replayed without Postgres,
+credentials, or a live model:
+
+```sh
+uv run riff chat replay --file tests/fixtures/chat/tool-loop-v1.json --scenario daily
+uv run riff chat replay --file tests/fixtures/chat/tool-loop-v1.json --scenario investigate
+uv run riff chat replay --file tests/fixtures/chat/tool-loop-v1.json --scenario confirmation-required
+```
+
+The replay prints the bounded tool trace and final model text. A real ChatGPT
+connector will supply the model client and call the same adapter endpoints; it
+must provide explicit user confirmation separately from model-generated tool
+arguments.
+
 The G15 dogfood packet is fixture-only and replayable: use
 `tests/fixtures/dogfood/manifest.json` and inspect
 `docs/reports/g15-dogfood-report.json` plus the recorded review in

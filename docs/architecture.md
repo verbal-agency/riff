@@ -196,3 +196,18 @@ PRDs, exports, and operation reports. Promotion mutations require a literal
 user confirmation token plus the core persisted approval, so model text cannot
 silently cross either boundary. Restarting the adapter loses no canonical
 state.
+
+## G23 ChatGPT tool loop
+
+The outer conversational client is intentionally separate from Riff's
+application state. It receives a model turn, validates typed tool calls against
+the adapter catalog, invokes `POST /adapter/tools/{tool_name}`, and returns a
+bounded tool result to the model until a final response is produced. The loop
+has explicit turn, call, and result-size budgets and records a redacted tool
+trace. Model-generated confirmation tokens are never trusted; promotion tools
+receive `USER_CONFIRMED` only from the outer user-confirmation boundary.
+
+`src/riff/chat_loop.py` supplies provider-neutral protocols and deterministic
+scripted fakes. The real model client and ChatGPT-compatible transport remain
+replaceable follow-on work; fixture replay never requires a model, network, or
+database.

@@ -1,6 +1,6 @@
 # G23 — Wire the ChatGPT tool-loop client
 
-**Status:** Queued
+**Status:** In progress
 **Depends on:** G14, G22
 **Unlocks:** A real ChatGPT-compatible connector and end-to-end conversational acceptance
 **PRD references:** Sections 4, 10, 15, 27–29, 32–33
@@ -100,3 +100,18 @@ Report the selected model protocol, tool-schema mapping, loop bounds, scripted
 conversation results, and any provider-specific assumptions. The next goal may
 connect this client to an actual ChatGPT surface; it must not duplicate this
 client's orchestration logic.
+
+## Current implementation slice (2026-09-14)
+
+- `src/riff/chat_loop.py` provides provider-neutral model and tool-adapter
+  protocols, typed tool definitions, bounded turns/results, tool traces, safe
+  adapter-error returns, and an explicit confirmation-provider boundary.
+- `ScriptedModelClient` and `FixtureToolAdapter` support deterministic offline
+  replay through `riff chat replay` using
+  `tests/fixtures/chat/tool-loop-v1.json`.
+- `tests/test_chat_loop.py` covers read calls, bounded results, unknown and
+  invalid tools, confirmation-token injection, and the CLI replay path.
+- Offline verification: `.venv/bin/python -m pytest -q tests/test_chat_loop.py`
+  (**7 passed**); the full offline suite also passes.
+- Remaining G23 work is the real provider client and Postgres-backed adapter
+  exercise after G22; G24 owns the actual ChatGPT connector.

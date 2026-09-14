@@ -13,6 +13,13 @@ from pathlib import Path
 from .api import create_app
 from .capability_evaluation import evaluate_fixture
 from .capabilities import CapabilityRepository, DeterministicNormalizer, NormalizationService
+from .chat_loop import (
+    ChatLoopError,
+    ChatToolLoop,
+    FixtureToolAdapter,
+    ScriptedModelClient,
+    load_chat_fixture,
+)
 from .config import Settings
 from .db import migrate
 from .daily import load_fixture, run_fixture
@@ -219,6 +226,11 @@ def build_parser() -> argparse.ArgumentParser:
     daily_generate.add_argument("--file", required=True)
     daily_generate.add_argument("--date", dest="run_date")
     daily_generate.add_argument("--policy-version")
+    chat = subparsers.add_parser("chat", help="replay a bounded conversational tool loop")
+    chat_subparsers = chat.add_subparsers(dest="chat_command", required=True)
+    chat_replay = chat_subparsers.add_parser("replay", help="replay a recorded model/tool conversation")
+    chat_replay.add_argument("--file", required=True)
+    chat_replay.add_argument("--scenario")
     return parser
 
 
@@ -310,6 +322,32 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError, JobPolicyError, JobFetchError) as exc:
             raise SystemExit(f"job URL intake error: {exc}") from exc
         print(json.dumps(result, sort_keys=True, default=str))
+        return 0
+    if args.command == "chat" and args.chat_command == "replay":
+        try:
+            fixture = load_chat_fixture(args.file)
+            scenarios = fixture["scenarios"]
+            scenario = next(
+                (item for item in scenarios if not args.scenario or item.get("id") == args.scenario),
+                None,
+            )
+            if scenario is None:
+                raise ChatLoopError(f"unknown chat scenario: {args.scenario}")
+            confirmations = scenario.get("confirmations", {})
+            if not isinstance(confirmations, dict):
+                raise ChatLoopError("scenario confirmations must be an object")
+            adapter = FixtureToolAdapter(fixture["tools"], scenario.get("adapter_results", {}))
+            model = ScriptedModelClient(scenario["turns"])
+            confirmation_provider = (
+                lambda name, _arguments: "USER_CONFIRMED" if confirmations.get(name) is True else None
+            )
+            result = ChatToolLoop(model, adapter, confirmation_provider=confirmation_provider).run(
+                str(scenario.get("user_message", "")),
+                system_prompt=str(fixture.get("system_prompt", "")) or None,
+            )
+            print(json.dumps({"fixture_id": fixture.get("fixture_id"), "scenario": scenario["id"], **result.to_dict()}, sort_keys=True, default=str))
+        except (OSError, ValueError, ChatLoopError) as exc:
+            raise SystemExit(f"chat replay error: {exc}") from exc
         return 0
     if args.command == "source" and args.source_command == "validate-manifest":
         try:

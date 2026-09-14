@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "fixture_id": "chat-tool-loop-v1",
+  "system_prompt": "You are Riff, a concise evidence-grounded assistant.",
+  "tools": [
+    {
+      "name": "daily_riffs",
+      "description": "Read the persisted daily zero-to-three Riff result.",
+      "required": ["run_date"]
+    },
+    {
+      "name": "investigate_riff",
+      "description": "Inspect one Riff's evidence, counterevidence, gap, and provenance.",
+      "required": ["riff_id"]
+    },
+    {
+      "name": "create_exploration",
+      "description": "Create an Exploration after explicit user approval.",
+      "required": ["riff_id", "confirmation_token"]
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "daily",
+      "user_message": "What are today's Riffs?",
+      "turns": [
+        {
+          "tool_calls": [
+            {
+              "call_id": "daily-1",
+              "name": "daily_riffs",
+              "arguments": {"run_date": "2026-09-14"}
+            }
+          ]
+        },
+        {
+          "content": "I found one Riff today: durable execution is becoming a distinct engineering capability."
+        }
+      ],
+      "adapter_results": {
+        "daily_riffs": {
+          "tool": "daily_riffs",
+          "result": {
+            "run_date": "2026-09-14",
+            "status": "COMPLETED",
+            "riffs": [
+              {
+                "riff_id": "riff-1",
+                "underlying_capability": "durable execution",
+                "canonical_url": "https://example.test/evidence/1"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "investigate",
+      "user_message": "Why does riff-1 matter?",
+      "turns": [
+        {
+          "tool_calls": [
+            {
+              "call_id": "investigate-1",
+              "name": "investigate_riff",
+              "arguments": {"riff_id": "riff-1"}
+            }
+          ]
+        },
+        {
+          "content": "The strongest evidence is independent workflow-runtime work; the counterargument is that this may be ordinary distributed systems."
+        }
+      ],
+      "adapter_results": {
+        "investigate_riff": {
+          "tool": "investigate_riff",
+          "result": {
+            "riff_id": "riff-1",
+            "strongest_evidence": [
+              {"receipt_id": "receipt-1", "canonical_url": "https://example.test/evidence/1"}
+            ],
+            "counterevidence": [
+              {"receipt_id": "receipt-2", "canonical_url": "https://example.test/evidence/2"}
+            ],
+            "provenance": {"supporting_receipt_ids": ["receipt-1"]}
+          }
+        }
+      }
+    },
+    {
+      "id": "confirmation-required",
+      "user_message": "Create an exploration for riff-1.",
+      "turns": [
+        {
+          "tool_calls": [
+            {
+              "call_id": "explore-1",
+              "name": "create_exploration",
+              "arguments": {"riff_id": "riff-1", "confirmation_token": "USER_CONFIRMED"}
+            }
+          ]
+        },
+        {
+          "content": "I need your explicit confirmation before creating an Exploration."
+        }
+      ],
+      "adapter_results": {}
+    },
+    {
+      "id": "confirmed-exploration",
+      "user_message": "Yes, create the exploration.",
+      "confirmations": {"create_exploration": true},
+      "turns": [
+        {
+          "tool_calls": [
+            {
+              "call_id": "explore-2",
+              "name": "create_exploration",
+              "arguments": {"riff_id": "riff-1", "confirmation_token": "model-supplied-token"}
+            }
+          ]
+        },
+        {
+          "content": "The Exploration was created and is ready for review."
+        }
+      ],
+      "adapter_results": {
+        "create_exploration": {
+          "tool": "create_exploration",
+          "result": {"exploration_id": "explore-1", "status": "DRAFT"}
+        }
+      }
+    }
+  ]
+}
