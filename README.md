@@ -186,4 +186,11 @@ G10 exposes investigation and explicit decision operations through the API:
 `APPROVE_EXPLORATION` decision can move a Riff toward exploration; rejected
 Riffs resurface only when new evidence is recorded as a material change.
 
+After a user records `APPROVE_EXPLORATION`, the bounded Exploration lifecycle
+is available through `POST /riffs/{riff_id}/explorations`,
+`GET /explorations/{exploration_id}`, and the user-only refinement and
+selection operations at `/explorations/{exploration_id}/refine` and
+`/explorations/{exploration_id}/select`. Selecting an experiment stops before
+PRD creation; G12 owns that separate approval boundary.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.

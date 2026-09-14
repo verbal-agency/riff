@@ -1,6 +1,6 @@
 # G11 — Turn approved Riffs into bounded Explorations
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G10  
 **Unlocks:** G12  
 **PRD references:** Sections 12, 15, 17–18, 33
@@ -50,18 +50,25 @@ The user can approve a Riff, compare meaningfully different build/measurement ex
 
 ## Acceptance criteria
 
-- [ ] Creation fails without an explicit G10 user-approval record and succeeds idempotently with one.
-- [ ] A generated Exploration includes every PRD schema field and multiple materially different experiment options.
-- [ ] At least one option has a credible 4–20 focused-hour useful slice with assumptions and a concrete artifact or measurement.
-- [ ] Every option maps its work and evidence of competence to the target capability and names representative technology fluency where relevant.
-- [ ] A project above the time budget is reduced to a valuable slice or rejected rather than mislabeled as completable.
-- [ ] A signaling-gap fixture favors a public demonstrative artifact over redundant study.
-- [ ] User rejection/refinement changes later options while preserving the original option and semantic reason.
-- [ ] Selecting an experiment does not itself create a PRD or imply PRD approval.
+- [x] Creation fails without an explicit G10 user-approval record and succeeds idempotently with one.
+- [x] A generated Exploration includes every PRD schema field and multiple materially different experiment options.
+- [x] At least one option has a credible 4–20 focused-hour useful slice with assumptions and a concrete artifact or measurement.
+- [x] Every option maps its work and evidence of competence to the target capability and names representative technology fluency where relevant.
+- [x] A project above the time budget is reduced to a valuable slice or rejected rather than mislabeled as completable.
+- [x] A signaling-gap fixture favors a public demonstrative artifact over redundant study.
+- [x] User rejection/refinement changes later options while preserving the original option and semantic reason.
+- [x] Selecting an experiment does not itself create a PRD or imply PRD approval.
 
 ## Verification evidence
 
-Show golden outputs for a knowledge/implementation gap and a signaling gap, including estimates and project-rule assessments. Demonstrate rejected-option history and an overlarge idea being reduced.
+`tests/test_explorations.py` provides deterministic schema, signaling-gap, overlarge-reduction, approval-boundary, idempotence, refinement-history, selection, and API coverage. Offline verification: `.venv/bin/python -m pytest -q -m 'not postgres'` (47 passed). PostgreSQL integration verification: `.venv/bin/python -m pytest -q -m postgres tests/test_explorations.py` (3 passed).
+
+## Implementation contract delivered
+
+- `src/riff/migrations/012_explorations.sql` stores one Exploration per approved Riff, relational experiments, append-only versions, and lifecycle events.
+- `src/riff/explorations.py` is the deterministic generator/repository boundary. It requires a user `APPROVE_EXPLORATION`, validates the PRD fields and 4–20 hour rules, supports semantic refinement/rejection, and selects an experiment without creating a PRD.
+- API operations are `POST /riffs/{riff_id}/explorations`, `GET /explorations/{exploration_id}`, `POST /explorations/{exploration_id}/refine`, and `POST /explorations/{exploration_id}/select`.
+- G12 owns PRD approval and generation; this goal intentionally stops at a selected Exploration experiment.
 
 ## Implementation latitude
 

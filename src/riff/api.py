@@ -11,6 +11,7 @@ from .config import Settings
 from .db import database_ready
 from .riffs import RiffRepository
 from .decisions import DecisionRepository, DecisionError
+from .explorations import ExplorationRepository, ExplorationError
 
 
 def get_settings() -> Settings:
@@ -81,6 +82,64 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
             return asdict(decision)
         except DecisionError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.post("/riffs/{riff_id}/explorations", tags=["explorations"])
+    def create_exploration(
+        riff_id: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return ExplorationRepository(effective_settings.database_url).create(
+                riff_id,
+                actor=str(payload.get("actor", "user")),
+                overlarge=bool(payload.get("overlarge", False)),
+            ).to_dict()
+        except ExplorationError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.get("/explorations/{exploration_id}", tags=["explorations"])
+    def get_exploration(
+        exploration_id: str,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return ExplorationRepository(effective_settings.database_url).get(exploration_id).to_dict()
+        except ExplorationError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.post("/explorations/{exploration_id}/refine", tags=["explorations"])
+    def refine_exploration(
+        exploration_id: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return ExplorationRepository(effective_settings.database_url).refine(
+                exploration_id,
+                str(payload.get("experiment_id", "")),
+                str(payload.get("reason", "")),
+                actor=str(payload.get("actor", "user")),
+                actor_kind=str(payload.get("actor_kind", "USER")),
+            ).to_dict()
+        except ExplorationError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.post("/explorations/{exploration_id}/select", tags=["explorations"])
+    def select_experiment(
+        exploration_id: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return ExplorationRepository(effective_settings.database_url).select_experiment(
+                exploration_id,
+                str(payload.get("experiment_id", "")),
+                actor=str(payload.get("actor", "user")),
+                actor_kind=str(payload.get("actor_kind", "USER")),
+            ).to_dict()
+        except ExplorationError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     return app

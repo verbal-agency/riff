@@ -121,3 +121,14 @@ status-history table. Investigation joins only the Riff's supporting and
 counterevidence plus its bounded context; it does not load the corpus. A
 material-change resurface records the prior rejection, new receipt IDs, and a
 versioned explanation. Model/system actors cannot approve exploration.
+
+## G11 Explorations
+
+An Exploration is created only from a traceable user `APPROVE_EXPLORATION`
+decision. The deterministic generator preserves the PRD schema fields, then
+proposes materially different experiments with capability targets,
+representative technologies, a five-step learning pipeline, effort
+assumptions, selection-rule assessments, and an artifact or measurement.
+Exploration versions and events retain semantic refinement/rejection history.
+The API can create, inspect, refine, and select an experiment; selection is a
+deliberation endpoint and does not create a PRD or approve one.

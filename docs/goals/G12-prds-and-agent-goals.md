@@ -1,6 +1,6 @@
 # G12 — Generate learning PRDs and executable goals
 
-**Status:** Queued  
+**Status:** Ready
 **Depends on:** G11  
 **Unlocks:** G13, G14, G15  
 **PRD references:** Sections 15, 19–20, 33
