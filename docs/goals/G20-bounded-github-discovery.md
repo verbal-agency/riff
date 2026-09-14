@@ -1,9 +1,10 @@
 # G20 — Implement bounded GitHub topic/search discovery
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G18
 **Unlocks:** Reviewed GitHub source expansion and broader implementation-pattern evidence
 **PRD references:** Sections 7.2, 8, 22, 24.3, 26–29, 33
+**Canonical scenario:** `SC-GITHUB-DISCOVERY-001`
 
 ## Outcome
 
@@ -57,30 +58,30 @@ specific reviewed candidate without changing any other configured source.
 
 ## Acceptance criteria
 
-- [ ] A schema-versioned policy validates at most three query terms, two pages
+- [x] A schema-versioned policy validates at most three query terms, two pages
   per query, six candidates per strategy, and ten requests per run, with
   explicit retry and stop rules.
-- [ ] A fixture-backed command runs the selected queries through an injected
+- [x] A fixture-backed command runs the selected queries through an injected
   client and emits a deterministic review queue containing query, seed,
   provider ID, canonical URL, alias/root, organization, topics, and reason
   codes.
-- [ ] Candidates with duplicate provider IDs/aliases, forks, mirrors, bots,
+- [x] Candidates with duplicate provider IDs/aliases, forks, mirrors, bots,
   popularity-only matches, or root concentration receive deterministic filter
   outcomes and cannot be promoted as independent evidence.
-- [ ] A rerun of the same policy, seed set, and fixture produces the same queue
+- [x] A rerun of the same policy, seed set, and fixture produces the same queue
   and zero duplicate candidate records; transient page failures preserve the
   page cursor for retry and permanent failures stop that query safely.
-- [ ] The promotion command requires an explicit user confirmation and writes
+- [x] The promotion command requires an explicit user confirmation and writes
   only the selected stable repository scope to `config/github_sources.json`,
   leaving all other candidates and source settings unchanged.
-- [ ] A promoted repository is consumable by the existing G03 collector with
+- [x] A promoted repository is consumable by the existing G03 collector with
   stable provider identity and provenance linking the evidence back to the
   discovery run and query.
-- [ ] Offline tests cover positive relevant matches, distractors, malformed
+- [x] Offline tests cover positive relevant matches, distractors, malformed
   responses, forks/mirrors, bot results, renamed repositories, duplicate
   releases, partial page failure, retry, bound exhaustion, unsupported query,
   and denied promotion cases.
-- [ ] Operator documentation describes dry-run, review, promotion, disable,
+- [x] Operator documentation describes dry-run, review, promotion, disable,
   rollback, request budgets, privacy boundaries, and the no-auto-promotion rule.
 
 ## Deliverables
@@ -172,6 +173,14 @@ creates a new discovery run without rewriting earlier queues.
 - Demonstrate deterministic replay, bounded request counts, and no automatic
   production-source mutation.
 - Run `git diff --check` and credential/private-URL scans.
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest -q tests/test_github_discovery.py` → **7 passed**.
+- `.venv/bin/python -m pytest -q` → **all offline tests passed** (database-marked tests skipped without a configured database).
+- `.venv/bin/python -m riff github discover --policy config/github_discovery.json --fixture tests/fixtures/github/discovery/search-responses-v1.json` produced a deterministic bounded queue with request/page limits, fork and popularity filters, and cursor state.
+- Review plus `--confirm PROMOTE --apply` wrote one disabled, provenance-bearing scope to an isolated registry copy; production `config/github_sources.json` was unchanged.
+- `.venv/bin/python -m py_compile src/riff/github_discovery.py src/riff/cli.py` and `git diff --check` passed.
 
 ## Handoff
 

@@ -136,3 +136,24 @@ The reproducible evaluation command is:
 The command reads only the recorded fixture and emits the same JSON metrics on
 every run. It does not instantiate the GitHub HTTP client and cannot mutate
 `config/github_sources.json` or a target repository.
+
+## G20 operator workflow
+
+The implementation keeps discovery output in a review queue before any source
+registry change. Run the fixture path locally with:
+
+```sh
+uv run riff github discover \
+  --policy config/github_discovery.json \
+  --fixture tests/fixtures/github/discovery/search-responses-v1.json \
+  --output /tmp/riff-github-queue.json
+uv run riff github queue --file /tmp/riff-github-queue.json
+uv run riff github review --file /tmp/riff-github-queue.json --candidate-id repo:5001 --apply
+uv run riff github promote --queue /tmp/riff-github-queue.json \
+  --candidate-id repo:5001 --confirm PROMOTE --apply
+```
+
+The promotion step writes a disabled scope with discovery run/query metadata;
+it does not enable collection. A live run requires both `--live` and an
+`enabled` policy whose source terms, privacy, request bounds, and retention
+have been reviewed. No live request or token is required by tests.

@@ -27,7 +27,18 @@ from .engineer_rss import (
 )
 from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
-from .github_discovery import evaluate_fixture as evaluate_github_discovery_fixture
+from .github_discovery import (
+    DiscoveryPolicyError,
+    FixtureDiscoveryFetcher,
+    HttpGitHubDiscoveryFetcher,
+    approve_candidates,
+    discover,
+    evaluate_fixture as evaluate_github_discovery_fixture,
+    load_policy as load_github_discovery_policy,
+    load_queue as load_github_discovery_queue,
+    promote_candidates,
+    write_queue as write_github_discovery_queue,
+)
 from .ingestion import HttpFeedFetcher
 from .ingestion_repository import IngestionRepository, RunStatus
 from .job_ingestion import JobIngestionRunner
@@ -90,6 +101,23 @@ def build_parser() -> argparse.ArgumentParser:
     github_subparsers = github.add_subparsers(dest="github_command", required=True)
     github_discovery = github_subparsers.add_parser("evaluate-discovery", help="evaluate a recorded discovery benchmark")
     github_discovery.add_argument("--file", required=True)
+    github_run = github_subparsers.add_parser("discover", help="run bounded topic/search discovery")
+    github_run.add_argument("--policy", default="config/github_discovery.json")
+    github_run.add_argument("--fixture", help="recorded search responses for an offline run")
+    github_run.add_argument("--output", help="write the review queue to this JSON file")
+    github_run.add_argument("--live", action="store_true", help="explicitly permit the bounded live GitHub API client")
+    github_queue = github_subparsers.add_parser("queue", help="inspect a discovery review queue")
+    github_queue.add_argument("--file", required=True)
+    github_review = github_subparsers.add_parser("review", help="approve candidates in a review queue")
+    github_review.add_argument("--file", required=True)
+    github_review.add_argument("--candidate-id", action="append", required=True)
+    github_review.add_argument("--apply", action="store_true", help="write the approved queue")
+    github_promote = github_subparsers.add_parser("promote", help="promote approved candidates into the GitHub registry")
+    github_promote.add_argument("--queue", required=True)
+    github_promote.add_argument("--candidate-id", action="append", required=True)
+    github_promote.add_argument("--registry", default="config/github_sources.json")
+    github_promote.add_argument("--confirm", required=True, help="type PROMOTE to confirm the scoped write")
+    github_promote.add_argument("--apply", action="store_true", help="write the registry and updated queue")
     ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
@@ -201,6 +229,43 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError) as exc:
             raise SystemExit(f"GitHub discovery fixture error: {exc}") from exc
         return 0
+    if args.command == "github" and args.github_command in {"discover", "queue", "review", "promote"}:
+        try:
+            if args.github_command == "discover":
+                policy = load_github_discovery_policy(args.policy)
+                if args.fixture:
+                    fixture = json.loads(Path(args.fixture).read_text(encoding="utf-8"))
+                    result = discover(policy, FixtureDiscoveryFetcher(fixture), fixture_id=str(fixture.get("fixture_id", args.fixture)))
+                else:
+                    if not args.live:
+                        raise DiscoveryPolicyError("live discovery requires --live; use --fixture for offline runs")
+                    if not policy.enabled:
+                        raise DiscoveryPolicyError("discovery policy is disabled")
+                    result = discover(policy, HttpGitHubDiscoveryFetcher(token=os.environ.get("GITHUB_TOKEN")))
+                if args.output:
+                    write_github_discovery_queue(args.output, result)
+                print(json.dumps(result, sort_keys=True))
+                return 0
+            if args.github_command == "queue":
+                print(json.dumps(load_github_discovery_queue(args.file), sort_keys=True))
+                return 0
+            if args.github_command == "review":
+                queue = load_github_discovery_queue(args.file)
+                result = approve_candidates(queue, args.candidate_id)
+                if args.apply:
+                    write_github_discovery_queue(args.file, result)
+                print(json.dumps(result, sort_keys=True))
+                return 0
+            queue = load_github_discovery_queue(args.queue)
+            registry = json.loads(Path(args.registry).read_text(encoding="utf-8"))
+            result = promote_candidates(queue, args.candidate_id, confirmation=args.confirm, config=registry, apply=args.apply)
+            if args.apply:
+                write_github_discovery_queue(args.queue, result["queue"])
+                Path(args.registry).write_text(json.dumps(result["config"], indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        except (OSError, ValueError, DiscoveryPolicyError) as exc:
+            raise SystemExit(f"GitHub discovery error: {exc}") from exc
     if args.command == "source" and args.source_command == "validate-manifest":
         try:
             manifest = load_manifest(args.manifest)
@@ -321,7 +386,8 @@ def main(argv: list[str] | None = None) -> int:
                             for key in (
                                 "engineer_source_id", "person_id", "person_name", "source_ownership",
                                 "organization_at_publication", "source_root", "correlation_group",
-                                "attribution_policy", "syndication_root",
+                                "attribution_policy", "syndication_root", "discovery_run_id",
+                                "discovered_by", "provider_repository_id",
                             )
                             if key in entry
                         },

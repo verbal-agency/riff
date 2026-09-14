@@ -41,6 +41,20 @@ identity and reversible aliases separately from posting evidence, and preserves
 retrieval history for exact reposts and expired listings. Missing job metadata
 remains null; no compensation, seniority, or date is inferred.
 
+## G20 bounded GitHub discovery
+
+Discovery is a bounded, file-backed review queue in front of the existing G03
+collector. `config/github_discovery.json` limits query terms, pages, candidates,
+requests, retries, and contributor expansion; it is disabled until an operator
+reviews the policy. The fixture-backed `github discover` command normalizes
+stable provider IDs, aliases, roots, organizations, fork/mirror flags, bot
+markers, and query provenance, then applies deterministic duplicate,
+popularity-only, and root-concentration filters. A candidate must transition
+from `NEW` to `APPROVED` through the review command before the `PROMOTE` token
+can write a single disabled scope to `config/github_sources.json`. The existing
+G03 collector remains the only path that stores GitHub evidence. Live discovery
+is explicit, read-only, token-safe, and never part of normal tests.
+
 ## G05 evidence receipts
 
 Receipts are compact, schema-versioned projections of one immutable raw

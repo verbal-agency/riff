@@ -84,6 +84,29 @@ Automated tests use recorded responses under `tests/fixtures/github/`; no live
 GitHub request is made by the test suite. A live credential smoke run is an
 explicit operator action, not part of normal verification.
 
+### Bounded GitHub discovery
+
+G20 keeps discovery separate from collection. Review the disabled-by-default
+policy in `config/github_discovery.json`, then run the recorded search fixture:
+
+```sh
+uv run riff github discover \
+  --policy config/github_discovery.json \
+  --fixture tests/fixtures/github/discovery/search-responses-v1.json \
+  --output /tmp/riff-github-queue.json
+uv run riff github queue --file /tmp/riff-github-queue.json
+uv run riff github review --file /tmp/riff-github-queue.json --candidate-id repo:5001 --apply
+uv run riff github promote --queue /tmp/riff-github-queue.json \
+  --candidate-id repo:5001 --confirm PROMOTE --apply
+```
+
+Promotion writes a disabled, provenance-bearing scope to
+`config/github_sources.json`; it never enables or collects a repository by
+itself. The live path requires `--live`, an enabled reviewed policy, and uses
+the existing bounded read-only GitHub REST client. Tests use recorded responses
+only and filter forks, mirrors, bots, duplicate aliases, and popularity-only
+matches.
+
 ## Job-market import
 
 G04 uses a permitted, offline-first JSON import seam rather than scraping a job

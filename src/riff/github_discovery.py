@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import re
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Protocol
+
+from .github_ingestion import GitHubResponse
 
 
 class DiscoveryEvaluationError(ValueError):
@@ -195,3 +200,447 @@ def _contamination(selected: list[Mapping[str, Any]]) -> float:
 
 def _syndication_rate(selected: list[Mapping[str, Any]]) -> float:
     return round(sum(item["duplicate_of"] is not None for item in selected) / 5, 4)
+
+
+# G20 implementation -------------------------------------------------------
+
+class DiscoveryPolicyError(ValueError):
+    """A discovery policy, response, or review transition is invalid."""
+
+
+class DiscoveryTransientError(RuntimeError):
+    """A discovery request can be retried without changing the policy."""
+
+
+class DiscoveryPermanentError(RuntimeError):
+    """A discovery request or response cannot be retried safely."""
+
+
+class DiscoveryFetcher(Protocol):
+    def search(self, query: str, *, page: int) -> GitHubResponse:
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveryPolicy:
+    schema_version: int
+    policy_id: str
+    query_terms: tuple[str, ...]
+    seed_source_ids: tuple[str, ...]
+    max_pages_per_query: int
+    max_candidates_per_query: int
+    max_requests: int
+    max_contributor_expansion: int
+    retry_limit: int
+    stop_rules: dict[str, Any]
+    review_required: bool
+    enabled: bool
+    popularity_only_stars: int = 50_000
+
+
+@dataclass
+class DiscoveryCandidate:
+    candidate_id: str
+    provider_repository_id: str
+    full_name: str
+    canonical_url: str
+    aliases: list[str]
+    organization: str | None
+    root_id: str
+    topics: list[str]
+    stars: int | None
+    is_fork: bool
+    is_mirror: bool
+    bot_only: bool
+    discovered_by: dict[str, Any]
+    seed_source_id: str | None
+    filter_reasons: list[str] = field(default_factory=list)
+    review_status: str = "NEW"
+    source_scope: dict[str, Any] = field(default_factory=dict)
+    duplicate_of: str | None = None
+    relevant: bool = False
+
+
+def load_policy(path_or_payload: str | Path | Mapping[str, Any]) -> DiscoveryPolicy:
+    if isinstance(path_or_payload, Mapping):
+        payload = dict(path_or_payload)
+    else:
+        try:
+            payload = json.loads(Path(path_or_payload).read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise DiscoveryPolicyError("GitHub discovery policy could not be read") from exc
+    if payload.get("schema_version") != 1:
+        raise DiscoveryPolicyError("discovery policy requires schema_version 1")
+    required = {
+        "policy_id", "query_terms", "seed_source_ids", "max_pages_per_query",
+        "max_candidates_per_query", "max_requests", "max_contributor_expansion",
+        "retry_limit", "stop_rules", "review_required", "enabled",
+    }
+    missing = required - set(payload)
+    if missing:
+        raise DiscoveryPolicyError(f"discovery policy missing: {', '.join(sorted(missing))}")
+    terms = payload["query_terms"]
+    seeds = payload["seed_source_ids"]
+    if not isinstance(terms, list) or not 1 <= len(terms) <= 3 or any(not isinstance(item, str) or not item.strip() for item in terms):
+        raise DiscoveryPolicyError("query_terms must contain one to three non-empty strings")
+    if not isinstance(seeds, list) or any(not isinstance(item, str) or not item.strip() for item in seeds):
+        raise DiscoveryPolicyError("seed_source_ids must be a string list")
+    bounds = {
+        "max_pages_per_query": (1, 2),
+        "max_candidates_per_query": (1, 6),
+        "max_requests": (1, 10),
+        "max_contributor_expansion": (0, 2),
+        "retry_limit": (0, 3),
+    }
+    for name, (minimum, maximum) in bounds.items():
+        value = payload[name]
+        if not isinstance(value, int) or not minimum <= value <= maximum:
+            raise DiscoveryPolicyError(f"{name} must be between {minimum} and {maximum}")
+    if not isinstance(payload["stop_rules"], Mapping):
+        raise DiscoveryPolicyError("stop_rules must be an object")
+    if not isinstance(payload["review_required"], bool) or payload["review_required"] is not True:
+        raise DiscoveryPolicyError("review_required must remain true")
+    if not isinstance(payload["enabled"], bool):
+        raise DiscoveryPolicyError("enabled must be boolean")
+    popularity = payload.get("popularity_only_stars", 50_000)
+    if not isinstance(popularity, int) or popularity < 1:
+        raise DiscoveryPolicyError("popularity_only_stars must be positive")
+    return DiscoveryPolicy(
+        schema_version=1,
+        policy_id=str(payload["policy_id"]),
+        query_terms=tuple(item.strip() for item in terms),
+        seed_source_ids=tuple(item.strip() for item in seeds),
+        max_pages_per_query=payload["max_pages_per_query"],
+        max_candidates_per_query=payload["max_candidates_per_query"],
+        max_requests=payload["max_requests"],
+        max_contributor_expansion=payload["max_contributor_expansion"],
+        retry_limit=payload["retry_limit"],
+        stop_rules=dict(payload["stop_rules"]),
+        review_required=True,
+        enabled=payload["enabled"],
+        popularity_only_stars=popularity,
+    )
+
+
+class FixtureDiscoveryFetcher:
+    """Search client backed entirely by a recorded discovery fixture."""
+
+    def __init__(self, fixture: Mapping[str, Any] | str | Path):
+        if not isinstance(fixture, Mapping):
+            try:
+                fixture = json.loads(Path(fixture).read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise DiscoveryPolicyError("discovery response fixture could not be read") from exc
+        if fixture.get("schema_version") != 1 or not isinstance(fixture.get("responses"), Mapping):
+            raise DiscoveryPolicyError("discovery response fixture requires schema_version 1 and responses")
+        self.responses = fixture["responses"]
+        self.calls: list[tuple[str, int]] = []
+
+    def search(self, query: str, *, page: int) -> GitHubResponse:
+        self.calls.append((query, page))
+        response = self.responses.get(query)
+        if not isinstance(response, Mapping):
+            raise DiscoveryPermanentError(f"no recorded response for query: {query}")
+        page_value = response.get(str(page), response.get(page))
+        if isinstance(page_value, Mapping) and "error" in page_value:
+            kind = page_value["error"]
+            if kind == "transient":
+                raise DiscoveryTransientError(f"transient fixture failure for {query} page {page}")
+            raise DiscoveryPermanentError(f"permanent fixture failure for {query} page {page}")
+        if page_value is None:
+            return GitHubResponse([], {})
+        if not isinstance(page_value, list):
+            raise DiscoveryPermanentError(f"fixture page for {query} must be a list")
+        return GitHubResponse(page_value, {})
+
+
+class HttpGitHubDiscoveryFetcher:
+    """Thin adapter that keeps discovery on the existing bounded REST client."""
+
+    def __init__(self, *, token: str | None = None):
+        from .github_ingestion import HttpGitHubFetcher
+
+        self._fetcher = HttpGitHubFetcher(token=token)
+
+    def search(self, query: str, *, page: int) -> GitHubResponse:
+        return self._fetcher.fetch("/search/repositories", params={"q": query, "page": page, "per_page": 100})
+
+
+def discover(policy: DiscoveryPolicy | Mapping[str, Any] | str | Path, fetcher: DiscoveryFetcher, *, fixture_id: str | None = None) -> dict[str, Any]:
+    """Run bounded topic/text discovery and return a JSON-serializable queue."""
+
+    if not isinstance(policy, DiscoveryPolicy):
+        policy = load_policy(policy)
+    if not policy.enabled and fixture_id is None and isinstance(fetcher, FixtureDiscoveryFetcher) is False:
+        raise DiscoveryPolicyError("live discovery is disabled by policy")
+    identity = {
+        "policy_id": policy.policy_id,
+        "query_terms": policy.query_terms,
+        "seed_source_ids": policy.seed_source_ids,
+        "fixture_id": fixture_id,
+    }
+    run_id = "discovery-" + hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
+    candidates: list[DiscoveryCandidate] = []
+    requests = retries = pages = 0
+    stop_reasons: list[str] = []
+    cursor_state: dict[str, int] = {}
+    for term_index, query in enumerate(policy.query_terms):
+        seed = policy.seed_source_ids[term_index % len(policy.seed_source_ids)] if policy.seed_source_ids else None
+        query_count = 0
+        for page in range(1, policy.max_pages_per_query + 1):
+            if requests >= policy.max_requests:
+                stop_reasons.append("request_bound_reached")
+                break
+            attempt = 0
+            while True:
+                requests += 1
+                try:
+                    response = fetcher.search(query, page=page)
+                    break
+                except DiscoveryTransientError:
+                    retries += 1
+                    attempt += 1
+                    if attempt > policy.retry_limit or requests >= policy.max_requests:
+                        stop_reasons.append(f"transient_failure:{query}:{page}")
+                        response = None
+                        break
+                except Exception as exc:
+                    stop_reasons.append(f"permanent_failure:{query}:{page}")
+                    response = None
+                    break
+            if response is None:
+                break
+            pages += 1
+            cursor_state[query] = page
+            if not isinstance(response.data, list):
+                stop_reasons.append(f"malformed_response:{query}:{page}")
+                break
+            if not response.data:
+                break
+            for raw in response.data:
+                if query_count >= policy.max_candidates_per_query:
+                    stop_reasons.append(f"candidate_bound_reached:{query}")
+                    break
+                try:
+                    candidate = _normalize_discovery_candidate(raw, query=query, page=page, seed_source_id=seed, policy=policy)
+                except DiscoveryPermanentError:
+                    stop_reasons.append(f"malformed_item:{query}:{page}")
+                    continue
+                prior = sum(1 for item in candidates if item.provider_repository_id == candidate.provider_repository_id)
+                if prior:
+                    candidate.candidate_id = f"{candidate.candidate_id}:duplicate-{prior}"
+                candidates.append(candidate)
+                query_count += 1
+            if query_count >= policy.max_candidates_per_query:
+                break
+        if requests >= policy.max_requests:
+            break
+    _deduplicate_candidates(candidates)
+    _apply_root_concentration(candidates, policy)
+    return {
+        "schema_version": 1,
+        "run_id": run_id,
+        "policy_id": policy.policy_id,
+        "policy_version": "github-discovery-v1",
+        "query_terms": list(policy.query_terms),
+        "request_count": requests,
+        "retry_count": retries,
+        "pages_examined": pages,
+        "cursor_state": cursor_state,
+        "stop_reasons": sorted(set(stop_reasons)) or ["query_and_page_bound_reached"],
+        "candidates": [asdict(item) for item in candidates],
+    }
+
+
+def _normalize_discovery_candidate(raw: Any, *, query: str, page: int, seed_source_id: str | None, policy: DiscoveryPolicy) -> DiscoveryCandidate:
+    if not isinstance(raw, Mapping):
+        raise DiscoveryPermanentError("repository search item must be an object")
+    provider_id = str(raw.get("id") or raw.get("provider_repository_id") or "").strip()
+    full_name = str(raw.get("full_name") or "").strip()
+    if not provider_id or not full_name or "/" not in full_name:
+        raise DiscoveryPermanentError("repository search item lacks stable identity")
+    owner = raw.get("owner") if isinstance(raw.get("owner"), Mapping) else {}
+    organization = str(raw.get("organization") or owner.get("login") or full_name.split("/", 1)[0]) or None
+    canonical = str(raw.get("html_url") or raw.get("canonical_url") or f"https://github.com/{full_name}").strip()
+    parent = raw.get("parent") if isinstance(raw.get("parent"), Mapping) else raw.get("source") if isinstance(raw.get("source"), Mapping) else {}
+    root_id = f"repo:{parent.get('id')}" if raw.get("fork") and parent.get("id") else f"repo:{provider_id}"
+    topics = raw.get("topics") if isinstance(raw.get("topics"), list) else []
+    topics = sorted({str(item).strip() for item in topics if str(item).strip()})
+    description = str(raw.get("description") or "")
+    haystack = " ".join([full_name, description, " ".join(topics)]).lower()
+    query_tokens = [token for token in re.split(r"[^a-z0-9]+", query.lower()) if token]
+    relevant = bool(raw.get("relevant")) if "relevant" in raw else all(token in haystack for token in query_tokens[:3])
+    owner_login = str(owner.get("login") or organization or "")
+    bot_only = bool(raw.get("bot_only")) or str(owner.get("type") or "").lower() == "bot" or owner_login.endswith("[bot]") or "bot" in owner_login.lower()
+    is_fork = bool(raw.get("fork", raw.get("is_fork", False)))
+    is_mirror = bool(raw.get("is_mirror", False) or raw.get("mirror_url"))
+    stars = raw.get("stargazers_count", raw.get("stars"))
+    stars = int(stars) if isinstance(stars, int) and stars >= 0 else None
+    reasons: list[str] = []
+    if is_fork:
+        reasons.append("FORK")
+    if is_mirror:
+        reasons.append("MIRROR")
+    if bot_only:
+        reasons.append("BOT")
+    if stars is not None and stars >= policy.popularity_only_stars and not relevant:
+        reasons.append("POPULARITY_ONLY")
+    aliases = raw.get("aliases") if isinstance(raw.get("aliases"), list) else []
+    aliases = sorted({str(item).strip() for item in aliases if str(item).strip()} | ({str(raw["previous_full_name"])} if raw.get("previous_full_name") else set()))
+    return DiscoveryCandidate(
+        candidate_id=f"repo:{provider_id}",
+        provider_repository_id=provider_id,
+        full_name=full_name,
+        canonical_url=canonical,
+        aliases=aliases,
+        organization=organization,
+        root_id=root_id,
+        topics=topics,
+        stars=stars,
+        is_fork=is_fork,
+        is_mirror=is_mirror,
+        bot_only=bot_only,
+        discovered_by={"query": query, "page": page},
+        seed_source_id=seed_source_id,
+        filter_reasons=reasons,
+        review_status="FILTERED" if reasons else "NEW",
+        source_scope={"endpoint": f"https://api.github.com/repos/{full_name}", "enabled": False},
+        relevant=relevant,
+    )
+
+
+def _deduplicate_candidates(candidates: list[DiscoveryCandidate]) -> None:
+    by_provider: dict[str, DiscoveryCandidate] = {}
+    by_alias: dict[str, DiscoveryCandidate] = {}
+    for candidate in candidates:
+        existing = by_provider.get(candidate.provider_repository_id)
+        if existing and existing is not candidate:
+            candidate.duplicate_of = existing.candidate_id
+            candidate.filter_reasons.append("DUPLICATE_PROVIDER_ID")
+            candidate.review_status = "FILTERED"
+            existing.aliases = sorted(set(existing.aliases + candidate.aliases + [candidate.full_name]))
+            continue
+        by_provider[candidate.provider_repository_id] = candidate
+        aliases = {candidate.canonical_url, candidate.full_name, *candidate.aliases}
+        duplicate = next((by_alias[item] for item in aliases if item in by_alias), None)
+        if duplicate and duplicate is not candidate:
+            candidate.duplicate_of = duplicate.candidate_id
+            candidate.filter_reasons.append("DUPLICATE_ALIAS")
+            candidate.review_status = "FILTERED"
+        for item in aliases:
+            by_alias[item] = duplicate or candidate
+
+
+def _apply_root_concentration(candidates: list[DiscoveryCandidate], policy: DiscoveryPolicy) -> None:
+    threshold = policy.stop_rules.get("root_concentration_threshold", 1.0)
+    if not isinstance(threshold, (int, float)) or not 0 < threshold <= 1:
+        return
+    counts: dict[str, int] = {}
+    for candidate in candidates:
+        counts[candidate.root_id] = counts.get(candidate.root_id, 0) + 1
+    total = len(candidates) or 1
+    for root_id, count in counts.items():
+        if count / total <= threshold:
+            continue
+        seen = False
+        for candidate in candidates:
+            if candidate.root_id != root_id:
+                continue
+            if seen and "ROOT_CONCENTRATION" not in candidate.filter_reasons:
+                candidate.filter_reasons.append("ROOT_CONCENTRATION")
+                candidate.review_status = "FILTERED"
+            seen = True
+
+
+def validate_queue(queue: Mapping[str, Any]) -> None:
+    if queue.get("schema_version") != 1 or not isinstance(queue.get("candidates"), list):
+        raise DiscoveryPolicyError("review queue requires schema_version 1 and candidates")
+    ids: set[str] = set()
+    for item in queue["candidates"]:
+        if not isinstance(item, Mapping):
+            raise DiscoveryPolicyError("review queue candidate must be an object")
+        required = {"candidate_id", "provider_repository_id", "full_name", "canonical_url", "review_status", "source_scope"}
+        missing = required - set(item)
+        if missing:
+            raise DiscoveryPolicyError(f"review queue candidate missing: {', '.join(sorted(missing))}")
+        if item["candidate_id"] in ids:
+            raise DiscoveryPolicyError("review queue contains duplicate candidate_id")
+        ids.add(item["candidate_id"])
+        if item["review_status"] not in {"NEW", "FILTERED", "REJECTED", "APPROVED", "PROMOTED"}:
+            raise DiscoveryPolicyError("review queue contains invalid review status")
+
+
+def write_queue(path: str | Path, queue: Mapping[str, Any]) -> None:
+    validate_queue(queue)
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(queue, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def load_queue(path: str | Path) -> dict[str, Any]:
+    try:
+        queue = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise DiscoveryPolicyError("review queue could not be read") from exc
+    validate_queue(queue)
+    return queue
+
+
+def approve_candidates(queue: dict[str, Any], candidate_ids: list[str]) -> dict[str, Any]:
+    validate_queue(queue)
+    requested = set(candidate_ids)
+    found = {item["candidate_id"] for item in queue["candidates"]}
+    unknown = requested - found
+    if unknown:
+        raise DiscoveryPolicyError(f"unknown candidate(s): {', '.join(sorted(unknown))}")
+    for item in queue["candidates"]:
+        if item["candidate_id"] in requested:
+            if item["review_status"] != "NEW":
+                raise DiscoveryPolicyError(f"candidate {item['candidate_id']} is not reviewable")
+            if item.get("filter_reasons"):
+                raise DiscoveryPolicyError(f"candidate {item['candidate_id']} is filtered and cannot be approved")
+            item["review_status"] = "APPROVED"
+    return queue
+
+
+def promote_candidates(queue: dict[str, Any], candidate_ids: list[str], *, confirmation: str, config: Mapping[str, Any], apply: bool = False) -> dict[str, Any]:
+    validate_queue(queue)
+    if confirmation != "PROMOTE":
+        raise DiscoveryPolicyError("promotion requires confirmation token PROMOTE")
+    requested = set(candidate_ids)
+    projected_queue = json.loads(json.dumps(queue))
+    selected = [item for item in projected_queue["candidates"] if item["candidate_id"] in requested]
+    if len(selected) != len(requested):
+        raise DiscoveryPolicyError("promotion contains an unknown candidate")
+    if any(item["review_status"] != "APPROVED" for item in selected):
+        raise DiscoveryPolicyError("only APPROVED candidates may be promoted")
+    if config.get("schema_version") != 1 or not isinstance(config.get("sources"), list):
+        raise DiscoveryPolicyError("GitHub source registry requires schema_version 1 and sources")
+    projected = json.loads(json.dumps(config))
+    existing = {item.get("source_id"): item for item in projected["sources"]}
+    for item in selected:
+        source_id = f"github-discovered-{item['provider_repository_id']}"
+        existing[source_id] = {
+            "source_id": source_id,
+            "name": f"Discovered GitHub repository: {item['full_name']}",
+            "source_type": "GITHUB",
+            "endpoint": item["source_scope"]["endpoint"],
+            "endpoint_or_scope": item["source_scope"]["endpoint"],
+            "access_method": "Read-only GitHub REST API for one reviewed public repository",
+            "permission_status": "PENDING_REVIEW",
+            "enabled": False,
+            "retention_mode": "Store bounded repository artifacts with canonical URLs",
+            "cadence": "daily",
+            "fixture_plan": "Recorded discovery and collector fixtures",
+            "discovery_run_id": queue.get("run_id"),
+            "discovered_by": item.get("discovered_by"),
+            "provider_repository_id": item["provider_repository_id"],
+        }
+        item["review_status"] = "PROMOTED"
+    projected["sources"] = sorted(existing.values(), key=lambda value: value.get("source_id", ""))
+    return {"config": projected, "queue": projected_queue, "promoted": sorted(requested), "applied": apply}
+
+
+# Stable descriptive aliases for callers that prefer verb-oriented names.
+validate_policy = load_policy
+run_discovery = discover

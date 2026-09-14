@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "fixture_id": "g20-search-responses-v1",
+  "responses": {
+    "durable execution": {
+      "1": [
+        {"id": 4242, "full_name": "acme/riff-demo", "html_url": "https://github.com/acme/riff-demo", "owner": {"login": "acme", "type": "Organization"}, "description": "Durable execution runtime", "topics": ["durable-execution", "agent-runtime"], "stargazers_count": 125},
+        {"id": 5001, "full_name": "temporalio/sdk-python", "html_url": "https://github.com/temporalio/sdk-python", "owner": {"login": "temporalio", "type": "Organization"}, "description": "Durable workflow runtime", "topics": ["durable-execution", "workflow-runtime"], "stargazers_count": 2100},
+        {"id": 5252, "full_name": "acme/riff-fork", "html_url": "https://github.com/acme/riff-fork", "owner": {"login": "acme", "type": "Organization"}, "description": "Durable execution runtime fork", "topics": ["durable-execution"], "stargazers_count": 3, "fork": true, "parent": {"id": 4242}}
+      ],
+      "2": []
+    },
+    "agent orchestration": {
+      "1": [
+        {"id": 5002, "full_name": "langchain-ai/langgraph", "html_url": "https://github.com/langchain-ai/langgraph", "owner": {"login": "langchain-ai", "type": "Organization"}, "description": "Agent orchestration and observability", "topics": ["agents", "orchestration"], "stargazers_count": 18000},
+        {"id": 7002, "full_name": "acme/release-bot", "html_url": "https://github.com/acme/release-bot", "owner": {"login": "release-bot", "type": "Bot"}, "description": "Automated release mirror", "topics": ["agents"], "stargazers_count": 1},
+        {"id": 7001, "full_name": "huge-corp/popular-crm", "html_url": "https://github.com/huge-corp/popular-crm", "owner": {"login": "huge-corp", "type": "Organization"}, "description": "Business software", "topics": ["business-software"], "stargazers_count": 100000}
+      ],
+      "2": []
+    },
+    "workflow runtime": {
+      "1": [
+        {"id": 5004, "full_name": "cambridge-systems/workflow-lab", "html_url": "https://github.com/cambridge-systems/workflow-lab", "owner": {"login": "cambridge-systems", "type": "Organization"}, "description": "Workflow correctness lab", "topics": ["workflow-correctness"], "stargazers_count": 88}
+      ],
+      "2": []
+    }
+  }
+}
