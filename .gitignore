@@ -1,0 +1,66 @@
+# Python bytecode and local tooling caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pytype/
+.hypothesis/
+.tox/
+.nox/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Coverage and test output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+pytest-report.xml
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.secrets.*
+*.local.json
+
+# Local Riff runtime data and exports. Keep committed fixtures/evaluation data
+# outside these directories so they remain versioned.
+.riff/
+data/local/
+snapshots/local/
+exports/local/
+reports/local/
+postgres-data/
+tmp/
+
+# Logs and local databases
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# Editor and operating-system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100/
+.Trashes/
+.idea/
+.vscode/
+*.swp
+*.swo
+
