@@ -350,6 +350,16 @@ class EvidenceRepository:
             ).fetchone()
         return int(row[0])
 
+    def list_evidence_ids(self, *, limit: int = 500) -> list[str]:
+        if limit < 1 or limit > 500:
+            raise EvidenceValidationError("limit must be between 1 and 500")
+        with connection(self.database_url) as conn:
+            rows = conn.execute(
+                "SELECT evidence_id FROM evidence_versions ORDER BY retrieved_at, evidence_id LIMIT %s",
+                (limit,),
+            ).fetchall()
+        return [_as_text(row[0]) for row in rows]
+
     @staticmethod
     def _record_query(where: str, *, joins: str = "") -> str:
         return (

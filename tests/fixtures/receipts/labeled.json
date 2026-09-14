@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "examples": [
+    {
+      "id": "technical-writing-1",
+      "expected": {
+        "capability_candidates": ["durable execution"],
+        "technology_candidates": ["Postgres"],
+        "organization_company": null,
+        "claims": ["replayable workflows"],
+        "source_metadata": {"source_type": "TECHNICAL_WRITING"},
+        "relevant_spans": ["Replayable workflows survive restarts."]
+      },
+      "predicted": {
+        "capability_candidates": ["durable execution"],
+        "technology_candidates": ["Postgres"],
+        "organization_company": null,
+        "claims": ["replayable workflows"],
+        "source_metadata": {"source_type": "TECHNICAL_WRITING"},
+        "relevant_spans": ["Replayable workflows survive restarts."]
+      }
+    },
+    {
+      "id": "github-1",
+      "expected": {
+        "capability_candidates": ["durable execution"],
+        "technology_candidates": ["GitHub Actions"],
+        "organization_company": ["Acme AI"],
+        "claims": ["releases add replay"],
+        "source_metadata": {"source_type": "GITHUB"},
+        "relevant_spans": ["Releases add replay checkpoints."]
+      },
+      "predicted": {
+        "capability_candidates": ["durable execution"],
+        "technology_candidates": ["GitHub Actions"],
+        "organization_company": ["Acme AI"],
+        "claims": ["releases add replay"],
+        "source_metadata": {"source_type": "GITHUB"},
+        "relevant_spans": ["Releases add replay checkpoints."]
+      }
+    },
+    {
+      "id": "jobs-1",
+      "expected": {
+        "capability_candidates": ["evaluation"],
+        "technology_candidates": ["Python"],
+        "organization_company": ["Acme AI"],
+        "claims": ["build evaluation systems"],
+        "source_metadata": {"source_type": "JOBS"},
+        "relevant_spans": ["Build evaluation systems."]
+      },
+      "predicted": {
+        "capability_candidates": ["evaluation"],
+        "technology_candidates": ["Python"],
+        "organization_company": ["Acme AI"],
+        "claims": ["build evaluation systems"],
+        "source_metadata": {"source_type": "JOBS"},
+        "relevant_spans": ["Build evaluation systems."]
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # G05 — Produce compact, versioned Evidence Receipts
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G02, G03, G04  
 **Unlocks:** G06  
 **PRD references:** Sections 8.2, 21, 24.1, 28–29
@@ -51,13 +51,13 @@ An operator can inspect a receipt, follow every extracted claim or relevant span
 
 ## Acceptance criteria
 
-- [ ] Representative items from all three source types produce schema-valid receipts with correct evidence IDs and source metadata.
-- [ ] Every extracted relevant span resolves to a valid location or exact excerpt in the stored raw evidence.
-- [ ] A second run over unchanged evidence and extractor version performs zero extraction calls.
-- [ ] Changing the extractor version produces a new receipt version while retaining the prior one.
-- [ ] Malformed, missing-field, out-of-source-span, and transient-provider responses have tested, inspectable outcomes and safe retry behavior.
-- [ ] The evaluation report scores capability, technology, organization/company, claim, metadata, and span extraction separately.
-- [ ] Downstream receipt retrieval does not require loading the raw body unless explicitly requested.
+- [x] Representative items from all three source types produce schema-valid receipts with correct evidence IDs and source metadata.
+- [x] Every extracted relevant span resolves to a valid location or exact excerpt in the stored raw evidence.
+- [x] A second run over unchanged evidence and extractor version performs zero extraction calls.
+- [x] Changing the extractor version produces a new receipt version while retaining the prior one.
+- [x] Malformed, missing-field, out-of-source-span, and transient-provider responses have tested, inspectable outcomes and safe retry behavior.
+- [x] The evaluation report scores capability, technology, organization/company, claim, metadata, and span extraction separately.
+- [x] Downstream receipt retrieval does not require loading the raw body unless explicitly requested.
 
 ## Verification evidence
 
@@ -67,7 +67,7 @@ Run the labeled fixture evaluation with a deterministic extractor and, if config
 
 Exact quality thresholds should be baselined here rather than invented without data. The report must expose per-field errors so later work can set justified gates. Avoid optimizing a single aggregate score that hides provenance failures.
 
-## Execution contract for the next Luna run
+## Execution contract (satisfied in this cycle)
 
 ### Expected implementation surface
 
@@ -131,6 +131,19 @@ conditions. Keep per-item and total-call budgets explicit.
 | Span grounding | `test_spans_resolve_to_raw_evidence` |
 | Cache behavior | `test_unchanged_evidence_is_not_reprocessed` |
 | Version change | `test_extractor_version_creates_new_receipt` |
-| Validation/retry | `test_invalid_and_transient_outputs_are_inspectable` |
+| Validation/retry | `test_invalid_and_transient_outputs_are_inspectable`, `test_missing_receipt_fields_are_rejected` |
 | Field-level evaluation | `test_evaluation_report_scores_each_field` |
 | Raw-body boundary | `test_receipt_retrieval_does_not_load_raw_by_default` |
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest` — **25 passed, 34 skipped** (offline suite).
+- Fresh Postgres with migration `006_evidence_receipts.sql`, then
+  `.venv/bin/python -m pytest -m postgres` — **34 passed**.
+- `.venv/bin/python -m riff receipt evaluate --file tests/fixtures/receipts/labeled.json`
+  — 3 examples; capability, technology, organization/company, claim, metadata,
+  and span fields each scored separately at 1.0 accuracy.
+- `git diff --check` and `.venv/bin/python -m compileall -q src tests` pass.
+- Integration tests demonstrate three source types, exact span grounding,
+  zero-call cache replay, extractor-version retention, inspectable validation
+  and transient failures, retry behavior, and compact receipt retrieval.

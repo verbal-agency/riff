@@ -19,6 +19,8 @@ from .ingestion import HttpFeedFetcher
 from .ingestion_repository import IngestionRepository, RunStatus
 from .job_ingestion import JobIngestionRunner
 from .logging import configure_logging, event
+from .receipt_evaluation import evaluate_labeled_fixture
+from .receipts import KeywordExtractor, ReceiptProcessor, ReceiptRepository
 from .worker import run_worker
 from .writing_ingestion import WritingIngestionRunner
 
@@ -54,11 +56,22 @@ def build_parser() -> argparse.ArgumentParser:
     job_import.add_argument("--source-id", required=True)
     job_import.add_argument("--file", required=True)
     job_import.add_argument("--content-limit", type=int, default=20_000)
+    receipt = subparsers.add_parser("receipt", help="process and evaluate Evidence Receipts")
+    receipt_subparsers = receipt.add_subparsers(dest="receipt_command", required=True)
+    receipt_process = receipt_subparsers.add_parser("process", help="process pending evidence with the local extractor")
+    receipt_process.add_argument("--evidence-id", action="append")
+    receipt_process.add_argument("--limit", type=int, default=100)
+    receipt_process.add_argument("--force", action="store_true")
+    receipt_evaluate = receipt_subparsers.add_parser("evaluate", help="evaluate a labeled receipt fixture")
+    receipt_evaluate.add_argument("--file", required=True)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "receipt" and args.receipt_command == "evaluate":
+        print(json.dumps(evaluate_labeled_fixture(args.file), sort_keys=True))
+        return 0
     try:
         settings = Settings.from_env()
     except ValueError as exc:
@@ -147,6 +160,18 @@ def main(argv: list[str] | None = None) -> int:
         ).run_file(args.file, source_ids=[args.source_id])
         print(json.dumps(asdict(summary), sort_keys=True, default=str))
         return 0 if summary.status != RunStatus.FAILED else 1
+    if args.command == "receipt":
+        if args.limit < 1 or args.limit > 500:
+            raise SystemExit("--limit must be between 1 and 500")
+        evidence = EvidenceRepository(settings.database_url)
+        evidence_ids = (args.evidence_id[: args.limit] if args.evidence_id else evidence.list_evidence_ids(limit=args.limit))
+        summary = ReceiptProcessor(
+            evidence,
+            ReceiptRepository(settings.database_url),
+            KeywordExtractor(),
+        ).process(evidence_ids, force=args.force)
+        print(json.dumps(asdict(summary), sort_keys=True, default=str))
+        return 0 if not (summary.failed_validation or summary.failed_transient) else 1
 
     import uvicorn
 

@@ -81,4 +81,21 @@ compensation, seniority, and dates remain unknown, and expired postings are
 retained. Fixtures under `tests/fixtures/jobs/` are the normal development and
 evaluation path and require no credentials or network access.
 
+## Evidence Receipts
+
+G05 turns stored evidence into compact, validated receipts for downstream
+normalization. Processing is cache-keyed by evidence content hash and extractor
+version, and grounded spans retain exact offsets back to the raw evidence:
+
+```sh
+uv run riff receipt process --limit 100
+uv run riff receipt process --evidence-id <evidence-id> --force
+uv run riff receipt evaluate --file tests/fixtures/receipts/labeled.json
+```
+
+The default `keyword-v1` extractor is deterministic and offline. A structured
+provider can be injected behind the same extractor interface later. Failed
+validation and transient attempts are retained for inspection and retry; a
+receipt read returns compact fields and does not load the raw body.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.

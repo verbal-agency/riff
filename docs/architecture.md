@@ -40,3 +40,15 @@ site. The runner uses the G02 run/cursor/item contracts, stores employer
 identity and reversible aliases separately from posting evidence, and preserves
 retrieval history for exact reposts and expired listings. Missing job metadata
 remains null; no compensation, seniority, or date is inferred.
+
+## G05 evidence receipts
+
+Receipts are compact, schema-versioned projections of one immutable raw
+evidence version. A receipt is cache-keyed by evidence content hash, extractor
+version, and prompt/schema version, so unchanged evidence is not reprocessed;
+changing the extractor retains the prior receipt as a separate version.
+Relevant spans are validated against the stored raw text using exact offsets and
+excerpts, and claims may cite only validated span IDs. Extraction providers sit
+behind an injected interface, while validation and retry outcomes are recorded
+in receipt attempts. Receipt retrieval is compact by default and never loads
+the raw body; callers explicitly join to evidence when they need source text.
