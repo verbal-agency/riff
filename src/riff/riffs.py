@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timezone
 from typing import Any, Mapping, Protocol, Sequence
 
@@ -318,7 +318,7 @@ class DailyRiffService:
         reason = None if drafts else ("No candidate met the quality threshold." if not selected else "No candidate produced a publication-ready, evidence-backed Riff.")
         result = DailyResult(str(uuid.uuid4()), run_date, self.policy_version, fingerprint, status, reason, tuple(_published_preview(result_id := "", result_run := "", rank, draft) for rank, draft, _ in drafts), provider_calls=len(selected))
         saved = self.repository.save_run(result, contexts, drafts, rejected=rejected)
-        return saved
+        return replace(saved, provider_calls=len(selected))
 
 
 def _published_preview(_riff_id: str, _run_id: str, rank: int, draft: RiffDraft) -> PublishedRiff:
@@ -328,6 +328,11 @@ def _published_preview(_riff_id: str, _run_id: str, rank: int, draft: RiffDraft)
 def _fingerprint(run_date: date, policy: str, candidates: Sequence[CandidateContext]) -> str:
     payload = [{key: getattr(item, key) for key in ("candidate_id", "capability_id", "score", "classification", "observation", "receipt_ids", "profile_slice", "decision_ids", "profile_state", "associated_technologies")} for item in candidates]
     return hashlib.sha256(json.dumps({"date": run_date.isoformat(), "policy": policy, "candidates": payload}, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def daily_input_fingerprint(run_date: date, policy: str, candidates: Sequence[CandidateContext]) -> str:
+    """Return the same stable identity used by ``DailyRiffService``."""
+    return _fingerprint(run_date, policy, candidates)
 
 
 def _daily_result(row: tuple[Any, ...], riffs: Sequence[tuple[Any, ...]]) -> DailyResult:

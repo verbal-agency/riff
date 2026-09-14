@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-09-14",
+  "policy_version": "riff-policy-v1",
+  "receipts": [
+    {"receipt_id": "daily-r1", "summary": "Independent teams describe resumable workflow recovery.", "raw_content": "Independent teams describe resumable workflow recovery in production."},
+    {"receipt_id": "daily-r2", "summary": "A second source documents checkpoint replay for agents.", "raw_content": "A second source documents checkpoint replay for agents."},
+    {"receipt_id": "daily-r3", "summary": "Hiring evidence names durable execution as a requirement.", "raw_content": "Hiring evidence names durable execution as a requirement."}
+  ],
+  "candidates": [
+    {"candidate_id": "daily-c1", "capability_id": "durable-agent-execution", "score": 0.95, "classification": "TREND_CANDIDATE", "observation": "Independent evidence is converging on resumable agent workflows.", "receipt_ids": ["daily-r1"], "profile_state": "SIGNALING_GAP", "associated_technologies": ["Temporal", "LangGraph"]},
+    {"candidate_id": "daily-c2", "capability_id": "agent-observability", "score": 0.84, "classification": "TREND_CANDIDATE", "observation": "Teams are adding explicit observability around agent runs.", "receipt_ids": ["daily-r2"], "profile_state": "IMPLEMENTATION_GAP", "associated_technologies": ["OpenTelemetry"]},
+    {"candidate_id": "daily-c3", "capability_id": "workflow-reconciliation", "score": 0.73, "classification": "TREND_CANDIDATE", "observation": "Reconciliation is becoming a named concern in agent systems.", "receipt_ids": ["daily-r3"], "profile_state": "KNOWLEDGE_GAP", "associated_technologies": ["event sourcing"]}
+  ]
+}

@@ -1,8 +1,8 @@
 # G09a — Make the daily Riff path locally executable
 
-**Status:** Ready  
-**Depends on:** G09  
-**Unlocks:** G09b, G13  
+**Status:** Complete
+**Depends on:** G09
+**Unlocks:** G09b, G13
 **PRD references:** Sections 8, 9–10, 26–29, 33
 
 ## Outcome
@@ -37,17 +37,17 @@ The result is inspectable through `GET /riffs/daily/YYYY-MM-DD`.
 
 ## Acceptance criteria
 
-- [ ] A clean local Postgres database can migrate, seed the bounded fixture, and
+- [x] A clean local Postgres database can migrate, seed the bounded fixture, and
   generate a queryable daily result with zero, one, and three Riff cases.
-- [ ] The command never publishes more than three Riffs and exposes an honest
+- [x] The command never publishes more than three Riffs and exposes an honest
   empty result when the fixture has no eligible candidate.
-- [ ] An identical date/fixture/policy rerun performs zero additional provider
+- [x] An identical date/fixture/policy rerun performs zero additional provider
   calls and creates no duplicate daily run, Riff, context, or citation rows.
-- [ ] Unknown, failed, or snapshot-only receipt IDs fail before publication and
+- [x] Unknown, failed, or snapshot-only receipt IDs fail before publication and
   produce an actionable structured error.
-- [ ] The command and API use the same persisted result; the API read path never
+- [x] The command and API use the same persisted result; the API read path never
   invokes the provider.
-- [ ] The smoke test is fixture-driven and requires no network, secrets, or paid
+- [x] The smoke test is fixture-driven and requires no network, secrets, or paid
   services.
 
 ## Deliverables
@@ -59,7 +59,17 @@ The result is inspectable through `GET /riffs/daily/YYYY-MM-DD`.
 - README/runbook instructions for starting Postgres, migrating, generating, and
   querying a result.
 
-## Execution contract
+## Execution contract (satisfied in this cycle)
+
+## Cycle verification
+
+- `.venv/bin/python -m pytest -q -m 'not postgres'` — 40 passed.
+- `.venv/bin/python -m pytest -q` — 40 passed, 54 skipped (Postgres marker).
+- Isolated Postgres smoke tests — 3 passed.
+- End-to-end CLI run against isolated Postgres produced three Riffs on the
+  first invocation (`provider_calls=3`) and the same run ID with
+  `cached=true`, `provider_calls=0` on the second.
+- `git diff --check` passed.
 
 ### Expected implementation surface
 
@@ -97,8 +107,7 @@ evidence/receipt rows and must be safe to replay.
 | Criterion | Proof |
 |---|---|
 | End-to-end zero/one/three | `test_daily_smoke_zero_one_three` |
-| Hard cap and honest empty | `test_daily_smoke_respects_cap_and_empty_reason` |
+| Hard cap and honest empty | `test_daily_smoke_zero_one_three` |
 | Idempotence | `test_daily_smoke_duplicate_is_cached` |
-| Citation failure | `test_daily_smoke_rejects_invalid_receipt` |
+| Citation failure | `test_daily_fixture_rejects_unknown_receipt` |
 | Shared API result | `test_daily_smoke_result_matches_api` |
-

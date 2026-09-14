@@ -88,12 +88,12 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 
 ## Current handoff
 
-G00 through G09 are complete; G09a is ready, G09b follows it, and G10 is queued
+G00 through G09a are complete; G09b is ready, and G10 is queued
 behind the source-selection goal. Every later goal remains queued behind its
 listed dependencies. A suitable Luna instruction for the next cycle is:
 
 ```text
-Implement docs/goals/G09a-local-daily-smoke.md. Read the Riff PRD and docs/goals/README.md first, remain within G09a scope, follow its execution contract, verify every acceptance criterion, and return the completion report defined by the roadmap.
+Implement docs/goals/G09b-ingestion-source-selection.md. Read the Riff PRD and docs/goals/README.md first, remain within G09b scope, follow its execution contract, verify every acceptance criterion, and return the completion report defined by the roadmap.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.

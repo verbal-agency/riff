@@ -98,3 +98,8 @@ explanation, falsification conditions, and eligible citations. The daily run is
 fingerprinted by date, policy version, and selected inputs, so retries reuse the
 persisted result and never call the provider again. `GET /riffs/daily/{date}` is
 a stable read-only presentation surface; it does not invoke reasoning.
+
+For local verification, `riff daily generate --file ...` seeds only the
+fixture's raw evidence and successful receipts, then runs the same persisted
+service used by the API. Repeating the command with the same date, fixture, and
+policy returns the existing run without provider calls or duplicate rows.

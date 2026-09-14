@@ -15,6 +15,7 @@ from .capability_evaluation import evaluate_fixture
 from .capabilities import CapabilityRepository, DeterministicNormalizer, NormalizationService
 from .config import Settings
 from .db import migrate
+from .daily import load_fixture, run_fixture
 from .evidence import SourceType
 from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
@@ -133,6 +134,12 @@ def build_parser() -> argparse.ArgumentParser:
     riff_subparsers = riff.add_subparsers(dest="riff_command", required=True)
     riff_evaluate = riff_subparsers.add_parser("evaluate", help="evaluate a golden Riff fixture")
     riff_evaluate.add_argument("--file", required=True)
+    daily = subparsers.add_parser("daily", help="run a local daily Riff smoke fixture")
+    daily_subparsers = daily.add_subparsers(dest="daily_command", required=True)
+    daily_generate = daily_subparsers.add_parser("generate", help="generate and persist a daily Riff result")
+    daily_generate.add_argument("--file", required=True)
+    daily_generate.add_argument("--date", dest="run_date")
+    daily_generate.add_argument("--policy-version")
     return parser
 
 
@@ -162,6 +169,16 @@ def main(argv: list[str] | None = None) -> int:
         configure_logging(settings.log_level)
         applied = migrate(settings.database_url)
         event(logging.getLogger("riff.migrations"), "migrations.completed", applied=applied)
+        return 0
+    if args.command == "daily" and args.daily_command == "generate":
+        from datetime import date
+
+        try:
+            requested_date = date.fromisoformat(args.run_date) if args.run_date else None
+            fixture = load_fixture(args.file, run_date=requested_date, policy_version=args.policy_version)
+            print(json.dumps(run_fixture(settings.database_url, fixture), sort_keys=True))
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"daily fixture error: {exc}") from exc
         return 0
     if args.command == "worker":
         run_worker(settings)

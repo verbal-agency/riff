@@ -103,4 +103,3 @@ live evidence. It mutates only the local manifest, ADR, notes, and tests.
 | No secrets | `test_manifest_rejects_credentials` |
 | Fixture and bounded policy | `test_manifest_fixture_and_rate_policy` |
 | Explicit fallback/duplicate policy | `test_manifest_records_fallbacks_and_correlation_policy` |
-

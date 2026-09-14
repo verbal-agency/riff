@@ -163,4 +163,15 @@ persisted daily result is available at `GET /riffs/daily/YYYY-MM-DD`. Published
 Riffs retain supporting and counter-receipt IDs; invalid or snapshot-only
 citations are rejected, and an empty day is reported honestly.
 
+For a local database-backed smoke run, apply migrations and invoke the
+deterministic fixture path twice:
+
+```sh
+uv run riff migrate
+uv run riff daily generate --file tests/fixtures/riffs/daily_inputs.json
+uv run riff daily generate --file tests/fixtures/riffs/daily_inputs.json
+```
+
+The second invocation reports `cached: true` and reuses the same daily run.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.
