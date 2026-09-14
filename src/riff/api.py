@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from fastapi import Depends, FastAPI, HTTPException, status
 
 from .config import Settings
 from .db import database_ready
+from .riffs import RiffRepository
 
 
 def get_settings() -> Settings:
@@ -35,6 +38,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 detail="database is not ready",
             )
         return {"status": "ok", "database": "ready"}
+
+    @app.get("/riffs/daily/{run_date}", tags=["riffs"])
+    def daily_riffs(
+        run_date: date,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        """Return the stable, persisted daily result; this endpoint never calls a model."""
+        repository = RiffRepository(effective_settings.database_url)
+        result = repository.daily_result(run_date)
+        if result is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="daily Riff result not found")
+        return result.to_dict()
 
     return app
 

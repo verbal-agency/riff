@@ -148,4 +148,19 @@ uv run riff signal evaluate --file tests/fixtures/signals/adversarial.json
 Rank runs are versioned and fingerprinted so identical inputs are idempotent;
 stored correlation groups and explanations make each ordering inspectable.
 
+## Daily Riffs
+
+G09 turns the strongest bounded candidate set into zero to three structured,
+evidence-backed arguments. The provider is replaceable and the default fake is
+deterministic, so local evaluation needs no paid model or network:
+
+```sh
+uv run riff riff evaluate --file tests/fixtures/riffs/golden.json
+```
+
+After evidence, receipts, capabilities, profile, and signals are present, the
+persisted daily result is available at `GET /riffs/daily/YYYY-MM-DD`. Published
+Riffs retain supporting and counter-receipt IDs; invalid or snapshot-only
+citations are rejected, and an empty day is reported honestly.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.

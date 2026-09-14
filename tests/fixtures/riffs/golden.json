@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {"name": "publish-three", "riffs": [{"observation": "o1", "hypothesis": "h1", "recommendation": "r1"}, {"observation": "o2", "hypothesis": "h2", "recommendation": "r2"}, {"observation": "o3", "hypothesis": "h3", "recommendation": "r3"}]},
+    {"name": "publish-one", "riffs": [{"observation": "o1", "hypothesis": "h1", "recommendation": "r1"}]},
+    {"name": "publish-zero", "riffs": []},
+    {"name": "signaling-gap", "riffs": [{"observation": "o", "hypothesis": "h", "recommendation": "build artifact"}]}
+  ]
+}

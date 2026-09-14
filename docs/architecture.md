@@ -85,3 +85,16 @@ trend eligibility. Every rank run stores its input fingerprint, correlation
 groups, feature values, weights, contributions, and an explicit trend versus
 observation decision. Replaying the same inputs and policy returns the existing
 run without duplicate candidates.
+
+## G09 daily Riffs
+
+G09 consumes only a bounded, ranked candidate set. `RiffContextAssembler`
+retrieves candidate-relevant receipt summaries, profile slices, and decision
+IDs; it rejects unknown, failed, or snapshot-only receipts before a provider is
+called. A replaceable `ReasoningProvider` returns structured fields, and the
+deterministic validation/publication gate requires distinct observation,
+hypothesis, and recommendation text plus a counterargument, alternative
+explanation, falsification conditions, and eligible citations. The daily run is
+fingerprinted by date, policy version, and selected inputs, so retries reuse the
+persisted result and never call the provider again. `GET /riffs/daily/{date}` is
+a stable read-only presentation surface; it does not invoke reasoning.

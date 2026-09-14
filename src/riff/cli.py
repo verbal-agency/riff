@@ -25,6 +25,7 @@ from .logging import configure_logging, event
 from .profile import ProfileRepository
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
 from .signal_evaluation import evaluate_fixture as evaluate_signal_fixture
+from .riff_evaluation import evaluate_fixture as evaluate_riff_fixture
 from .signals import SignalObservation, SignalRanker, SignalRepository
 from .receipt_evaluation import evaluate_labeled_fixture
 from .receipts import KeywordExtractor, ReceiptProcessor, ReceiptRepository
@@ -128,6 +129,10 @@ def build_parser() -> argparse.ArgumentParser:
     signal_evaluate.add_argument("--file", required=True)
     signal_rank = signal_subparsers.add_parser("rank", help="rank observations from a bounded JSON fixture")
     signal_rank.add_argument("--file", required=True)
+    riff = subparsers.add_parser("riff", help="evaluate daily Riff generation fixtures")
+    riff_subparsers = riff.add_subparsers(dest="riff_command", required=True)
+    riff_evaluate = riff_subparsers.add_parser("evaluate", help="evaluate a golden Riff fixture")
+    riff_evaluate.add_argument("--file", required=True)
     return parser
 
 
@@ -144,6 +149,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "signal" and args.signal_command == "evaluate":
         print(json.dumps(evaluate_signal_fixture(args.file), sort_keys=True))
+        return 0
+    if args.command == "riff" and args.riff_command == "evaluate":
+        print(json.dumps(evaluate_riff_fixture(args.file), sort_keys=True))
         return 0
     try:
         settings = Settings.from_env()

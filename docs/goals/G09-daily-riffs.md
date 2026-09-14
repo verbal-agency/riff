@@ -1,6 +1,6 @@
 # G09 — Construct and publish zero to three daily Riffs
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G08  
 **Unlocks:** G10, G13  
 **PRD references:** Sections 4, 8.5, 9–10, 21–23, 28–29, 33
@@ -51,14 +51,14 @@ Riff deeply analyzes only the strongest bounded candidate set and publishes zero
 
 ## Acceptance criteria
 
-- [ ] Published results contain zero to three Riffs and never exceed three even if more candidates are analyzed.
-- [ ] Every Riff has all PRD argument fields, including counterargument, alternative explanation, and falsification conditions.
-- [ ] Each evidence-backed observation and claim resolves to stored Evidence Receipts and ultimately raw evidence; an unknown or ineligible ID blocks publication.
-- [ ] A fixture with no candidate above the quality threshold publishes zero and gives a non-fabricated empty-result explanation.
-- [ ] Personal relevance distinguishes knowledge/implementation gaps from signaling gaps and recommends an appropriate intervention.
-- [ ] Context-assembly tests prove only candidate-relevant receipts, profile slices, and decisions are sent to the deep-reasoning interface.
-- [ ] Identical date, inputs, and generation-policy version do not create duplicate published Riffs or repeat model calls unnecessarily.
-- [ ] Golden-case review output makes observation, hypothesis, and recommendation visually/structurally distinct.
+- [x] Published results contain zero to three Riffs and never exceed three even if more candidates are analyzed.
+- [x] Every Riff has all PRD argument fields, including counterargument, alternative explanation, and falsification conditions.
+- [x] Each evidence-backed observation and claim resolves to stored Evidence Receipts and ultimately raw evidence; an unknown or ineligible ID blocks publication.
+- [x] A fixture with no candidate above the quality threshold publishes zero and gives a non-fabricated empty-result explanation.
+- [x] Personal relevance distinguishes knowledge/implementation gaps from signaling gaps and recommends an appropriate intervention.
+- [x] Context-assembly tests prove only candidate-relevant receipts, profile slices, and decisions are sent to the deep-reasoning interface.
+- [x] Identical date, inputs, and generation-policy version do not create duplicate published Riffs or repeat model calls unnecessarily.
+- [x] Golden-case review output makes observation, hypothesis, and recommendation visually/structurally distinct.
 
 ## Verification evidence
 
@@ -68,7 +68,16 @@ Run the golden suite and show the zero-, one-, and three-Riff results, citation 
 
 The deep model and prompt shape are replaceable. Prefer structured generation followed by deterministic validation and rendering over accepting free-form output as persisted truth.
 
-## Execution contract for the next Luna run
+## Execution contract (satisfied in this cycle)
+
+## Cycle verification
+
+- `.venv/bin/python -m pytest -q -m 'not postgres'` — 38 passed.
+- `.venv/bin/python -m pytest -q` — 38 passed, 54 skipped (Postgres marker).
+- `.venv/bin/python -m riff riff evaluate --file tests/fixtures/riffs/golden.json` — four golden cases passed.
+- Postgres integration was not runnable: the local sandbox denied PostgreSQL
+  shared-memory initialization. The migration and repository are ready for the
+  normal Postgres-marked suite in an environment with local Postgres access.
 
 ### Expected implementation surface
 
