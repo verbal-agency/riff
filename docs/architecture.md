@@ -143,3 +143,13 @@ Projects retain source Exploration and approval IDs, support stable structured
 and Markdown export, and regeneration appends a new project version rather
 than erasing prior provenance. This layer does not execute agents or publish
 artifacts.
+
+## G13 daily operations
+
+`DailyPipeline` coordinates the existing stage services behind a durable
+`(run_date, policy_version)` identity. Each stage is independently persisted
+with status, attempts, counts, duration, errors, and optional model usage;
+completed stages are skipped on resume. A row-locked claim makes concurrent
+attempts inspectable no-ops, while policy changes intentionally fork a new run.
+The worker's fixture mode and the documented scheduler invoke the same
+one-shot path, and `/operations/{run_id}` exposes the operator report.

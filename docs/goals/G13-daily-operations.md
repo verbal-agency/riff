@@ -1,6 +1,6 @@
 # G13 — Operate the complete daily funnel reliably
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G09, G09a, G09b, G10, G11, G12
 **Unlocks:** G14, G15  
 **PRD references:** Sections 8, 26–29, 33
@@ -51,18 +51,25 @@ An operator can trigger or schedule one daily run, inspect stage-by-stage counts
 
 ## Acceptance criteria
 
-- [ ] A successful fixture run moves evidence through every stage and publishes a queryable zero-to-three daily result.
-- [ ] Injected failure after any stage can resume from the last durable boundary without duplicate records or repeated completed model calls.
-- [ ] Two concurrent attempts for the same run identity result in one logical publication and an inspectable loser/no-op outcome.
-- [ ] Deep analysis and published-Riff caps are enforced independently of input volume.
-- [ ] Run reports expose per-stage input/output/error counts, versions, durations, and model usage/cost estimates when the provider supplies them.
-- [ ] A failed pipeline is distinguishable from a valid successful zero-Riff day.
-- [ ] Policy-version changes create an intentional new processing/run version without corrupting earlier results.
-- [ ] A documented local scheduler example invokes exactly the same tested one-shot worker path.
+- [x] A successful fixture run moves evidence through every stage and publishes a queryable zero-to-three daily result.
+- [x] Injected failure after any stage can resume from the last durable boundary without duplicate records or repeated completed model calls.
+- [x] Two concurrent attempts for the same run identity result in one logical publication and an inspectable loser/no-op outcome.
+- [x] Deep analysis and published-Riff caps are enforced independently of input volume.
+- [x] Run reports expose per-stage input/output/error counts, versions, durations, and model usage/cost estimates when the provider supplies them.
+- [x] A failed pipeline is distinguishable from a valid successful zero-Riff day.
+- [x] Policy-version changes create an intentional new processing/run version without corrupting earlier results.
+- [x] A documented local scheduler example invokes exactly the same tested one-shot worker path.
 
 ## Verification evidence
 
-Run the deterministic pipeline successfully, with one injected extraction failure, with one injected deep-reasoning failure, and with concurrent duplicate attempts. Report record/model-call counts before and after resume.
+`tests/test_operations.py` runs the deterministic funnel, retries failures after each of the seven stage boundaries, verifies independent candidate/deep/publication caps, distinguishes failed from empty runs, forks policy versions, and exercises the concurrency guard and operator API. Offline verification: `.venv/bin/python -m pytest -q -m 'not postgres'` (49 passed). Complete PostgreSQL verification: `.venv/bin/python -m pytest -q -m postgres` (80 passed). `git diff --check` passes.
+
+## Implementation contract delivered
+
+- `src/riff/migrations/014_pipeline_runs.sql` stores one logical `(run_date, policy_version)` run and durable per-stage state, attempts, counts, timing, errors, model usage, and cost estimates.
+- `src/riff/operations.py` provides `DailyPipeline` and `PipelineRepository`. It replays only incomplete stages, enforces independent caps, marks `FAILED` versus `EMPTY`, and uses a row-locked identity claim for duplicate attempts.
+- `src/riff/worker.py` and `riff worker --fixture ... [--resume]` invoke the same one-shot path; `GET /operations/{run_id}` exposes the structured report.
+- The pipeline delegates evidence seeding and Riff publication to existing stage services; it does not reimplement their validation or call external providers in tests.
 
 ## Execution contract
 

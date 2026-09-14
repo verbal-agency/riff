@@ -39,7 +39,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="riff")
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("migrate", help="apply pending Postgres migrations")
-    subparsers.add_parser("worker", help="run one scheduled worker cycle")
+    worker = subparsers.add_parser("worker", help="run one scheduled worker cycle")
+    worker.add_argument("--fixture", help="run the deterministic daily pipeline fixture")
+    worker.add_argument("--date", dest="run_date")
+    worker.add_argument("--policy-version")
+    worker.add_argument("--resume", action="store_true")
     api = subparsers.add_parser("api", help="start the HTTP API")
     api.add_argument("--host", default="127.0.0.1")
     api.add_argument("--port", type=int, default=8000)
@@ -191,7 +195,9 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"daily fixture error: {exc}") from exc
         return 0
     if args.command == "worker":
-        run_worker(settings)
+        from datetime import date
+
+        run_worker(settings, fixture_path=args.fixture, run_date=date.fromisoformat(args.run_date) if args.run_date else None, policy_version=args.policy_version, resume=args.resume)
         return 0
     if args.command == "source":
         ingestion = IngestionRepository(settings.database_url)

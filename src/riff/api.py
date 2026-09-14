@@ -13,6 +13,7 @@ from .riffs import RiffRepository
 from .decisions import DecisionRepository, DecisionError
 from .explorations import ExplorationRepository, ExplorationError
 from .prds import ProjectRepository, PrdError
+from .operations import PipelineRepository
 
 
 def get_settings() -> Settings:
@@ -192,6 +193,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             return {"project_id": project_id, "markdown": ProjectRepository(effective_settings.database_url).export_markdown(project_id)}
         except PrdError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.get("/operations/{run_id}", tags=["operations"])
+    def get_operation(
+        run_id: str,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return PipelineRepository(effective_settings.database_url).report(run_id)
+        except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     return app

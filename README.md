@@ -174,6 +174,20 @@ uv run riff daily generate --file tests/fixtures/riffs/daily_inputs.json
 
 The second invocation reports `cached: true` and reuses the same daily run.
 
+The complete durable funnel uses the same one-shot worker path and can be
+scheduled with a simple cron entry:
+
+```sh
+uv run riff migrate
+uv run riff worker --fixture tests/fixtures/riffs/daily_inputs.json --resume
+# Example: 05:00 every day
+5 0 * * * cd /path/to/riff && uv run riff worker --fixture tests/fixtures/riffs/daily_inputs.json --resume
+```
+
+Inspect a run with `GET /operations/{run_id}`. Reports distinguish `FAILED`
+from a valid `EMPTY` day and include per-stage counts, attempts, timings, and
+provider usage.
+
 The reviewed concrete source plan is validated without a database or network:
 
 ```sh

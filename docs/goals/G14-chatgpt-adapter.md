@@ -1,6 +1,6 @@
 # G14 — Expose Riff through a conversational ChatGPT adapter
 
-**Status:** Queued  
+**Status:** Ready
 **Depends on:** G10, G11, G12, G13  
 **Unlocks:** G15  
 **PRD references:** Sections 4, 10, 15, 27, 32–33
