@@ -216,7 +216,7 @@ def _decision(row: tuple[Any, ...]) -> Decision:
 def _json(value: Any) -> Any:
     if isinstance(value, (bytes, str)):
         return json.loads(value.decode() if isinstance(value, bytes) else value)
-    return value or []
+    return value if value is not None else []
 
 
 def _text(value: Any) -> Any:
