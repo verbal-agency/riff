@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>G16 Atom standards fixture</title>
+  <entry>
+    <id>tag:fixture.riff.local,2026:g16-otel-1</id>
+    <title>Tracing workflow retries with OpenTelemetry</title>
+    <link rel="alternate" href="/g16/otel-retries" />
+    <updated>2026-09-19T10:00:00Z</updated>
+    <summary>Standard spans make retry and reconciliation boundaries inspectable.</summary>
+  </entry>
+</feed>

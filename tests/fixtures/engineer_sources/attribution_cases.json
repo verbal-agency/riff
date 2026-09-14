@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "personal-canonical",
+      "person_id": "simon-willison",
+      "source_id": "engineer-simon-willison",
+      "source_ownership": "PERSONAL",
+      "author_identity": "Simon Willison",
+      "organization_at_publication": "Independent / Datasette",
+      "canonical_url": "https://simonwillison.net/2026/09/14/example/",
+      "root_source": "person:simon-willison",
+      "expected": "ACCEPT"
+    },
+    {
+      "case_id": "employer-author-filter",
+      "person_id": "harrison-chase",
+      "source_id": "engineer-harrison-chase",
+      "source_ownership": "EMPLOYER",
+      "author_identity": "Harrison Chase",
+      "organization_at_publication": "LangChain",
+      "canonical_url": "https://www.langchain.com/blog/example",
+      "root_source": "org:langchain",
+      "expected": "CORRELATE_EMPLOYER"
+    },
+    {
+      "case_id": "coauthored-attribution",
+      "person_id": "hamel-husain",
+      "source_id": "engineer-hamel-husain",
+      "source_ownership": "PERSONAL",
+      "author_identity": "Hamel Husain; Antaripa Saha",
+      "organization_at_publication": "Independent / Parlance Labs",
+      "canonical_url": "https://parlance-labs.com/example",
+      "root_source": "coauthor:hamel-husain:antaripa-saha",
+      "expected": "RETAIN_COAUTHOR_RELATION"
+    },
+    {
+      "case_id": "syndicated-repost",
+      "person_id": "eugene-yan",
+      "source_id": "engineer-eugene-yan",
+      "source_ownership": "PERSONAL",
+      "author_identity": "Eugene Yan",
+      "organization_at_publication": "Independent / industry practitioner",
+      "canonical_url": "https://eugeneyan.com/writing/example/",
+      "root_source": "person:eugene-yan",
+      "reposted_from": "https://subscribe.eugeneyan.com/p/example",
+      "expected": "CORRELATE_SYNDICATION"
+    },
+    {
+      "case_id": "attribution-drift",
+      "person_id": "lilian-weng",
+      "source_id": "engineer-lilian-weng",
+      "source_ownership": "PERSONAL",
+      "author_identity": "Unknown author",
+      "organization_at_publication": "Unknown",
+      "canonical_url": "https://lilianweng.github.io/example/",
+      "root_source": "person:lilian-weng",
+      "expected": "QUARANTINE_ATTRIBUTION"
+    }
+  ]
+}

@@ -170,6 +170,15 @@ def _entry_link(node: ET.Element, *, atom: bool) -> str | None:
             return href.strip()
         if child.text and child.text.strip():
             return child.text.strip()
+    # Some valid RSS feeds expose the article permalink only in a GUID. Treat
+    # it as a link only when the feed explicitly marks the GUID as permalink;
+    # ordinary IDs must remain invalid and be quarantined by the runner.
+    if not atom:
+        for child in node:
+            if _local_name(child.tag) != "guid" or child.attrib.get("isPermaLink", "true").lower() != "true":
+                continue
+            if child.text and child.text.strip() and child.text.strip().lower().startswith(("http://", "https://")):
+                return child.text.strip()
     return None
 
 

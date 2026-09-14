@@ -17,6 +17,7 @@ from .config import Settings
 from .db import migrate
 from .daily import load_fixture, run_fixture
 from .evidence import SourceType
+from .engineer_sources import load_manifest as load_engineer_source_manifest
 from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
 from .ingestion import HttpFeedFetcher
@@ -63,6 +64,8 @@ def build_parser() -> argparse.ArgumentParser:
     source_toggle.add_argument("--source-id", required=True)
     source_validate = source_subparsers.add_parser("validate-manifest", help="validate the reviewed ingestion-source manifest")
     source_validate.add_argument("--manifest", default="config/ingestion_sources.json")
+    source_validate_engineers = source_subparsers.add_parser("validate-engineer-manifest", help="validate the engineer-authored source manifest")
+    source_validate_engineers.add_argument("--manifest", default="config/engineer_sources.json")
     ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
@@ -172,6 +175,16 @@ def main(argv: list[str] | None = None) -> int:
             manifest = load_manifest(args.manifest)
         except (OSError, ValueError) as exc:
             raise SystemExit(f"source manifest error: {exc}") from exc
+        result = {"schema_version": manifest["schema_version"], "sources": len(manifest["sources"]), "valid": True}
+        if isinstance(manifest.get("rss_inventory"), list):
+            result["rss_inventory"] = len(manifest["rss_inventory"])
+        print(json.dumps(result, sort_keys=True))
+        return 0
+    if args.command == "source" and args.source_command == "validate-engineer-manifest":
+        try:
+            manifest = load_engineer_source_manifest(args.manifest)
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"engineer source manifest error: {exc}") from exc
         print(json.dumps({"schema_version": manifest["schema_version"], "sources": len(manifest["sources"]), "valid": True}, sort_keys=True))
         return 0
     try:

@@ -62,3 +62,32 @@ def validate_manifest(payload: Mapping[str, Any]) -> None:
             raise SourceManifestError(f"source {source_id} contains a credential-like value")
     if categories != SOURCE_TYPES:
         raise SourceManifestError("source manifest must cover TECHNICAL_WRITING, GITHUB, and JOBS")
+    rss_inventory = payload.get("rss_inventory")
+    if rss_inventory is not None:
+        if not isinstance(rss_inventory, list) or not rss_inventory:
+            raise SourceManifestError("rss_inventory must be a non-empty list when provided")
+        rss_ids: set[str] = set()
+        required_rss_fields = {
+            "source_id", "name", "endpoint", "owner", "source_root", "artifact_class", "permission_status"
+        }
+        for index, entry in enumerate(rss_inventory):
+            if not isinstance(entry, Mapping):
+                raise SourceManifestError(f"rss_inventory entry {index} must be an object")
+            missing = required_rss_fields - set(entry)
+            if missing:
+                raise SourceManifestError(
+                    f"rss_inventory entry {index} missing: {', '.join(sorted(missing))}"
+                )
+            source_id = entry["source_id"]
+            if not isinstance(source_id, str) or not source_id.strip() or source_id in rss_ids:
+                raise SourceManifestError(f"rss_inventory entry {index} has an invalid or duplicate source_id")
+            rss_ids.add(source_id)
+            for field in ("name", "endpoint", "owner", "source_root", "artifact_class"):
+                if not isinstance(entry[field], str) or not entry[field].strip():
+                    raise SourceManifestError(f"rss_inventory source {source_id} requires non-empty {field}")
+            if entry["permission_status"] not in PERMISSION_STATUSES:
+                raise SourceManifestError(f"rss_inventory source {source_id} has an invalid permission_status")
+            if not str(entry["endpoint"]).strip().lower().startswith(("http://", "https://")):
+                raise SourceManifestError(f"rss_inventory source {source_id} endpoint must be HTTP(S)")
+            if SECRET_RE.search(json.dumps(entry, sort_keys=True)):
+                raise SourceManifestError(f"rss_inventory source {source_id} contains a credential-like value")

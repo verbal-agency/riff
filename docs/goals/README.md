@@ -50,6 +50,9 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G13](G13-daily-operations.md) | Reliable scheduled end-to-end daily run | G09–G12 |
 | [G14](G14-chatgpt-adapter.md) | Conversational ChatGPT-facing adapter | G10–G13 |
 | [G15](G15-dogfood-release-gate.md) | Evaluated v0.1 dogfood release | G00–G14 |
+| [G16](G16-rss-source-expansion.md) | Expand the technical-writing RSS source set | G15 |
+| [G17](G17-engineer-authored-sources.md) | Identify and qualify engineer-authored sources | G16 |
+| [G18](G18-github-discovery-evaluation.md) | Evaluate the GitHub discovery process | G15 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -71,6 +74,9 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Initial conversational ChatGPT experience | G14 |
 | Extraction, normalization, signal, product, and dogfood evaluation | G05, G06, G08, G15 |
 | Full Section 33 release acceptance | G15 |
+| RSS/Atom source expansion and feed-quality controls | G16 |
+| Engineer-level attribution and source discovery | G17 |
+| GitHub discovery recall, precision, and bounded-query policy | G18 |
 
 ## Canonical project scenarios
 
@@ -85,16 +91,21 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-DECISION-001` — User decisions persist semantically and affect later ranking/resurfacing.
 - `SC-DELIVERY-001` — An explicitly approved Riff becomes a bounded Exploration, learning PRD, and agent-ready goals.
 - `SC-DOGFOOD-001` — Dogfooding produces a user-reviewed investigation moment or stops broader development for signal improvement.
+- `SC-RSS-001` — Riff ingests a reviewed, fixture-replayable RSS/Atom source set without mistaking syndication or feed volume for independent evidence.
+- `SC-ENGINEER-SOURCE-001` — Riff can qualify a named engineer's source and preserve authorship, employer, and correlation provenance.
+- `SC-GITHUB-DISCOVERY-001` — Riff can compare bounded GitHub discovery strategies before promoting one into collection.
 
 ## Current handoff
 
-G00 through G15 are complete. The v0.1 dogfood recommendation is `PASS` after
-the user recorded `YES` for the qualitative value gate. Follow-up product input
-is recorded in `docs/backlog.md`; no additional roadmap goal is currently
-scheduled.
+G00 through G17 are complete. G17's engineer-source roster and attribution
+contract were approved by the user; all source entries remain disabled pending
+individual terms review. G18 is ready and independently evaluates GitHub
+discovery. The earlier durable-execution/observability mini-project and
+workflow-reconciliation investigation remain in `docs/backlog.md`.
 
 ```text
-Review the recorded G15 decision and use `docs/backlog.md` to scope the next product goal when development resumes.
+Implement `docs/goals/G18-github-discovery-evaluation.md`; preserve G17's
+disabled-source and attribution boundaries while evaluating bounded discovery.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.

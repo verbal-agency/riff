@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>G16 GUID-only permalink fixture</title>
+    <item>
+      <guid isPermaLink="true">https://fixture.riff.local/g16/guid-only</guid>
+      <title>GUID supplies the canonical article link</title>
+      <pubDate>Wed, 16 Sep 2026 10:00:00 GMT</pubDate>
+      <description>The parser must accept a permalink GUID when link is omitted.</description>
+    </item>
+  </channel>
+</rss>

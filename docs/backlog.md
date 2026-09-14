@@ -24,3 +24,15 @@ goal only when the next development slice is selected.
 - **Decision to make:** Determine whether reconciliation is the correctness
   layer of BL-G15-001 or a separate project.
 - **Priority:** High; requested before committing scope for Riff 3.
+
+## BL-G16-001 — Persist conditional feed validators
+
+- **Source:** G16 implementation audit.
+- **Gap:** The current HTTP feed fetcher honors bounded requests and retryable
+  failures, but does not persist `ETag` or `Last-Modified` validators between
+  scheduled runs.
+- **Why it matters:** Conditional requests would reduce bandwidth and provider
+  load as the RSS inventory grows without weakening replay or provenance.
+- **Destination:** Future ingestion-hardening goal; keep outside G16 because it
+  changes the fetcher state contract and requires provider-response fixtures.
+- **Priority:** Medium.

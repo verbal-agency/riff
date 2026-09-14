@@ -3,6 +3,21 @@
   "reviewed_at": "2026-09-14",
   "owner": "riff-operator",
   "duplicate_policy": "Canonical URL/provider ID deduplication; syndicated copies share a root source and never count as independent confirmation.",
+  "rss_inventory": [
+    {"source_id": "writing-openai-news", "name": "OpenAI News", "endpoint": "https://openai.com/news/rss.xml", "owner": "OpenAI", "source_root": "openai.com", "artifact_class": "LAB_ANNOUNCEMENT", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-google-deepmind", "name": "Google DeepMind Blog", "endpoint": "https://deepmind.google/blog/rss.xml", "owner": "Google DeepMind", "source_root": "deepmind.google", "artifact_class": "LAB_RESEARCH", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-google-research", "name": "Google Research Blog", "endpoint": "https://research.google/blog/rss/", "owner": "Google Research", "source_root": "research.google", "artifact_class": "LAB_RESEARCH", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-huggingface", "name": "Hugging Face Blog", "endpoint": "https://huggingface.co/blog/feed.xml", "owner": "Hugging Face", "source_root": "huggingface.co", "artifact_class": "OPEN_SOURCE_ECOSYSTEM", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-arxiv-cs-ai", "name": "arXiv cs.AI", "endpoint": "https://rss.arxiv.org/rss/cs.AI", "owner": "arXiv", "source_root": "arxiv.org", "artifact_class": "RESEARCH_PAPERS", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-arxiv-cs-lg", "name": "arXiv cs.LG", "endpoint": "https://rss.arxiv.org/rss/cs.LG", "owner": "arXiv", "source_root": "arxiv.org", "artifact_class": "RESEARCH_PAPERS", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-arxiv-cs-cl", "name": "arXiv cs.CL", "endpoint": "https://rss.arxiv.org/rss/cs.CL", "owner": "arXiv", "source_root": "arxiv.org", "artifact_class": "RESEARCH_PAPERS", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-arxiv-stat-ml", "name": "arXiv stat.ML", "endpoint": "https://rss.arxiv.org/rss/stat.ML", "owner": "arXiv", "source_root": "arxiv.org", "artifact_class": "RESEARCH_PAPERS", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-bair", "name": "Berkeley AI Research Blog", "endpoint": "https://bair.berkeley.edu/blog/feed.xml", "owner": "BAIR", "source_root": "bair.berkeley.edu", "artifact_class": "UNIVERSITY_RESEARCH", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-mit-ai", "name": "MIT News — Artificial Intelligence", "endpoint": "https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml", "owner": "MIT News", "source_root": "news.mit.edu", "artifact_class": "UNIVERSITY_RESEARCH", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-aws-ml", "name": "AWS Machine Learning Blog", "endpoint": "https://aws.amazon.com/blogs/machine-learning/feed/", "owner": "AWS", "source_root": "aws.amazon.com", "artifact_class": "PRODUCTION_ENGINEERING", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-opentelemetry", "name": "OpenTelemetry Blog", "endpoint": "https://opentelemetry.io/blog/index.xml", "owner": "OpenTelemetry", "source_root": "opentelemetry.io", "artifact_class": "OPEN_SOURCE_STANDARDS", "permission_status": "PENDING_REVIEW"},
+    {"source_id": "writing-nist-taking-measure", "name": "NIST Taking Measure Blog", "endpoint": "https://www.nist.gov/blogs/taking-measure/rss.xml", "owner": "NIST", "source_root": "nist.gov", "artifact_class": "STANDARDS_POLICY", "permission_status": "PENDING_REVIEW"}
+  ],
   "sources": [
     {
       "source_id": "writing-openai-news",
@@ -21,9 +36,9 @@
     },
     {
       "source_id": "writing-google-ai",
-      "name": "Google AI Blog",
+      "name": "Google AI Blog (broad tag)",
       "source_type": "TECHNICAL_WRITING",
-      "endpoint_or_scope": "https://blog.google/technology/ai/rss/",
+      "endpoint_or_scope": "https://blog.google/innovation-and-ai/technology/ai/rss/",
       "access_method": "RSS/Atom source-owned feed",
       "permission_status": "PENDING_REVIEW",
       "retention_mode": "Store bounded article text when permitted; otherwise retain URL and snapshot reference.",

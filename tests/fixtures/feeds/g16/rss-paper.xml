@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>G16 arXiv paper fixture</title>
+    <item>
+      <guid>oai:arXiv.org:2609.00001v1</guid>
+      <title>Reconciliation for resumable agent workflows</title>
+      <link>https://arxiv.org/abs/2609.00001v1</link>
+      <pubDate>Thu, 17 Sep 2026 10:00:00 GMT</pubDate>
+      <description>We define expected and observed workflow state under duplicate events.</description>
+    </item>
+    <item>
+      <guid>oai:arXiv.org:2609.00001v2</guid>
+      <title>Reconciliation for resumable agent workflows</title>
+      <link>https://arxiv.org/abs/2609.00001v2</link>
+      <pubDate>Fri, 18 Sep 2026 10:00:00 GMT</pubDate>
+      <description>We add an evaluation of repair latency and false repairs.</description>
+    </item>
+  </channel>
+</rss>

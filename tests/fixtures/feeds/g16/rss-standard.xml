@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>G16 standard technical-writing fixture</title>
+    <item>
+      <guid>g16-standard-1</guid>
+      <title>Durable execution with explicit recovery state</title>
+      <link>https://fixture.riff.local/g16/durable-execution</link>
+      <pubDate>Mon, 14 Sep 2026 10:00:00 GMT</pubDate>
+      <description>A bounded implementation exposes recovery and replay state.</description>
+    </item>
+    <item>
+      <guid>g16-standard-2</guid>
+      <title>Instrumenting long-running agent workflows</title>
+      <link>https://fixture.riff.local/g16/agent-observability</link>
+      <pubDate>Tue, 15 Sep 2026 10:00:00 GMT</pubDate>
+      <description>Lifecycle traces make retries and partial completion inspectable.</description>
+    </item>
+  </channel>
+</rss>

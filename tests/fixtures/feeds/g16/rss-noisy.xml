@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>G16 noisy vendor-tag fixture</title>
+    <item>
+      <guid>g16-noisy-ai-1</guid>
+      <title>AI-powered home experience announcement</title>
+      <link>https://fixture.riff.local/g16/noisy-consumer</link>
+      <pubDate>Mon, 14 Sep 2026 09:00:00 GMT</pubDate>
+      <description>A consumer announcement that mentions AI but contains no applied capability evidence.</description>
+    </item>
+    <item>
+      <guid>g16-noisy-ai-2</guid>
+      <title>Partner announces durable execution benchmark</title>
+      <link>https://fixture.riff.local/g16/noisy-syndicated</link>
+      <pubDate>Mon, 14 Sep 2026 11:00:00 GMT</pubDate>
+      <description>This item is correlated with a source-owned announcement and must retain its root.</description>
+    </item>
+  </channel>
+</rss>
