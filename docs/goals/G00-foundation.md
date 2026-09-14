@@ -1,6 +1,6 @@
 # G00 — Establish the executable application foundation
 
-**Status:** Ready  
+**Status:** Complete
 **Depends on:** None  
 **Unlocks:** G01 and every later goal  
 **PRD references:** Sections 26–31
@@ -55,17 +55,26 @@ From a clean checkout, a contributor can follow the documented setup, initialize
 
 ## Acceptance criteria
 
-- [ ] A documented clean-start workflow installs dependencies and starts required local infrastructure.
-- [ ] The migration command upgrades an empty Postgres database to the current schema and is repeatable without error.
-- [ ] The API health check distinguishes application liveness from database readiness.
-- [ ] The one-shot worker entry point starts, emits a structured completion event, and exits successfully.
-- [ ] Invalid or missing required configuration fails early with an actionable message and no secret values.
-- [ ] Unit tests and Postgres integration tests run through documented commands; no test requires internet or paid credentials.
-- [ ] The project has a single documented full-verification command and it passes.
+- [x] A documented clean-start workflow installs dependencies and starts required local infrastructure.
+- [x] The migration command upgrades an empty Postgres database to the current schema and is repeatable without error.
+- [x] The API health check distinguishes application liveness from database readiness.
+- [x] The one-shot worker entry point starts, emits a structured completion event, and exits successfully.
+- [x] Invalid or missing required configuration fails early with an actionable message and no secret values.
+- [x] Unit tests and Postgres integration tests run through documented commands; no test requires internet or paid credentials.
+- [x] The project has a single documented full-verification command and it passes.
 
 ## Verification evidence
 
 Capture the commands and results for clean database migration, health/readiness behavior, worker execution, and the complete test suite. A mocked health response without a real test-database connection is insufficient.
+
+## Cycle verification (2026-09-14)
+
+- `uv sync --all-groups` resolved and installed the locked application/test dependencies.
+- `.venv/bin/python -m pytest` → **8 passed, 1 skipped** (the skip is the opt-in Postgres marker when no database URL is set).
+- Against an isolated temporary PostgreSQL 14 instance: `.venv/bin/python -m riff migrate` applied `001_initial`; `.venv/bin/python -m pytest -m postgres` → **1 passed**; a second migration call was a no-op.
+- Against that same live database, `GET /health/live` returned 200 without a database query and `GET /health/ready` returned 200 with `{"status":"ok","database":"ready"}`. The unavailable path is covered by `tests/test_api.py` and returns 503.
+- `RIFF_DATABASE_URL=postgresql://user:secret@localhost:5432/riff .venv/bin/riff worker` emitted one JSON `worker.completed` event, exited 0, and did not emit the password.
+- `.venv/bin/python -m compileall -q src tests` and `git diff --check` passed.
 
 ## Implementation latitude
 

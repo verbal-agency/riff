@@ -70,12 +70,26 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Extraction, normalization, signal, product, and dogfood evaluation | G05, G06, G08, G15 |
 | Full Section 33 release acceptance | G15 |
 
-## Starting point
+## Canonical project scenarios
 
-G00 is ready. Every other goal is queued behind its listed dependencies. A suitable first Luna instruction is:
+These short IDs keep goal handoffs tied to project-level outcomes without duplicating the PRD's full acceptance text.
+
+- `SC-FOUNDATION-001` — A clean checkout can initialize, run, report health, and execute one worker cycle.
+- `SC-EVIDENCE-001` — New evidence is incrementally stored once and remains traceable to its source and raw snapshot.
+- `SC-CAPABILITY-001` — Different technologies can normalize to a capability without collapsing distinct capabilities.
+- `SC-PROFILE-001` — Riff distinguishes public, private, hands-on, studied, and unknown capability evidence.
+- `SC-SIGNAL-001` — Correlated or established volume is down-weighted while independent weak signals remain inspectable.
+- `SC-RIFF-001` — A daily request returns zero to three provenance-backed arguments with counterarguments and personalization.
+- `SC-DECISION-001` — User decisions persist semantically and affect later ranking/resurfacing.
+- `SC-DELIVERY-001` — An explicitly approved Riff becomes a bounded Exploration, learning PRD, and agent-ready goals.
+- `SC-DOGFOOD-001` — Dogfooding produces a user-reviewed investigation moment or stops broader development for signal improvement.
+
+## Current handoff
+
+G00 is complete and G01 is ready. Every later goal remains queued behind its listed dependencies. A suitable Luna instruction for the next cycle is:
 
 ```text
-Implement docs/goals/G00-foundation.md. Read the Riff PRD and docs/goals/README.md first, remain within G00 scope, verify every acceptance criterion, and return the completion report defined by the roadmap.
+Implement docs/goals/G01-provenance-store.md. Read the Riff PRD and docs/goals/README.md first, remain within G01 scope, follow its execution contract, verify every acceptance criterion, and return the completion report defined by the roadmap.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.

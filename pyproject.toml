@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "riff"
+version = "0.1.0"
+description = "A personal capability-intelligence system for emerging applied-AI signals."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "psycopg[binary]>=3.2,<4",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[dependency-groups]
+test = [
+  "httpx>=0.27,<1",
+  "pytest>=8,<10",
+]
+
+[project.scripts]
+riff = "riff.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/riff"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+  "postgres: requires a reachable Postgres database configured by RIFF_DATABASE_URL",
+]
+
