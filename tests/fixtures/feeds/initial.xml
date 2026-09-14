@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Riff technical writing fixtures</title>
+    <item>
+      <guid>article-1</guid>
+      <title>Durable agent execution</title>
+      <link>https://example.com/articles/durable?utm_source=feed</link>
+      <pubDate>Thu, 10 Sep 2026 10:00:00 GMT</pubDate>
+      <description>Recovery and replay are becoming explicit agent concerns.</description>
+    </item>
+    <item>
+      <guid>article-2</guid>
+      <title>Tool authorization patterns</title>
+      <link>https://example.com/articles/authz</link>
+      <pubDate>Fri, 11 Sep 2026 10:00:00 GMT</pubDate>
+      <description>Delegated authority needs an explicit boundary.</description>
+    </item>
+  </channel>
+</rss>

@@ -86,10 +86,10 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 
 ## Current handoff
 
-G00 and G01 are complete; G02 is ready. Every later goal remains queued behind its listed dependencies. A suitable Luna instruction for the next cycle is:
+G00, G01, and G02 are complete; G03 is ready. Every later goal remains queued behind its listed dependencies. A suitable Luna instruction for the next cycle is:
 
 ```text
-Implement docs/goals/G02-writing-ingestion.md. Read the Riff PRD and docs/goals/README.md first, remain within G02 scope, follow its execution contract, verify every acceptance criterion, and return the completion report defined by the roadmap.
+Implement docs/goals/G03-github-ingestion.md. Read the Riff PRD and docs/goals/README.md first, remain within G03 scope, follow its execution contract, verify every acceptance criterion, and return the completion report defined by the roadmap.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.

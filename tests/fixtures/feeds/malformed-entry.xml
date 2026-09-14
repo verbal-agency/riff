@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Riff malformed entry fixtures</title>
+    <item>
+      <guid>valid-1</guid>
+      <title>Valid sibling</title>
+      <link>https://example.com/articles/valid</link>
+      <pubDate>Mon, 14 Sep 2026 10:00:00 GMT</pubDate>
+      <description>This sibling should still be stored.</description>
+    </item>
+    <item>
+      <guid>missing-link</guid>
+      <title>Missing link</title>
+      <pubDate>Mon, 14 Sep 2026 11:00:00 GMT</pubDate>
+      <description>This item should be quarantined.</description>
+    </item>
+  </channel>
+</rss>

@@ -16,3 +16,6 @@ G00 establishes one Python application with three process entry points: the HTTP
 
 Imports have no network or database side effects. Configuration is loaded at command/request boundaries. The API owns health behavior, the worker owns orchestration entry, and the migration command owns schema changes. Secrets are accepted only through environment configuration and are never emitted by structured logs.
 
+## G02 ingestion
+
+Technical-writing sources are a manually editable JSON registry synchronized into Postgres source configuration. The first adapter is RSS/Atom over an injectable HTTP boundary. A one-shot runner records each collection run and item result, writes evidence through the G01 repository, and advances a source cursor only after that evidence transaction commits. Network failures are classified as transient or permanent; malformed entries are quarantined while valid siblings continue. Hacker News discovery is not enabled in this slice.

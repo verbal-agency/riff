@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Riff Atom fixtures</title>
+  <entry>
+    <id>tag:example.com,2026:atom-1</id>
+    <title>Atom entry</title>
+    <link href="/articles/atom-1" />
+    <updated>2026-09-14T12:00:00Z</updated>
+    <summary>Atom content.</summary>
+  </entry>
+</feed>

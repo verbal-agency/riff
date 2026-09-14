@@ -22,6 +22,17 @@ The API exposes:
 - `GET /health/live` — process liveness; no database connection.
 - `GET /health/ready` — database readiness; returns HTTP 503 until Postgres is reachable.
 
+## Curated writing collection
+
+Edit [config/technical_sources.json](config/technical_sources.json) to add permitted RSS/Atom sources, then sync and collect them without changing application code:
+
+```sh
+uv run riff source sync --registry config/technical_sources.json
+uv run riff ingest --source-type TECHNICAL_WRITING
+```
+
+For a one-off source, use `uv run riff source add --name ... --endpoint ...`. Disable or re-enable it with `uv run riff source disable --source-id ...` and `uv run riff source enable --source-id ...`. Collection is incremental: cursors and per-item outcomes are stored in Postgres, and a run can be retried safely.
+
 For a no-server check, run `.venv/bin/python -m pytest`. Postgres integration checks use the `postgres` marker and are run with:
 
 ```sh

@@ -1,6 +1,6 @@
 # G02 — Add incremental ingestion and curated technical writing
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G01  
 **Unlocks:** G03, G04, G05  
 **PRD references:** Sections 7.3–8, 26–29
@@ -57,13 +57,13 @@ An operator can configure a small source list, run collection twice, and see tha
 
 ## Acceptance criteria
 
-- [ ] A fixture feed's first run stores all eligible items, its second unchanged run stores zero, and a later run stores only a newly added or changed item.
-- [ ] Cursor state survives process termination and resumes without skipping an uncommitted item.
-- [ ] A malformed item is quarantined or recorded as failed while other valid items complete.
-- [ ] A transient request failure is distinguishable from a permanent parse/configuration failure and can be retried safely.
-- [ ] Curated sources can be enabled, disabled, and labeled without a code change.
-- [ ] If discovery input is implemented, the original linked artifact—not the discussion score—is stored as the root evidence, with the discovery relationship retained.
-- [ ] An integration test proves raw evidence from this adapter is searchable and traceable through G01.
+- [x] A fixture feed's first run stores all eligible items, its second unchanged run stores zero, and a later run stores only a newly added or changed item.
+- [x] Cursor state survives process termination and resumes without skipping an uncommitted item.
+- [x] A malformed item is quarantined or recorded as failed while other valid items complete.
+- [x] A transient request failure is distinguishable from a permanent request/parse/configuration failure and can be retried safely.
+- [x] Curated sources can be enabled, disabled, and labeled without a code change.
+- [x] Discovery input is explicitly not enabled in this slice; no HN-derived trend behavior is claimed.
+- [x] An integration test proves raw evidence from this adapter is searchable and traceable through G01.
 
 ## Verification evidence
 
@@ -72,6 +72,13 @@ Run deterministic three-pass fixture collection (initial, unchanged, one-new-ite
 ## Implementation latitude
 
 RSS/Atom is the preferred first mechanism because it is simple and source-owned. A small number of source-specific fetch rules is acceptable; a general-purpose crawler is not.
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest` → **20 passed, 14 skipped** without a configured database; skips are opt-in Postgres tests.
+- Against an isolated temporary PostgreSQL instance, `.venv/bin/python -m riff migrate` applied `003_ingestion_runs`; `.venv/bin/python -m pytest -m postgres` → **14 passed**.
+- The integration suite verified initial/unchanged/incremental runs, changed content, malformed sibling isolation, transient failure and successful retry, permanent failure, source enable/disable, process termination after a committed evidence write, and G01 search traceability.
+- `git diff --check` and `.venv/bin/python -m compileall -q src tests` passed.
 
 ## Execution contract for the next Luna run
 
