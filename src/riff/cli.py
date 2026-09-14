@@ -20,6 +20,7 @@ from .evidence import SourceType
 from .engineer_sources import load_manifest as load_engineer_source_manifest
 from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
+from .github_discovery import evaluate_fixture as evaluate_github_discovery_fixture
 from .ingestion import HttpFeedFetcher
 from .ingestion_repository import IngestionRepository, RunStatus
 from .job_ingestion import JobIngestionRunner
@@ -66,6 +67,10 @@ def build_parser() -> argparse.ArgumentParser:
     source_validate.add_argument("--manifest", default="config/ingestion_sources.json")
     source_validate_engineers = source_subparsers.add_parser("validate-engineer-manifest", help="validate the engineer-authored source manifest")
     source_validate_engineers.add_argument("--manifest", default="config/engineer_sources.json")
+    github = subparsers.add_parser("github", help="evaluate bounded GitHub discovery")
+    github_subparsers = github.add_subparsers(dest="github_command", required=True)
+    github_discovery = github_subparsers.add_parser("evaluate-discovery", help="evaluate a recorded discovery benchmark")
+    github_discovery.add_argument("--file", required=True)
     ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
@@ -169,6 +174,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "riff" and args.riff_command == "evaluate":
         print(json.dumps(evaluate_riff_fixture(args.file), sort_keys=True))
+        return 0
+    if args.command == "github" and args.github_command == "evaluate-discovery":
+        try:
+            payload = json.loads(Path(args.file).read_text(encoding="utf-8"))
+            print(json.dumps(evaluate_github_discovery_fixture(payload), sort_keys=True))
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"GitHub discovery fixture error: {exc}") from exc
         return 0
     if args.command == "source" and args.source_command == "validate-manifest":
         try:

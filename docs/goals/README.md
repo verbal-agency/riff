@@ -53,6 +53,8 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G16](G16-rss-source-expansion.md) | Expand the technical-writing RSS source set | G15 |
 | [G17](G17-engineer-authored-sources.md) | Identify and qualify engineer-authored sources | G16 |
 | [G18](G18-github-discovery-evaluation.md) | Evaluate the GitHub discovery process | G15 |
+| [G19](G19-engineer-rss-integration.md) | Integrate approved engineer-authored RSS sources | G16, G17 |
+| [G20](G20-bounded-github-discovery.md) | Implement bounded GitHub topic/search discovery | G18 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -76,7 +78,9 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Full Section 33 release acceptance | G15 |
 | RSS/Atom source expansion and feed-quality controls | G16 |
 | Engineer-level attribution and source discovery | G17 |
+| Engineer-authored RSS selection and pipeline integration | G17, G19 |
 | GitHub discovery recall, precision, and bounded-query policy | G18 |
+| Bounded GitHub discovery and reviewed scope promotion | G18, G20 |
 
 ## Canonical project scenarios
 
@@ -97,15 +101,19 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 
 ## Current handoff
 
-G00 through G17 are complete. G17's engineer-source roster and attribution
+G00 through G18 are complete. G17's engineer-source roster and attribution
 contract were approved by the user; all source entries remain disabled pending
-individual terms review. G18 is ready and independently evaluates GitHub
-discovery. The earlier durable-execution/observability mini-project and
-workflow-reconciliation investigation remain in `docs/backlog.md`.
+individual terms review. G19 is the next roadmap goal and integrates only
+per-source-approved engineer RSS feeds. G20 is the selected follow-up from G18
+and implements bounded topic/search discovery after G19. The earlier
+durable-execution/observability mini-project and workflow-reconciliation
+investigation remain in `docs/backlog.md`.
 
 ```text
-Implement `docs/goals/G18-github-discovery-evaluation.md`; preserve G17's
-disabled-source and attribution boundaries while evaluating bounded discovery.
+Implement `docs/goals/G19-engineer-rss-integration.md` only after each selected
+source has its own terms/retention decision. Then implement
+`docs/goals/G20-bounded-github-discovery.md` using the G18 benchmark decision;
+do not auto-promote discovered repositories.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.

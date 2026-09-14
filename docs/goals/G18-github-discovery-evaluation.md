@@ -1,6 +1,6 @@
 # G18 — Evaluate the GitHub discovery process
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G15
 **Unlocks:** A bounded GitHub discovery implementation goal
 **PRD references:** Sections 7.2, 8, 22, 24.3, 26–29, 33
@@ -51,26 +51,26 @@ approve a concrete next implementation slice without broad crawling.
 
 ## Acceptance criteria
 
-- [ ] A process map and gap analysis describe current explicit-scope discovery,
+- [x] A process map and gap analysis describe current explicit-scope discovery,
   its blind spots, and its operational limits.
-- [ ] At least three discovery strategies are evaluated against the same
+- [x] At least three discovery strategies are evaluated against the same
   deterministic benchmark fixture.
-- [ ] The report includes precision@k, recall, duplicate/root-correlation,
+- [x] The report includes precision@k, recall, duplicate/root-correlation,
   diversity, contamination, request-volume, and retry metrics.
-- [ ] Fixtures demonstrate safe handling of forks, mirrors, bots, renames,
+- [x] Fixtures demonstrate safe handling of forks, mirrors, bots, renames,
   popularity-only changes, and repeated release syndication.
-- [ ] A bounded query and promotion policy specifies page/item limits,
+- [x] A bounded query and promotion policy specifies page/item limits,
   rate-limit behavior, privacy constraints, and human approval requirements.
-- [ ] The report recommends one next implementation slice or explicitly records
+- [x] The report recommends one next implementation slice or explicitly records
   that discovery should remain curated/manual.
 
 ## Deliverables
 
-- `docs/github-discovery-evaluation.md` process map, benchmark, and decision.
-- Recorded GitHub discovery fixtures and a reproducible evaluation command.
-- A proposed discovery manifest/query schema, if the evaluation recommends
+- [x] `docs/github-discovery-evaluation.md` process map, benchmark, and decision.
+- [x] Recorded GitHub discovery fixtures and a reproducible evaluation command.
+- [x] A proposed discovery manifest/query schema, if the evaluation recommends
   implementation.
-- A follow-up goal or backlog item for the selected strategy.
+- [x] A follow-up goal for the selected strategy is recorded as G20.
 
 ## Verification
 
@@ -84,3 +84,10 @@ approve a concrete next implementation slice without broad crawling.
 
 Only the bounded strategy selected by the report may become a later
 implementation goal; all other discovery ideas remain explicit alternatives.
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m riff github evaluate-discovery --file tests/fixtures/github/discovery-benchmark-v1.json` — deterministic metrics emitted for all three strategies.
+- `.venv/bin/python -m pytest -q tests/test_github_discovery.py` — 3 passed.
+- The benchmark was rerun to confirm stable JSON output.
+- No GitHub HTTP client, token, live request, repository mutation, or production source configuration was used.
