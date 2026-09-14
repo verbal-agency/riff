@@ -225,15 +225,20 @@ class EvidenceRepository:
         self,
         *,
         source_type: SourceType | None = None,
+        source_id: str | None = None,
         published_after: datetime | None = None,
         published_before: datetime | None = None,
         text: str | None = None,
+        github_repository_id: str | None = None,
+        github_organization: str | None = None,
+        github_artifact_type: str | None = None,
         limit: int = 100,
     ) -> list[EvidenceRecord]:
         if limit < 1 or limit > 500:
             raise EvidenceValidationError("limit must be between 1 and 500")
         clauses: list[str] = []
         params: list[Any] = []
+        joins = ""
         if source_type is not None:
             try:
                 source_type = SourceType(source_type)
@@ -241,6 +246,9 @@ class EvidenceRepository:
                 raise EvidenceValidationError(f"unknown source_type: {source_type}") from exc
             clauses.append("s.source_type = %s")
             params.append(source_type.value)
+        if source_id:
+            clauses.append("s.source_id = %s")
+            params.append(source_id)
         if published_after is not None:
             clauses.append("e.published_at >= %s")
             params.append(published_after)
@@ -251,8 +259,22 @@ class EvidenceRepository:
             clauses.append("(e.raw_content ILIKE %s OR si.title ILIKE %s)")
             needle = f"%{text}%"
             params.extend([needle, needle])
+        if github_repository_id or github_organization or github_artifact_type:
+            joins = (
+                " JOIN github_artifacts ga ON ga.evidence_id = e.evidence_id "
+                " JOIN github_repositories gr ON gr.provider_repository_id = ga.provider_repository_id"
+            )
+        if github_repository_id:
+            clauses.append("ga.provider_repository_id = %s")
+            params.append(github_repository_id)
+        if github_organization:
+            clauses.append("gr.organization_login = %s")
+            params.append(github_organization)
+        if github_artifact_type:
+            clauses.append("ga.artifact_type = %s")
+            params.append(github_artifact_type)
         where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-        query = self._record_query(where) + " ORDER BY e.retrieved_at DESC LIMIT %s"
+        query = self._record_query(where, joins=joins) + " ORDER BY e.retrieved_at DESC LIMIT %s"
         params.append(limit)
         with connection(self.database_url) as conn:
             rows = conn.execute(query, params).fetchall()
@@ -313,7 +335,7 @@ class EvidenceRepository:
         return int(row[0])
 
     @staticmethod
-    def _record_query(where: str) -> str:
+    def _record_query(where: str, *, joins: str = "") -> str:
         return (
             "SELECT e.evidence_id, e.source_item_id, s.source_id, s.source_type, s.name, "
             "si.canonical_url, si.native_id, si.title, e.content_hash, e.retrieved_at, "
@@ -321,6 +343,7 @@ class EvidenceRepository:
             "e.previous_evidence_id FROM evidence_versions e "
             "JOIN source_items si ON si.source_item_id = e.source_item_id "
             "JOIN sources s ON s.source_id = si.source_id "
+            f"{joins} "
             f"{where}"
         )
 

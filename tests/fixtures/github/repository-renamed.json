@@ -1,0 +1,16 @@
+{
+  "id": 4242,
+  "node_id": "R_kgDOExample",
+  "full_name": "newco/riff-runtime",
+  "name": "riff-runtime",
+  "html_url": "https://github.com/newco/riff-runtime",
+  "owner": {"login": "newco", "type": "Organization"},
+  "organization": {"login": "newco"},
+  "fork": false,
+  "mirror_url": null,
+  "default_branch": "main",
+  "description": "A durable agent runtime",
+  "stargazers_count": 125,
+  "updated_at": "2026-09-12T10:00:00Z",
+  "created_at": "2026-01-01T10:00:00Z"
+}

@@ -19,3 +19,15 @@ Imports have no network or database side effects. Configuration is loaded at com
 ## G02 ingestion
 
 Technical-writing sources are a manually editable JSON registry synchronized into Postgres source configuration. The first adapter is RSS/Atom over an injectable HTTP boundary. A one-shot runner records each collection run and item result, writes evidence through the G01 repository, and advances a source cursor only after that evidence transaction commits. Network failures are classified as transient or permanent; malformed entries are quarantined while valid siblings continue. Hacker News discovery is not enabled in this slice.
+
+## G03 GitHub ingestion
+
+GitHub collection uses an injected, read-only REST client and explicit
+repository endpoints. Repository provider IDs are persisted separately from
+display names so renames and organization transfers retain one logical identity
+and an alias history. Releases, issues, and README snapshots become G01
+evidence versions with normalized artifact metadata, author identity, fork/
+mirror flags, and bounded content. G02 page cursors advance only after a whole
+page is durable; replaying a completed page is safe because G01 deduplicates
+provider items and content hashes. Credentials are process-only (`GITHUB_TOKEN`)
+and never persisted.

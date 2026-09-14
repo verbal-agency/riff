@@ -1,0 +1,24 @@
+[
+  {
+    "id": 102,
+    "node_id": "RLS_102",
+    "tag_name": "v1.2.0",
+    "name": "Bounded artifacts",
+    "body": "Adds bounded artifact snapshots.",
+    "html_url": "https://github.com/acme/riff-demo/releases/tag/v1.2.0",
+    "author": {"login": "builder", "type": "User"},
+    "published_at": "2026-09-13T10:00:00Z",
+    "created_at": "2026-09-13T09:00:00Z"
+  },
+  {
+    "id": 101,
+    "node_id": "RLS_101",
+    "tag_name": "v1.1.0",
+    "name": "Checkpoint replay",
+    "body": "Adds durable replay checkpoints.",
+    "html_url": "https://github.com/acme/riff-demo/releases/tag/v1.1.0",
+    "author": {"login": "builder", "type": "User"},
+    "published_at": "2026-09-11T10:00:00Z",
+    "created_at": "2026-09-11T09:00:00Z"
+  }
+]

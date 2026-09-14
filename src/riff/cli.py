@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 from dataclasses import asdict
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from .config import Settings
 from .db import migrate
 from .evidence import SourceType
 from .evidence_repository import EvidenceRepository
+from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
 from .ingestion import HttpFeedFetcher
 from .ingestion_repository import IngestionRepository, RunStatus
 from .logging import configure_logging, event
@@ -42,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     source_toggle.add_argument("--source-id", required=True)
     source_toggle = source_subparsers.add_parser("disable", help="disable a configured source")
     source_toggle.add_argument("--source-id", required=True)
-    ingest = subparsers.add_parser("ingest", help="collect configured technical-writing feeds once")
+    ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
     return parser
@@ -73,7 +75,12 @@ def main(argv: list[str] | None = None) -> int:
                 enabled=not args.disabled,
                 source_id=args.source_id,
             )
-            configured = ingestion.configure_source(source.source_id, args.endpoint, enabled=source.enabled)
+            configured = ingestion.configure_source(
+                source.source_id,
+                args.endpoint,
+                enabled=source.enabled,
+                cursor_kind="github:releases" if source.source_type == SourceType.GITHUB else "updated_at",
+            )
             print(json.dumps({"source_id": configured.source_id, "name": configured.name, "enabled": configured.enabled}, sort_keys=True))
             return 0
         if args.source_command == "sync":
@@ -95,6 +102,10 @@ def main(argv: list[str] | None = None) -> int:
                         entry["endpoint"],
                         enabled=source.enabled,
                         config_version=int(entry.get("config_version", 1)),
+                        cursor_kind=entry.get(
+                            "cursor_kind",
+                            "github:releases" if source.source_type == SourceType.GITHUB else "updated_at",
+                        ),
                     )
                 )
             print(json.dumps({"synced": len(synced)}, sort_keys=True))
@@ -106,10 +117,17 @@ def main(argv: list[str] | None = None) -> int:
         ingestion = IngestionRepository(settings.database_url)
         evidence = EvidenceRepository(settings.database_url)
         source_type = SourceType(args.source_type) if args.source_type else None
-        summary = WritingIngestionRunner(ingestion, evidence, HttpFeedFetcher()).run(
-            source_ids=args.source_id,
-            source_type=source_type,
-        )
+        if source_type == SourceType.GITHUB:
+            summary = GitHubIngestionRunner(
+                ingestion,
+                evidence,
+                HttpGitHubFetcher(token=os.environ.get("GITHUB_TOKEN")),
+            ).run(source_ids=args.source_id, source_type=source_type)
+        else:
+            summary = WritingIngestionRunner(ingestion, evidence, HttpFeedFetcher()).run(
+                source_ids=args.source_id,
+                source_type=source_type,
+            )
         print(json.dumps(asdict(summary), sort_keys=True, default=str))
         return 0 if summary.status != RunStatus.FAILED else 1
 

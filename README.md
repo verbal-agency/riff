@@ -45,4 +45,23 @@ The full verification command is:
 .venv/bin/python -m pytest
 ```
 
+## GitHub collection
+
+Configure one explicit repository per `GITHUB` source in
+`config/github_sources.json`, using its API scope as
+the endpoint (for example, `https://api.github.com/repos/owner/repository`).
+Set `GITHUB_TOKEN` only in the process environment when private or higher-rate
+limit access is required; the token is never stored in the source registry or
+collection state. Then run `uv run riff ingest --source-type GITHUB`.
+
+The adapter is read-only and bounded: it collects repository metadata, releases,
+issues, and README snapshots, paginates at a configured page limit, and keeps
+repository IDs stable across renames/transfers. Bodies larger than the bound
+are truncated with the canonical GitHub URL retained as `snapshot_ref`. Stars
+and fork counts remain weak metadata and are not treated as trend evidence.
+
+Automated tests use recorded responses under `tests/fixtures/github/`; no live
+GitHub request is made by the test suite. A live credential smoke run is an
+explicit operator action, not part of normal verification.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.

@@ -1,6 +1,6 @@
 # G04 — Ingest incremental job-market evidence
 
-**Status:** Queued  
+**Status:** Ready
 **Depends on:** G02  
 **Unlocks:** G05  
 **PRD references:** Sections 7.1, 8, 22, 24.3
@@ -64,3 +64,74 @@ Run the one-company-burst and repost/change fixtures and report logical posting,
 ## Implementation latitude
 
 The PRD does not mandate a job provider. Prefer an official API, permitted feed, or user-provided export over brittle scraping. If no live source is safely available, a production-quality import adapter plus clear provider seam meets this goal; G15 must still disclose the dogfood data source.
+
+## Execution contract for the next Luna run
+
+### Expected implementation surface
+
+Extend `src/riff` with a bounded job-source/import adapter, posting normalization,
+employer identity persistence, and a one-shot runner on the G02 ingestion
+contracts. Add migration `005_job_ingestion.sql` only when employer-specific
+state cannot fit the existing tables. Add focused tests in
+`tests/test_job_ingestion.py` and recorded/import fixtures under
+`tests/fixtures/jobs/`. Update `README.md` and `docs/architecture.md` (or a
+focused job-ingestion note) with source-compliance and operator instructions.
+Equivalent paths are acceptable when the completion report names them.
+
+### Canonical domain and persistence contract
+
+Use job-ingestion schema version `1` and preserve G01/G02 identities:
+
+| Concept | Required fields | Invariants |
+|---|---|---|
+| Job source configuration | `source_id`, `source_type=JOBS`, permitted endpoint/import format, `enabled`, `config_version` | Access method is explicit; credentials are injected and never persisted. |
+| Employer identity | stable employer ID when supplied, display name, normalized name, aliases, confidence/state | Ambiguous aliases remain reversible and are not silently merged. |
+| Job posting | provider posting ID or canonical URL, employer ID/alias, title, seniority (nullable), compensation (nullable), location (nullable), published/observed dates, bounded content | Missing fields remain null; no inferred compensation or seniority is stored as fact. |
+| Collection cursor/result | Reuses G02 cursor/run/item fields and outcomes | Reposts deduplicate by source identity; changed descriptions create G01 versions; failures do not advance past unprocessed data. |
+
+### Deterministic behavior matrix
+
+| Input condition | Required result |
+|---|---|
+| First fixture import | Store every valid posting and employer identity; complete run/cursor state. |
+| Unchanged rerun | Create no duplicate evidence versions; preserve retrieval history and report duplicate/replay outcomes. |
+| New posting | Store one new posting with canonical URL/provider ID and advance the cursor after evidence commit. |
+| Exact repost | Reuse one logical posting identity, retain each retrieval, and do not delete historical evidence. |
+| Materially changed description | Create a new G01 evidence version linked with `VERSION_OF`. |
+| Twenty postings from one employer | Correlate to one confident employer identity rather than twenty organizations. |
+| Ambiguous employer alias | Retain an inspectable alias candidate/state; do not merge it irreversibly. |
+| Missing compensation, seniority, or date | Persist null/unknown and never synthesize a value. |
+| Expired/deleted upstream posting | Keep prior evidence retrievable; do not erase it. |
+| Unauthorized/unsupported source or malformed import | Classify permanent failure, preserve prior cursor, and expose an actionable error. |
+
+### Authority and side-effect boundaries
+
+This goal may read only from explicitly configured, permitted job feeds/APIs or
+local user-provided exports and may mutate only Riff's local Postgres
+evidence/collection state. It must not apply to jobs, scrape against provider
+terms, execute target code, invoke models, publish recommendations, or send
+profile data. Credentials are injected at request time and redacted from logs.
+Normal tests are offline and fixture-driven; any live smoke operation is
+separate and opt-in.
+
+### Offline fixtures and state controls
+
+Provide fixtures for an initial corpus, unchanged replay, one new posting, exact
+repost, changed description, a twenty-posting one-company burst, ambiguous
+employer aliases, missing compensation/seniority/date, expired listing,
+malformed record, unsupported source, and transient import/read failure. Verify
+cursor checkpoint/replay, duplicate retrievals, version linking, employer alias
+reversibility, explicit bounds, and stop behavior. No model or paid-provider
+budget is allowed in G04; import/page/item limits must be explicit.
+
+### Criterion-to-test/artifact map
+
+| G04 criterion | Required proof artifact |
+|---|---|
+| Incremental runs | `test_job_three_passes` with posting/evidence counts |
+| Repost/change behavior | `test_repost_retrieval_and_changed_version` |
+| Employer correlation | `test_one_employer_burst_correlates_identity` |
+| Alias uncertainty | `test_ambiguous_employer_alias_is_reversible` |
+| Missing metadata | `test_missing_fields_remain_unknown` |
+| Searchability | `test_jobs_are_searchable_by_employer_role_date` |
+| Offline operation | `test_import_fixture_requires_no_network_or_credentials` |

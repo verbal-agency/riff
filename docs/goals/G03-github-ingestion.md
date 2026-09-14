@@ -1,6 +1,6 @@
 # G03 — Ingest incremental GitHub evidence
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G02  
 **Unlocks:** G05  
 **PRD references:** Sections 7.2, 8, 22, 24.3
@@ -49,13 +49,13 @@ An operator can collect a configured repository, rerun without duplication, then
 
 ## Acceptance criteria
 
-- [ ] First, unchanged, and one-new-event collection runs have the expected nonduplicating counts.
-- [ ] A repository rename or organization transfer keeps one logical repository identity and valid old/new provenance.
-- [ ] Pagination resumes safely after a mid-run failure without missing or duplicating durable items.
-- [ ] Rate-limit exhaustion produces a resumable outcome and does not corrupt the cursor.
-- [ ] Fork, mirror, bot, repository, organization, and author identities needed for later independence estimates are retained.
-- [ ] Stored GitHub evidence is searchable by repository, organization, artifact type, and date through the evidence store.
-- [ ] Automated tests make no live GitHub requests; an optional smoke command can exercise live credentials separately.
+- [x] First, unchanged, and one-new-event collection runs have the expected nonduplicating counts.
+- [x] A repository rename or organization transfer keeps one logical repository identity and valid old/new provenance.
+- [x] Pagination resumes safely after a mid-run failure without missing or duplicating durable items.
+- [x] Rate-limit exhaustion produces a resumable outcome and does not corrupt the cursor.
+- [x] Fork, mirror, bot, repository, organization, and author identities needed for later independence estimates are retained.
+- [x] Stored GitHub evidence is searchable by repository, organization, artifact type, and date through the evidence store.
+- [x] Automated tests make no live GitHub requests; an optional smoke command can exercise live credentials separately.
 
 ## Verification evidence
 
@@ -65,7 +65,7 @@ Use recorded/synthetic multi-page data with a rate-limit interruption, repositor
 
 Choose the smallest GitHub surface that yields useful builder evidence for dogfooding. The adapter contract should allow later expansion without requiring every possible GitHub event in v0.1.
 
-## Execution contract for the next Luna run
+## Execution contract (satisfied in this cycle)
 
 ### Expected implementation surface
 
@@ -117,3 +117,10 @@ Record multi-page repository/release data; README change; issue/discussion; cont
 | Fork/mirror/bot correlation metadata | `test_related_repository_flags_are_retained` |
 | Bounded content | `test_oversized_artifact_is_truncated_and_referenced` |
 | Searchable G01 evidence | `test_github_artifacts_are_traceable_and_searchable` |
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest` → **22 passed, 21 skipped** without a configured database.
+- Against an isolated temporary PostgreSQL instance, `.venv/bin/python -m riff migrate` applied `004_github_ingestion`; `.venv/bin/python -m pytest -m postgres` → **21 passed**.
+- Fixture tests verified first/unchanged/new-event collection, rename and transfer alias history, page replay after rate limiting, mid-run replay, fork/mirror/bot identity, bounded content references, and searchable G01 traceability.
+- `git diff --check` and `.venv/bin/python -m compileall -q src tests` passed.
