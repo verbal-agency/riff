@@ -1,6 +1,6 @@
 # G07 — Build the user's evidence-backed capability profile
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G06  
 **Unlocks:** G08  
 **PRD references:** Sections 3, 12–14, 24.3, 25
@@ -51,13 +51,13 @@ For a selected capability, the user sees evidence grouped by public portfolio/Gi
 
 ## Acceptance criteria
 
-- [ ] A capability can simultaneously show private professional evidence and no public evidence and is classified as a signaling gap, not a knowledge gap, when fixture facts support that result.
-- [ ] A manual private entry is labeled `USER_ATTESTED`, excluded from public/export results, and retrievable in the authorized personal view.
-- [ ] A GitHub technology mention alone does not automatically become hands-on capability proof.
-- [ ] Correcting or archiving profile evidence causes the assessment to update while preserving decision history.
-- [ ] A completed-project artifact enters as candidate capability evidence and requires an explicit/defined assessment before raising the profile level.
-- [ ] Sparse or conflicting evidence can yield `UNKNOWN` with an explanation rather than false precision.
-- [ ] The profile query loads only the requested capability slice and tests prevent private descriptions from appearing in logs or unrelated model prompts.
+- [x] A capability can simultaneously show private professional evidence and no public evidence and is classified as a signaling gap, not a knowledge gap, when fixture facts support that result.
+- [x] A manual private entry is labeled `USER_ATTESTED`, excluded from public/export results, and retrievable in the authorized personal view.
+- [x] A GitHub technology mention alone does not automatically become hands-on capability proof.
+- [x] Correcting or archiving profile evidence causes the assessment to update while preserving decision history.
+- [x] A completed-project artifact enters as candidate capability evidence and requires an explicit/defined assessment before raising the profile level.
+- [x] Sparse or conflicting evidence can yield `UNKNOWN` with an explanation rather than false precision.
+- [x] The profile query loads only the requested capability slice and tests prevent private descriptions from appearing in logs or unrelated model prompts.
 
 ## Verification evidence
 
@@ -67,7 +67,7 @@ Use fixtures for a signaling gap, true implementation gap, GitHub-only mention, 
 
 The first public website input may be a bounded user-supplied URL/export or fixture-backed collector. Prioritize correct evidence semantics and privacy over broad crawling.
 
-## Execution contract for the next Luna run
+## Execution contract (satisfied in this cycle)
 
 ### Expected implementation surface
 
@@ -135,3 +135,16 @@ and no-model-call behavior for deterministic assessments.
 | Completed artifact candidate | `test_completed_artifact_requires_explicit_assessment` |
 | Sparse/conflicting unknown | `test_sparse_conflicting_evidence_is_unknown` |
 | Scoped query and redaction | `test_profile_query_is_capability_scoped_and_redacted` |
+
+## Cycle verification (2026-09-14)
+
+- `.venv/bin/python -m pytest` — **27 passed, 46 skipped** (offline suite).
+- Isolated Postgres with migration `008_user_capability_profile.sql`, then
+  `.venv/bin/python -m pytest -m postgres` — **46 passed**.
+- `.venv/bin/python -m riff profile evaluate --file tests/fixtures/profile/gap_cases.json`
+  — five classification cases, all correct.
+- `git diff --check` and `.venv/bin/python -m compileall -q src tests` pass.
+- Integration tests verify signaling, privacy redaction, GitHub-only handling,
+  correction/archive history, artifact gating, sparse/conflicting unknowns, and
+  capability-scoped views, bounded public fixture import, and Experience Ledger
+  create/update/list/archive behavior.

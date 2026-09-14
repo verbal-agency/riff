@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {"id": "signaling-gap", "expected": "SIGNALING_GAP", "predicted": "SIGNALING_GAP"},
+    {"id": "implementation-gap", "expected": "IMPLEMENTATION_GAP", "predicted": "IMPLEMENTATION_GAP"},
+    {"id": "github-only", "expected": "UNKNOWN", "predicted": "UNKNOWN"},
+    {"id": "conflicting", "expected": "UNKNOWN", "predicted": "UNKNOWN"},
+    {"id": "sparse", "expected": "UNKNOWN", "predicted": "UNKNOWN"}
+  ]
+}

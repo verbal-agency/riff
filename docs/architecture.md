@@ -63,3 +63,14 @@ append decisions, so accept, reject, remap, split, and undo are reversible
 without rewriting receipts or losing provenance. The shipped normalizer is a
 bounded deterministic alias seam; model-assisted normalization can be injected
 later without changing the relational contract.
+
+## G07 user capability profile
+
+The profile layer stores capability-scoped evidence with explicit level,
+visibility, origin, confidence, and attestation state. Private Experience
+Ledger entries are user-attested and are available only in authorized personal
+views; public/export queries filter them at the repository boundary. Gap
+assessments are recomputable snapshots with retained rationale and uncertainty.
+Corrections, archives, and semantic feedback append history rather than
+erasing evidence. GitHub or Riff-artifact mentions remain candidate/unknown
+evidence until an explicit assessment establishes a stronger level.

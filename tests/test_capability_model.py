@@ -22,6 +22,10 @@ def graph():
         pytest.skip("set RIFF_DATABASE_URL to run Postgres integration tests")
     migrate(database_url)
     with connection(database_url) as conn:
+        conn.execute("DELETE FROM gap_assessments")
+        conn.execute("DELETE FROM profile_history")
+        conn.execute("DELETE FROM experience_ledger")
+        conn.execute("DELETE FROM profile_evidence")
         conn.execute("DELETE FROM normalization_decisions")
         conn.execute("DELETE FROM capability_relationships")
         conn.execute("DELETE FROM capability_mappings")

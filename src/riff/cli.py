@@ -21,6 +21,8 @@ from .ingestion import HttpFeedFetcher
 from .ingestion_repository import IngestionRepository, RunStatus
 from .job_ingestion import JobIngestionRunner
 from .logging import configure_logging, event
+from .profile import ProfileRepository
+from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
 from .receipt_evaluation import evaluate_labeled_fixture
 from .receipts import KeywordExtractor, ReceiptProcessor, ReceiptRepository
 from .worker import run_worker
@@ -90,6 +92,33 @@ def build_parser() -> argparse.ArgumentParser:
     split.add_argument("--name", action="append", required=True)
     split.add_argument("--actor", default="operator")
     split.add_argument("--reason", required=True)
+    profile = subparsers.add_parser("profile", help="manage the user capability profile")
+    profile_subparsers = profile.add_subparsers(dest="profile_command", required=True)
+    profile_import = profile_subparsers.add_parser("import-public", help="import a bounded public profile fixture")
+    profile_import.add_argument("--file", required=True)
+    profile_import.add_argument("--limit", type=int, default=100)
+    profile_assess = profile_subparsers.add_parser("assess", help="recompute a capability gap assessment")
+    profile_assess.add_argument("--capability-id", required=True)
+    profile_view = profile_subparsers.add_parser("view", help="view one capability profile slice")
+    profile_view.add_argument("--capability-id", required=True)
+    profile_view.add_argument("--public", action="store_true")
+    profile_view.add_argument("--limit", type=int, default=100)
+    profile_evaluate = profile_subparsers.add_parser("evaluate", help="evaluate gap-classification fixtures")
+    profile_evaluate.add_argument("--file", required=True)
+    ledger = profile_subparsers.add_parser("ledger", help="manage private Experience Ledger entries")
+    ledger_subparsers = ledger.add_subparsers(dest="ledger_command", required=True)
+    ledger_add = ledger_subparsers.add_parser("add")
+    ledger_add.add_argument("--capability-id", required=True)
+    ledger_add.add_argument("--entry", required=True)
+    ledger_add.add_argument("--employer-or-context")
+    ledger_list = ledger_subparsers.add_parser("list")
+    ledger_list.add_argument("--limit", type=int, default=100)
+    ledger_update = ledger_subparsers.add_parser("update")
+    ledger_update.add_argument("--ledger-id", required=True)
+    ledger_update.add_argument("--entry", required=True)
+    ledger_update.add_argument("--employer-or-context")
+    ledger_archive = ledger_subparsers.add_parser("archive")
+    ledger_archive.add_argument("--ledger-id", required=True)
     return parser
 
 
@@ -100,6 +129,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "capability" and args.capability_command == "evaluate":
         print(json.dumps(evaluate_fixture(args.file), sort_keys=True))
+        return 0
+    if args.command == "profile" and args.profile_command == "evaluate":
+        print(json.dumps(evaluate_profile_fixture(args.file), sort_keys=True))
         return 0
     try:
         settings = Settings.from_env()
@@ -230,6 +262,26 @@ def main(argv: list[str] | None = None) -> int:
                 )
             print(json.dumps(asdict(result), sort_keys=True, default=str))
             return 0
+    if args.command == "profile":
+        repository = ProfileRepository(settings.database_url)
+        if args.profile_command == "import-public":
+            result = repository.import_public_fixture(args.file, limit=args.limit)
+        elif args.profile_command == "assess":
+            result = repository.assess(args.capability_id)
+        elif args.profile_command == "view":
+            result = repository.view(args.capability_id, public=args.public, limit=args.limit)
+        elif args.profile_command == "ledger" and args.ledger_command == "add":
+            result = repository.create_ledger_entry(args.capability_id, args.entry, employer_or_context=args.employer_or_context)
+        elif args.profile_command == "ledger" and args.ledger_command == "list":
+            result = repository.list_ledger_entries(limit=args.limit)
+        elif args.profile_command == "ledger" and args.ledger_command == "update":
+            result = repository.update_ledger_entry(args.ledger_id, args.entry, employer_or_context=args.employer_or_context)
+        elif args.profile_command == "ledger" and args.ledger_command == "archive":
+            result = repository.archive_ledger_entry(args.ledger_id)
+        else:
+            raise SystemExit(f"unsupported profile command: {args.profile_command}")
+        print(json.dumps(asdict(result), sort_keys=True, default=str))
+        return 0
 
     import uvicorn
 

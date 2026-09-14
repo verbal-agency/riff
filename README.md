@@ -116,4 +116,21 @@ Review decisions are append-only and support accept, reject, remap, split, and
 undo. Technology relationships are many-to-many; low-confidence mappings remain
 proposed and never silently alter canonical capability counts.
 
+## User capability profile
+
+G07 adds capability-scoped public evidence and a private, user-attested
+Experience Ledger. Gap assessments distinguish signaling, implementation,
+experience, and knowledge gaps without treating GitHub absence as proof:
+
+```sh
+uv run riff profile ledger add --capability-id <capability-id> --entry "Led durable workflow delivery" --employer-or-context "client work"
+uv run riff profile assess --capability-id <capability-id>
+uv run riff profile view --capability-id <capability-id> --public
+uv run riff profile evaluate --file tests/fixtures/profile/gap_cases.json
+```
+
+Public views exclude private descriptions and ledger entries. Corrections and
+archives are recorded in profile history, and completed Riff artifacts remain
+unknown candidate evidence until explicitly assessed.
+
 Stop local infrastructure with `docker compose down`. The named Postgres volume is local runtime state and is ignored by Git.
