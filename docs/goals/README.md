@@ -57,6 +57,8 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G20](G20-bounded-github-discovery.md) | Implement bounded GitHub topic/search discovery | G18 |
 | [G21](G21-automated-job-collection-and-url-intake.md) | Automate compliant job collection and listing URL intake | G04 |
 | [G22](G22-postgres-configuration-and-persistence-verification.md) | Configure Postgres and verify persistence boundaries | G00, G04, G21 |
+| [G23](G23-chatgpt-tool-loop-client.md) | Wire the ChatGPT tool-loop client | G14, G22 |
+| [G24](G24-chatgpt-connector-and-e2e-acceptance.md) | Connect ChatGPT and run end-to-end conversation | G22, G23 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -75,7 +77,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Bounded collaborative Explorations | G11 |
 | Learning PRDs and outcome-oriented executable goals | G12 |
 | Token-efficient scheduled daily operation | G13 |
-| Initial conversational ChatGPT experience | G14 |
+| Initial conversational ChatGPT experience | G14, G23, G24 |
 | Extraction, normalization, signal, product, and dogfood evaluation | G05, G06, G08, G15 |
 | Full Section 33 release acceptance | G15 |
 | RSS/Atom source expansion and feed-quality controls | G16 |
@@ -103,12 +105,16 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-GITHUB-DISCOVERY-001` — Riff can compare bounded GitHub discovery strategies before promoting one into collection.
 - `SC-JOB-001` — A permitted job source or user-submitted listing URL becomes provenance-backed, decomposed job evidence through the same cron and terminal path.
 - `SC-DB-001` — A clean local Postgres database can migrate, persist G21 job flows, and pass the complete database-backed regression suite.
+- `SC-CHATGPT-001` — A bounded model tool loop can read Riff state and render a grounded conversational response.
+- `SC-CHATGPT-002` — A supported ChatGPT connector can complete the approved read-and-promote workflow against persisted Riff state.
 
 ## Current handoff
 
 G00 through G21 are complete. G22 is the next ready goal: configure a
 reproducible local Postgres path and run the complete persistence suite,
-including G21's job collection and URL-intake flows. G17's engineer-source
+including G21's job collection and URL-intake flows. After G22, G23 wires the
+provider-neutral model tool loop and G24 connects it to a supported ChatGPT
+surface for end-to-end evaluation. G17's engineer-source
 roster and attribution contract were approved by the user; all source entries remain disabled pending
 individual terms review. G19 added the fail-closed selection and attribution
 seam but did not enable any feed. G20 implements bounded topic/search discovery
