@@ -220,3 +220,16 @@ optionally uses `RIFF_ADAPTER_TOKEN`; no provider or model state is persisted.
 Loopback HTTP is limited to local dogfooding, while deployment requires HTTPS,
 restricted network origin, and secret-managed token rotation. A future MCP or
 provider SDK can replace the transport without changing Riff's invariants.
+
+## G24a native MCP transport
+
+`src/riff/mcp_server.py` uses the official Python MCP SDK's stateless
+Streamable HTTP server and mounts its canonical `/mcp` route alongside the
+existing FastAPI application. Every handler delegates to `RiffToolAdapter`; no
+MCP code opens a database connection or implements a second domain API. SDK
+schemas are generated from typed wrappers, and `ToolAnnotations` mark reads as
+read-only/idempotent while decisions and promotion operations are state
+changing. The mounted transport inherits the same optional bearer token and
+keeps the SDK's DNS-rebinding host/origin checks enabled. The MCP session
+manager runs in the parent FastAPI lifespan so restarts discard only transport
+state; Postgres remains the sole canonical store.

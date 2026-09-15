@@ -10,7 +10,6 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
-from .api import create_app
 from .capability_evaluation import evaluate_fixture
 from .capabilities import CapabilityRepository, DeterministicNormalizer, NormalizationService
 from .chat_loop import (
@@ -55,6 +54,7 @@ from .job_collection import JobCollectionRunner, dry_run_fixture
 from .job_fetch import FixtureJobFetcher, HttpJobFetcher, JobFetchError
 from .job_url_intake import JobUrlIntakeRunner
 from .logging import configure_logging, event
+from .mcp_server import create_service_app
 from .profile import ProfileRepository
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
 from .signal_evaluation import evaluate_fixture as evaluate_signal_fixture
@@ -634,5 +634,5 @@ def main(argv: list[str] | None = None) -> int:
 
     import uvicorn
 
-    uvicorn.run(create_app(settings), host=args.host, port=args.port)
+    uvicorn.run(create_service_app(settings), host=args.host, port=args.port)
     return 0

@@ -59,6 +59,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G22](G22-postgres-configuration-and-persistence-verification.md) | Configure Postgres and verify persistence boundaries | G00, G04, G21 |
 | [G23](G23-chatgpt-tool-loop-client.md) | Wire the ChatGPT tool-loop client | G14, G22 |
 | [G24](G24-chatgpt-connector-and-e2e-acceptance.md) | Connect ChatGPT and run end-to-end conversation | G22, G23 |
+| [G24a](G24a-native-chatgpt-mcp-surface.md) | Expose a native ChatGPT MCP surface and complete external acceptance | G22, G23 |
 | [G25](G25-meaningful-github-discovery-and-integration.md) | Make GitHub discovery meaningful and pipeline-integrated | G18, G20, G22 |
 | [G26](G26-github-project-understanding.md) | Build an evidence-backed understanding of user GitHub projects | G03, G22, G25 |
 | [G27](G27-project-aware-personalized-recommendations.md) | Recommend extensions to existing projects | G08, G11, G12, G23, G24, G26 |
@@ -115,6 +116,7 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-DB-001` — A clean local Postgres database can migrate, persist G21 job flows, and pass the complete database-backed regression suite.
 - `SC-CHATGPT-001` — A bounded model tool loop can read Riff state and render a grounded conversational response.
 - `SC-CHATGPT-002` — A supported ChatGPT connector can complete the approved read-and-promote workflow against persisted Riff state.
+- `SC-CHATGPT-003` — ChatGPT Developer Mode connects to Riff's MCP `/mcp` surface and completes the approved read-and-promote workflow with visible tool approvals.
 - `SC-GITHUB-DISCOVERY-002` — Riff discovers user-relevant GitHub candidates and integrates only explicitly promoted scopes into evidence collection.
 - `SC-PROJECT-MAP-001` — Riff maintains a versioned, evidence-backed understanding of selected user GitHub projects.
 - `SC-EXTEND-001` — Riff recommends extending an existing project when the evidence supports it, while preserving a greenfield alternative.
@@ -126,7 +128,9 @@ G00 through G23 are complete. G23's provider-neutral model tool loop now runs
 against persisted Postgres adapter state; G24's provider-neutral HTTP connector
 and Riff-side Postgres promotion path are implemented and verified, but the
 goal remains incomplete pending a supported ChatGPT surface and the user's
-human evaluation. G25's
+human evaluation. G24a now exposes the native MCP `/mcp` transport and passes
+local/offline verification, but remains incomplete pending the external
+Inspector/ChatGPT transcript and user evaluation. After it is accepted, G25's
 offline, fixture-backed discovery and review slice is implemented but remains
 incomplete pending its G03/Postgres integration. After that, G26 builds the user
 project map and G27 makes recommendations project-aware. G28 then adds

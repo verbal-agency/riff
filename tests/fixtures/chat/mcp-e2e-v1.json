@@ -1,0 +1,31 @@
+{
+  "fixture_id": "mcp-e2e-v1",
+  "protocol": "MCP",
+  "transport": "Streamable HTTP",
+  "endpoint": "/mcp",
+  "tool_catalog_version": "riff-tools-v1",
+  "positive_flow": [
+    "initialize",
+    "tools/list",
+    "daily_riffs",
+    "investigate_riff",
+    "record_decision",
+    "create_exploration",
+    "get_exploration",
+    "select_experiment",
+    "approve_prd",
+    "generate_prd",
+    "get_project",
+    "export_project"
+  ],
+  "negative_flows": [
+    "missing_confirmation_token",
+    "unknown_tool",
+    "malformed_arguments",
+    "stale_id",
+    "repeated_read",
+    "disconnect_after_mutation"
+  ],
+  "confirmation_token": "USER_CONFIRMED",
+  "notes": "Fixture is protocol metadata only; durable IDs come from the Postgres-backed adapter."
+}

@@ -14,7 +14,7 @@ cp .env.example .env
 docker compose up -d postgres
 uv run riff migrate
 uv run riff worker
-uv run uvicorn riff.api:app --reload
+uv run riff api --host 127.0.0.1 --port 8000
 ```
 
 The API exposes:
@@ -340,6 +340,34 @@ HTTPS, private/restricted origin with a secret-managed `RIFF_ADAPTER_TOKEN`,
 bounded network timeouts, and rotation without logging the token. The connector
 does not retry calls, so mutation disconnects cannot be silently duplicated;
 Riff remains the system of record.
+
+### Native ChatGPT MCP surface (G24a)
+
+`riff api` also mounts the official Python MCP SDK's Streamable HTTP transport
+at the exact `/mcp` path. It serves the same 15 `riff-tools-v1` operations with
+structured results and read/mutation annotations; the MCP layer does not access
+Postgres directly. For a local Inspector check, start Postgres, migrate, and
+run:
+
+```sh
+export RIFF_ADAPTER_TOKEN=local-mcp-only
+# For a deployed HTTPS endpoint, allow its Host and the calling web origin:
+# export RIFF_MCP_ALLOWED_HOSTS=riff.example.com
+# export RIFF_MCP_ALLOWED_ORIGINS=https://chatgpt.com
+uv run riff api --host 127.0.0.1 --port 8000
+npx @modelcontextprotocol/inspector@latest
+```
+
+In MCP Inspector select **Streamable HTTP**, enter
+`http://127.0.0.1:8000/mcp`, and send the bearer token when prompted. For
+ChatGPT Developer Mode, expose the endpoint through an HTTPS tunnel or
+deployment URL ending in `/mcp`, enable Developer Mode, add the URL as an MCP
+app, refresh after metadata changes, and select the app in a new chat. Keep
+`RIFF_ADAPTER_TOKEN`, database URLs, and tunnel credentials in the environment;
+loopback is the only unauthenticated development mode. The current Riff
+promotion contract still requires the literal `USER_CONFIRMED` argument and
+the persisted approval, so a model cannot promote state by merely describing
+an action.
 
 The G15 dogfood packet is fixture-only and replayable: use
 `tests/fixtures/dogfood/manifest.json` and inspect
