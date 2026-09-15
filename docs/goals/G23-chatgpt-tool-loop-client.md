@@ -1,6 +1,6 @@
 # G23 — Wire the ChatGPT tool-loop client
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G14, G22
 **Unlocks:** A real ChatGPT-compatible connector and end-to-end conversational acceptance
 **PRD references:** Sections 4, 10, 15, 27–29, 32–33
@@ -120,6 +120,21 @@ duplicating this orchestration.
   confirmation-token injection, and the CLI replay path.
 - Offline verification: `.venv/bin/python -m pytest -q tests/test_chat_loop.py`
   (**11 passed**); the full offline suite also passes.
-- The provider-neutral G23 loop is implemented offline. The goal remains
-  incomplete until G22 supplies the Postgres-backed adapter exercise; G24 owns
-  the actual ChatGPT connector and live end-to-end acceptance.
+- Postgres verification exercises the same loop against a persisted
+  `RiffToolAdapter` seeded by the daily fixture; the focused adapter suite and
+  complete Postgres suite pass. G24 owns the actual ChatGPT connector and live
+  end-to-end acceptance.
+
+## Cycle verification
+
+- `.venv/bin/python -m pytest -m postgres tests/test_adapter.py` — 3 passed.
+- `RIFF_DATABASE_URL=postgresql://riff:riff-local-only@localhost:5432/riff
+  .venv/bin/python -m pytest -m postgres` — 87 passed, 93 deselected, 2
+  dependency warnings.
+- `.venv/bin/python -m pytest -m 'not postgres'` — 93 passed, 87 deselected, 2
+  dependency warnings.
+- `.venv/bin/python -m riff chat replay --file
+  tests/fixtures/chat/tool-loop-v1.json --scenario daily` — `SUCCEEDED`, one
+  bounded tool call, two turns, and a grounded final response.
+- No model credentials, network access, or provider-specific transport was
+  introduced; those remain explicitly scoped to G24.

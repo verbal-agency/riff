@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from riff.adapter import AdapterError, RiffToolAdapter, USER_CONFIRMATION_TOKEN
 from riff.api import create_app
+from riff.chat_loop import ChatToolLoop, ScriptedModelClient, load_chat_fixture
 from riff.config import Settings
 from riff.daily import load_fixture, run_fixture
 from riff.db import connection, migrate
@@ -13,6 +14,7 @@ from riff.decisions import DecisionRepository
 
 
 FIXTURE = "tests/fixtures/riffs/daily_inputs.json"
+CHAT_FIXTURE = "tests/fixtures/chat/tool-loop-v1.json"
 
 
 @pytest.fixture()
@@ -82,3 +84,19 @@ def test_adapter_api_lists_tools_and_preserves_core_api(graph):
     assert missing.status_code == 409
     daily = client.get("/riffs/daily/2026-09-14")
     assert daily.status_code == 200 and len(daily.json()["riffs"]) == 3
+
+
+@pytest.mark.postgres
+def test_chat_tool_loop_uses_persisted_adapter_state(graph):
+    database_url, _ = graph
+    fixture = load_chat_fixture(CHAT_FIXTURE)
+    scenario = next(item for item in fixture["scenarios"] if item["id"] == "daily")
+    model = ScriptedModelClient(scenario["turns"])
+    result = ChatToolLoop(model, RiffToolAdapter(database_url)).run(
+        scenario["user_message"], system_prompt=fixture["system_prompt"]
+    )
+    assert result.status == "SUCCEEDED"
+    assert result.tool_calls == 1 and result.turns == 2
+    assert result.trace[0].name == "daily_riffs"
+    assert result.trace[0].result["tool"] == "daily_riffs"
+    assert len(result.trace[0].result["result"]["riffs"]) == 3

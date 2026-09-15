@@ -1,6 +1,6 @@
 # G24 — Connect ChatGPT and run the end-to-end conversation
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G22, G23
 **Unlocks:** User-facing conversational dogfood of Riff
 **PRD references:** Sections 4, 10, 15, 27, 32–33
