@@ -140,10 +140,10 @@ and Riff-side Postgres promotion path are implemented and verified, but the
 goal remains incomplete pending its final external evaluation. G24a now exposes
 the native MCP `/mcp` transport, passes Inspector and ChatGPT acceptance, and
 is complete as a transport/lifecycle goal; its rough interaction quality is
-routed to G32. G25's
-offline, fixture-backed discovery and review slice is implemented but remains
-incomplete pending its G03/Postgres integration. After that, G26 builds the user
-project map and G27 makes recommendations project-aware. G28 then adds
+routed to G32. G25's offline, fixture-backed discovery and review slice and
+its promoted-scope G03/Postgres integration are complete. G26 is now ready to
+build the user project map, followed by G27's project-aware recommendations.
+G28 then adds
 opportunity-context modeling and iterative execution riffing so those
 recommendations become a search over distinctive, evidence-producing
 demonstrations rather than a single generic project suggestion. G29 then

@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -9,6 +10,13 @@ import httpx
 from riff.db import connection, migrate
 from riff.evidence import SourceType
 from riff.evidence_repository import EvidenceRepository
+from riff.github_discovery import (
+    FixtureDiscoveryFetcher,
+    approve_candidates,
+    discover,
+    load_policy,
+    promote_candidates,
+)
 from riff.github_ingestion import (
     GitHubPermanentError,
     GitHubIngestionRunner,
@@ -102,6 +110,104 @@ def test_http_fetcher_rejects_malformed_json_and_auth_failures():
     )
     with pytest.raises(GitHubPermanentError, match="401"):
         HttpGitHubFetcher(client=unauthorized).fetch("/repos/acme/riff-demo")
+
+
+@pytest.mark.postgres
+def test_promoted_fixture_scope_reuses_g03_pipeline(repositories):
+    database_url, ingestion, evidence, _ = repositories
+    discovery_fixture = FIXTURE_DIR / "discovery" / "seed-responses-v1.json"
+    policy = load_policy(
+        {
+            "schema_version": 1,
+            "policy_id": "g25-integration-policy",
+            "query_terms": ["durable execution"],
+            "seed_source_ids": ["github-langgraph"],
+            "capability_terms": ["durable execution"],
+            "repository_seeds": ["acme/riff-runtime"],
+            "max_queries": 1,
+            "max_pages_per_query": 2,
+            "max_candidates_per_query": 6,
+            "max_requests": 4,
+            "max_contributor_expansion": 0,
+            "retry_limit": 1,
+            "stop_rules": {"root_concentration_threshold": 0.25},
+            "review_required": True,
+            "enabled": False,
+        }
+    )
+    queue = discover(
+        policy,
+        FixtureDiscoveryFetcher(discovery_fixture),
+        fixture_id="g25-seed-inputs-v1",
+    )
+    approve_candidates(queue, ["repo:4242"])
+    promoted = promote_candidates(
+        queue,
+        ["repo:4242"],
+        confirmation="PROMOTE",
+        config={"schema_version": 1, "sources": []},
+    )
+    entry = promoted["config"]["sources"][0]
+    promoted_fixture = _load("discovery/promoted-scope-v1.json")
+    assert entry == promoted_fixture["registry_entry"]
+    assert entry["enabled"] is False
+    assert entry["discovery_run_id"] == queue["run_id"]
+    assert entry["provider_repository_id"] == "4242"
+    # Keep repeated runs isolated from prior shared-development test data while
+    # preserving the promoted registry shape and provenance assertions.
+    source_id = f"{entry['source_id']}-test-{uuid.uuid4().hex[:12]}"
+
+    source = evidence.create_source(
+        SourceType.GITHUB,
+        entry["name"],
+        enabled=True,  # Explicit fixture-only opt-in for this integration proof.
+        source_id=source_id,
+    )
+    configured = ingestion.configure_source(
+        source.source_id,
+        entry["endpoint"],
+        enabled=True,
+        cursor_kind="github:releases",
+        metadata={
+            "discovery_run_id": entry["discovery_run_id"],
+            "discovered_by": entry["discovered_by"],
+            "provider_repository_id": entry["provider_repository_id"],
+            "correlation_metadata": entry["correlation_metadata"],
+            "uncertainty": entry["uncertainty"],
+        },
+    )
+    first = _runner(ingestion, evidence, FixtureFetcher()).run(
+        source_ids=[configured.source_id],
+        source_type=SourceType.GITHUB,
+    )
+    repeat = _runner(ingestion, evidence, FixtureFetcher()).run(
+        source_ids=[configured.source_id],
+        source_type=SourceType.GITHUB,
+    )
+
+    assert first.status == RunStatus.SUCCEEDED
+    assert first.stored == 6
+    assert repeat.status == RunStatus.SUCCEEDED
+    assert repeat.stored == 0
+    assert repeat.duplicates == 6
+    records = evidence.search(source_id=configured.source_id, github_repository_id="4242")
+    assert len(records) == 6
+    with connection(database_url) as conn:
+        source_metadata = conn.execute(
+            "SELECT metadata FROM ingestion_source_configs WHERE source_id = %s",
+            (configured.source_id,),
+        ).fetchone()[0]
+        retrieval_metadata = conn.execute(
+            "SELECT r.metadata FROM retrievals r "
+            "JOIN evidence_versions e ON e.evidence_id = r.evidence_id "
+            "JOIN source_items si ON si.source_item_id = e.source_item_id "
+            "WHERE si.source_id = %s AND si.native_id = '101' "
+            "ORDER BY r.retrieved_at DESC LIMIT 1",
+            (configured.source_id,),
+        ).fetchone()[0]
+    assert source_metadata["discovery_run_id"] == queue["run_id"]
+    assert retrieval_metadata["discovery_run_id"] == queue["run_id"]
+    assert retrieval_metadata["discovered_by"] == entry["discovered_by"]
 
 
 @pytest.mark.postgres

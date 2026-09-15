@@ -1,6 +1,6 @@
 # G26 — Build an evidence-backed understanding of user GitHub projects
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G03, G22, G25
 **Unlocks:** Project-aware opportunity matching and extension recommendations
 **PRD references:** Sections 7.2, 8, 11, 13, 21, 27, 33

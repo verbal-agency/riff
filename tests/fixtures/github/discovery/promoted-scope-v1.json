@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "fixture_id": "g25-promoted-scope-v1",
+  "candidate_id": "repo:4242",
+  "registry_entry": {
+    "source_id": "github-discovered-4242",
+    "name": "Discovered GitHub repository: acme/riff-runtime",
+    "source_type": "GITHUB",
+    "endpoint": "https://api.github.com/repos/acme/riff-runtime",
+    "endpoint_or_scope": "https://api.github.com/repos/acme/riff-runtime",
+    "access_method": "Read-only GitHub REST API for one reviewed public repository",
+    "permission_status": "PENDING_REVIEW",
+    "enabled": false,
+    "retention_mode": "Store bounded repository artifacts with canonical URLs",
+    "cadence": "daily",
+    "fixture_plan": "Recorded discovery and collector fixtures",
+    "discovery_run_id": "discovery-67ebde02926d3a1e",
+    "discovered_by": {
+      "query": "durable execution",
+      "page": 1,
+      "kind": "capability",
+      "seed": "durable execution"
+    },
+    "authors": [],
+    "correlation_metadata": {
+      "root_id": "repo:4242",
+      "provider_repository_id": "4242",
+      "duplicate_of": null,
+      "artifact_ids": [],
+      "fork_or_mirror": false
+    },
+    "uncertainty": [],
+    "provider_repository_id": "4242"
+  }
+}

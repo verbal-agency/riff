@@ -380,6 +380,23 @@ class GitHubIngestionRunner:
 
     def _store_artifact(self, run_id, source, artifact, counts, *, cursor_kind: str | None) -> None:
         bounded_content, truncated = _bounded(artifact.content, self.content_limit)
+        # Carry the reviewed source-scope provenance into every retrieval so a
+        # promoted discovery candidate remains traceable after G03 collection.
+        retrieval_metadata = dict(source.metadata)
+        retrieval_metadata.update(
+            {
+                "adapter": "github_rest",
+                "artifact_type": artifact.artifact_type.value,
+                "provider_repository_id": artifact.repository.provider_repository_id,
+                "organization_login": artifact.repository.organization_login,
+                "author_login": artifact.author_login,
+                "author_type": artifact.author_type,
+                "is_fork": artifact.repository.is_fork,
+                "is_mirror": artifact.repository.is_mirror,
+                "truncated": truncated,
+                **artifact.metadata,
+            }
+        )
         result = self.evidence.ingest(
             EvidenceSubmission(
                 source_id=source.source_id,
@@ -389,18 +406,7 @@ class GitHubIngestionRunner:
                 published_at=artifact.observed_at,
                 raw_content=bounded_content,
                 snapshot_ref=artifact.canonical_url if truncated else None,
-                retrieval_metadata={
-                    "adapter": "github_rest",
-                    "artifact_type": artifact.artifact_type.value,
-                    "provider_repository_id": artifact.repository.provider_repository_id,
-                    "organization_login": artifact.repository.organization_login,
-                    "author_login": artifact.author_login,
-                    "author_type": artifact.author_type,
-                    "is_fork": artifact.repository.is_fork,
-                    "is_mirror": artifact.repository.is_mirror,
-                    "truncated": truncated,
-                    **artifact.metadata,
-                },
+                retrieval_metadata=retrieval_metadata,
             )
         )
         self.metadata.record_artifact(evidence_id=result.evidence_id, source_id=source.source_id, artifact=artifact, bounded=truncated)

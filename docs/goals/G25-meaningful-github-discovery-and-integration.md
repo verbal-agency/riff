@@ -1,6 +1,6 @@
 # G25 — Make GitHub discovery meaningful and pipeline-integrated
 
-**Status:** Incomplete
+**Status:** Complete
 **Depends on:** G18, G20, G22
 **Unlocks:** User-relevant GitHub evidence and project understanding
 **PRD references:** Sections 7.2, 7.4, 8, 21–22, 24.3, 27, 33
@@ -87,7 +87,7 @@ it is safe to promote into collection.
   cases are handled deterministically with recorded reasons.
 - [x] Discovery output remains a review queue; only explicit promotion writes a
   disabled scope to the GitHub source registry.
-- [ ] A promoted fixture scope is ingested by G03 and its evidence is visible to
+- [x] A promoted fixture scope is ingested by G03 and its evidence is visible to
   the existing receipt/capability/signal pipeline with provenance intact.
 - [x] Strategy evaluation reports quality and cost metrics, and replaying the
   same manifest/fixture is idempotent.
@@ -114,15 +114,14 @@ Keep user-owned project inventory and extension recommendations in G26/G27.
   including duplicate, rename, attribution, and malformed-result cases.
 - Verification: `.venv/bin/python -m pytest -q tests/test_github_discovery.py`
   (9 passed); the full offline suite remains green.
-- G25 remains incomplete until a promoted fixture scope is exercised through
-  the real G03/Postgres pipeline after G22. No live GitHub requests or source
-  enablement were performed.
+- G25's promoted fixture scope is now exercised through the real G03/Postgres
+  pipeline. The test enables only a uniquely isolated fixture source; no live
+  GitHub requests or checked-in source enablement were performed.
 
-## Next-cycle execution contract
+## Completed integration contract
 
-This is the remaining G25 slice. It proves that the existing discovery review
-boundary feeds the existing G03 collector; it must not redesign discovery or
-enable a live source.
+This cycle proves that the existing discovery review boundary feeds the
+existing G03 collector; it does not redesign discovery or enable a live source.
 
 ### Expected implementation surface
 
@@ -195,6 +194,6 @@ enable a live source.
 | Replay/idempotence and cursor safety | `test_github_three_passes`, `test_rate_limit_preserves_cursor_until_retry`, and `test_mid_page_termination_replays_without_missing_items` |
 | Operator/privacy boundary | CLI/docs report, `git diff --check`, and no-live-network fixture run |
 
-The goal may be marked complete only after the promoted fixture scope has been
-enabled explicitly in an isolated Postgres test, collected through G03, and
-the resulting evidence is searchable with all discovery metadata intact.
+The goal is complete: the promoted fixture scope was enabled explicitly in an
+isolated Postgres test, collected through G03, and verified as searchable with
+discovery metadata intact.
