@@ -1,4 +1,4 @@
-# G24 connector verification — 2026-09-14
+# G24 connector verification — 2026-09-15
 
 ## Selected mechanism
 
@@ -41,10 +41,30 @@ riff chat replay --file tests/fixtures/chat/tool-loop-v1.json --scenario daily \
 The live API process was stopped after the check. No token was committed or
 printed by the connector.
 
-## Remaining acceptance
+## External acceptance reconciliation
 
-The external provider connection and the user's qualitative judgment of
-usefulness, grounding, evidence visibility, and confirmation clarity remain
-pending. The documented HTTP contract is ready for that provider-specific
-connection; a provider limitation must not change Riff's persistence or
-approval invariants.
+The provider-facing acceptance is complete through the native ChatGPT MCP
+surface. The redacted transcript, persisted IDs, Inspector checks, and human
+evaluation are recorded in `docs/reports/g24a-mcp-verification.md`:
+
+- ChatGPT discovered the `/mcp` catalog and completed the persisted
+  read → decision → Exploration → experiment → PRD → project/export workflow.
+- Missing confirmation and stale-ID requests were rejected without mutation;
+  repeated reads were stable and produced no duplicate writes.
+- The user judged the interaction rough because UUIDs and implementation-style
+  relay prompts were visible. That is a product-continuity follow-up in G32,
+  not a failure of the connector's persistence, approval, or privacy boundary.
+
+G24 is therefore complete. The provider-neutral HTTP contract remains the
+replaceable boundary for other clients; provider-specific limitations must not
+change Riff's persistence or approval invariants.
+
+## Current-cycle regression (2026-09-15)
+
+- `tests/test_connector.py tests/test_mcp_server.py` with the Docker Postgres
+  URL → **11 passed**, 2 known dependency deprecation warnings.
+- Full `pytest -m postgres -q -rA -o addopts=''` → **92 passed, 112
+  deselected**, 2 known dependency deprecation warnings.
+- Full `pytest -q -rA -o addopts=''` with Docker Postgres → **204 passed**, 2
+  known dependency deprecation warnings.
+- `git diff --check` → clean.

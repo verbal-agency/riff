@@ -134,14 +134,14 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 
 ## Current handoff
 
-G00 through G23 are complete. G23's provider-neutral model tool loop now runs
+G00 through G24 are complete. G23's provider-neutral model tool loop now runs
 against persisted Postgres adapter state; G24's provider-neutral HTTP connector
-and Riff-side Postgres promotion path are implemented and verified, but the
-goal remains incomplete pending its final external evaluation. G24a now exposes
+and native ChatGPT acceptance now include a redacted external read-and-promote
+transcript, Inspector protocol checks, and a recorded human evaluation. G24a now exposes
 the native MCP `/mcp` transport, passes Inspector and ChatGPT acceptance, and
 is complete as a transport/lifecycle goal; its rough interaction quality is
 routed to G32. G25's offline, fixture-backed discovery and review slice and
-its promoted-scope G03/Postgres integration are complete. G26 is now ready to
+its promoted-scope G03/Postgres integration are complete. G26 is ready to
 build the user project map, followed by G27's project-aware recommendations.
 G28 then adds
 opportunity-context modeling and iterative execution riffing so those
