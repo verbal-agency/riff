@@ -56,6 +56,7 @@ from .job_url_intake import JobUrlIntakeRunner
 from .logging import configure_logging, event
 from .mcp_server import create_service_app
 from .profile import ProfileRepository
+from .provenance import backfill_receipt_metadata, recalibrate_riffs, reconcile_stale_collection_runs, source_coverage_report
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
 from .signal_evaluation import evaluate_fixture as evaluate_signal_fixture
 from .source_manifest import load_manifest
@@ -241,6 +242,13 @@ def build_parser() -> argparse.ArgumentParser:
     connector_probe.add_argument("--url", default=os.environ.get("RIFF_CONNECTOR_URL", "http://127.0.0.1:8000"))
     connector_probe.add_argument("--token", default=os.environ.get("RIFF_ADAPTER_TOKEN"))
     connector_probe.add_argument("--timeout", type=float, default=10.0)
+    quality = subparsers.add_parser("data-quality", help="inspect and repair persisted data quality")
+    quality_subparsers = quality.add_subparsers(dest="quality_command", required=True)
+    quality_report = quality_subparsers.add_parser("report", help="show bounded source coverage")
+    quality_report.add_argument("--limit", type=int, default=100)
+    quality_repair = quality_subparsers.add_parser("repair", help="backfill metadata, reconcile runs, and recalibrate Riffs")
+    quality_repair.add_argument("--stale-after-seconds", type=int, default=3600)
+    quality_repair.add_argument("--force-recalibrate", action="store_true")
     return parser
 
 
@@ -375,6 +383,21 @@ def main(argv: list[str] | None = None) -> int:
         except (ConnectorError, OSError, ValueError) as exc:
             raise SystemExit(f"connector probe error: {exc}") from exc
         return 0
+    if args.command == "data-quality":
+        from datetime import timedelta
+
+        try:
+            if args.quality_command == "report":
+                print(json.dumps(source_coverage_report(Settings.from_env().database_url, limit=args.limit), sort_keys=True, default=str))
+                return 0
+            database_url = Settings.from_env().database_url
+            metadata = backfill_receipt_metadata(database_url)
+            runs = reconcile_stale_collection_runs(database_url, stale_after=timedelta(seconds=args.stale_after_seconds))
+            riffs = recalibrate_riffs(database_url, force=args.force_recalibrate)
+            print(json.dumps({"metadata": metadata, "runs": runs, "riffs": riffs}, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"data-quality error: {exc}") from exc
     if args.command == "source" and args.source_command == "validate-manifest":
         try:
             manifest = load_manifest(args.manifest)
