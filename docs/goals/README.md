@@ -67,6 +67,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G29](G29-provenance-aware-confidence-calibration.md) | Calibrate Riff confidence from provenance quality | G05, G08, G09, G22 |
 | [G30](G30-data-quality-remediation-and-rca.md) | Repair persisted data quality and close the feedback loop | G22, G29 |
 | [G31](G31-engineer-source-provenance-operations.md) | Execute and verify engineer-source provenance collection | G17, G19, G22, G30 |
+| [G32](G32-natural-language-conversational-continuity.md) | Make conversational Riff exploration natural and context-preserving | G10, G11, G12, G23, G24a |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -129,16 +130,17 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-EXECUTION-RIFF-001` — Riff extracts opportunity constraints, detects obvious platform requirements, generates execution candidates, and preserves iterative riffs until the user chooses a distinctive direction.
 - `SC-EPISTEMIC-001` — Riff distinguishes an interesting hypothesis from a well-supported claim and shows what provenance is needed next.
 - `SC-DATA-QUALITY-001` — Riff repairs persisted metadata and stale collection state, then explains every remaining data anomaly.
+- `SC-CHATGPT-004` — Riff carries a concept through natural-language investigation and refinement until the user explicitly requests a PRD.
 
 ## Current handoff
 
 G00 through G23 are complete. G23's provider-neutral model tool loop now runs
 against persisted Postgres adapter state; G24's provider-neutral HTTP connector
 and Riff-side Postgres promotion path are implemented and verified, but the
-goal remains incomplete pending a supported ChatGPT surface and the user's
-human evaluation. G24a now exposes the native MCP `/mcp` transport and passes
-local/offline verification, but remains incomplete pending the external
-Inspector/ChatGPT transcript and user evaluation. After it is accepted, G25's
+goal remains incomplete pending its final external evaluation. G24a now exposes
+the native MCP `/mcp` transport, passes Inspector and ChatGPT acceptance, and
+is complete as a transport/lifecycle goal; its rough interaction quality is
+routed to G32. G25's
 offline, fixture-backed discovery and review slice is implemented but remains
 incomplete pending its G03/Postgres integration. After that, G26 builds the user
 project map and G27 makes recommendations project-aware. G28 then adds
@@ -164,6 +166,8 @@ shared scheduled and terminal path for compliant job collection plus
 one-listing URL intake. The earlier
 durable-execution/observability mini-project and workflow-reconciliation
 investigation remain in `docs/backlog.md`.
+G32 removes UUID/tool relaying from the user experience while preserving
+bounded context, citations, uncertainty, and explicit mutation approvals.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots

@@ -1,6 +1,6 @@
 # G24a — Expose a native ChatGPT MCP surface and complete external acceptance
 
-**Status:** Incomplete
+**Status:** Complete
 **Depends on:** G22, G23
 **Unlocks:** Native ChatGPT conversational dogfood of Riff
 **PRD references:** Sections 4, 10, 15, 27, 32–33
@@ -92,20 +92,20 @@ durable IDs and lifecycle transitions come from Riff.
 
 ## Acceptance criteria
 
-- [ ] A Streamable HTTP MCP endpoint at `/mcp` passes MCP Inspector initialization,
+- [x] A Streamable HTTP MCP endpoint at `/mcp` passes MCP Inspector initialization,
   tool listing, and representative tool calls against a running Riff instance.
-- [ ] ChatGPT Developer Mode can add the HTTPS `/mcp` URL, imports the documented
+- [x] ChatGPT Developer Mode can add the HTTPS `/mcp` URL, imports the documented
   Riff tools, and completes the read-and-promote conversation against Postgres.
-- [ ] MCP tool schemas and annotations distinguish reads from mutations, expose
+- [x] MCP tool schemas and annotations distinguish reads from mutations, expose
   stable IDs/provenance, and do not expose Postgres or unrelated private data.
-- [ ] No confirmation-free sequence can create an Exploration or PRD, and a
+- [x] No confirmation-free sequence can create an Exploration or PRD, and a
   disconnect or retry cannot duplicate a mutation.
-- [ ] Authentication, HTTPS/tunnel, origin restrictions, readiness, timeout,
+- [x] Authentication, HTTPS/tunnel, origin restrictions, readiness, timeout,
   credential-redaction, stale-ID, malformed-call, and adapter-error checks pass.
-- [ ] Offline MCP fixtures and Postgres tests cover positive, malformed,
+- [x] Offline MCP fixtures and Postgres tests cover positive, malformed,
   unsupported, privacy, confirmation, restart, repeated-read, and disconnect
   cases; the existing G22/G24 regression suites remain green.
-- [ ] A redacted ChatGPT transcript, MCP trace, persisted IDs, configuration,
+- [x] A redacted ChatGPT transcript, MCP trace, persisted IDs, configuration,
   and user qualitative evaluation are recorded.
 
 ## Execution contract
@@ -219,11 +219,23 @@ the operator report document Inspector and ChatGPT Developer Mode setup.
 - **Pass (running local service):** Docker Postgres was healthy; migrations had
   no pending work; the real `riff api` process returned MCP `initialize` 200
   with bearer auth and `/health/live` 200.
-- **Pending operator acceptance:** MCP Inspector against a running process and
-  the external ChatGPT Developer Mode read-and-promote transcript require the
-  operator's reachable Postgres and HTTPS/tunnel session. The persisted IDs and
-  qualitative usefulness/grounding/confirmation evaluation therefore remain
-  unrecorded in this cycle.
+- **Pass (ChatGPT Developer Mode, 2026-09-15):** the connected surface
+  completed the read-and-promote workflow against Postgres, including the
+  missing-confirmation refusal, decision recording, confirmed Exploration
+  creation, experiment selection, PRD approval, generation, retrieval, and
+  stable export. Durable IDs and a redacted transcript are recorded in
+  `docs/reports/g24a-mcp-verification.md`.
+- **Pass (external negative checks, 2026-09-15):** repeated project reads were
+  identical and a stale Riff ID returned a bounded `Riff not found` error
+  without retry or mutation.
+- **Pass (MCP Inspector, 2026-09-15):** Inspector CLI initialized the HTTPS
+  Streamable HTTP endpoint and listed all 15 tools, including schemas,
+  confirmation requirements, and read/mutation annotations; no mutating tool
+  was invoked.
+- **Complete (human evaluation, 2026-09-15):** the user completed the workflow
+  and recorded that the transport and lifecycle behavior worked, while the
+  relay-style UUID/tool interaction was rough. The interaction-quality gap is
+  explicitly routed to G32 rather than hidden in the G24a result.
 
 ## Handoff
 
