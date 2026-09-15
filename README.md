@@ -115,6 +115,28 @@ the existing bounded read-only GitHub REST client. Tests use recorded responses
 only and filter forks, mirrors, bots, duplicate aliases, and popularity-only
 matches.
 
+### GitHub project understanding
+
+G26 keeps a separate, user-approved inventory for repositories already
+collected through G03/G25. It builds immutable, bounded snapshots from stored
+repository, README, release, and issue evidence; it never executes code,
+clones private content, follows arbitrary links, or treats repository presence
+as proof of personal proficiency. Every summary claim carries evidence IDs,
+receipt/mapping IDs when available, parser/policy versions, confidence, and an
+observed/inferred/unknown status.
+
+```sh
+# The provider repository must already exist in Postgres through G03.
+uv run riff github project onboard --provider-repository-id 4242 --display-name "Riff runtime" --reviewed-by user
+uv run riff github project refresh --project-id <project-id>
+uv run riff github project inspect --project-id <project-id>
+uv run riff github project archive --project-id <project-id> --reviewed-by user
+```
+
+Refresh is idempotent for unchanged evidence and creates a new version when a
+repository artifact changes. The compact inspection report is exposed at
+`GET /github/projects/{project_id}` for later conversational tools.
+
 ## Job-market import
 
 G04 uses a permitted, offline-first JSON import seam rather than scraping a job

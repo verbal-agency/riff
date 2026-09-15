@@ -17,6 +17,7 @@ from .explorations import ExplorationRepository, ExplorationError
 from .prds import ProjectRepository, PrdError
 from .operations import PipelineRepository
 from .adapter import RiffToolAdapter, AdapterError
+from .project_map import ProjectMapError, ProjectMapRepository
 
 
 def get_settings() -> Settings:
@@ -212,6 +213,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return {"project_id": project_id, "markdown": ProjectRepository(effective_settings.database_url).export_markdown(project_id)}
         except PrdError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.post("/github/projects", tags=["github-projects"])
+    def onboard_github_project(payload: dict, effective_settings: Settings = Depends(resolve_settings)) -> dict:
+        try:
+            return ProjectMapRepository(effective_settings.database_url).onboard(
+                str(payload.get("provider_repository_id", "")),
+                display_name=payload.get("display_name"),
+                purpose=payload.get("purpose"),
+                reviewed_by=str(payload.get("reviewed_by", "user")),
+            ).to_dict()
+        except ProjectMapError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.post("/github/projects/{project_id}/refresh", tags=["github-projects"])
+    def refresh_github_project(project_id: str, effective_settings: Settings = Depends(resolve_settings)) -> dict:
+        try:
+            return ProjectMapRepository(effective_settings.database_url).refresh(project_id).to_dict()
+        except ProjectMapError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.get("/github/projects/{project_id}", tags=["github-projects"])
+    def inspect_github_project(project_id: str, effective_settings: Settings = Depends(resolve_settings)) -> dict:
+        try:
+            return ProjectMapRepository(effective_settings.database_url).inspect(project_id)
+        except ProjectMapError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.post("/github/projects/{project_id}/archive", tags=["github-projects"])
+    def archive_github_project(project_id: str, payload: dict, effective_settings: Settings = Depends(resolve_settings)) -> dict:
+        try:
+            return ProjectMapRepository(effective_settings.database_url).archive(
+                project_id, reviewed_by=str(payload.get("reviewed_by", "user"))
+            ).to_dict()
+        except ProjectMapError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     @app.get("/operations/{run_id}", tags=["operations"])
     def get_operation(

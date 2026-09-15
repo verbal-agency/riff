@@ -1,6 +1,6 @@
 # G26 — Build an evidence-backed understanding of user GitHub projects
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G03, G22, G25
 **Unlocks:** Project-aware opportunity matching and extension recommendations
 **PRD references:** Sections 7.2, 8, 11, 13, 21, 27, 33
@@ -71,19 +71,19 @@ summary after repository changes without losing prior snapshots.
 
 ## Acceptance criteria
 
-- [ ] The user can explicitly onboard and archive a GitHub repository in a
+- [x] The user can explicitly onboard and archive a GitHub repository in a
   durable project inventory with stable provider identity.
-- [ ] A bounded fixture snapshot produces a versioned, inspectable summary of
+- [x] A bounded fixture snapshot produces a versioned, inspectable summary of
   purpose, technologies, capabilities, activity, extension seams, and unknowns.
-- [ ] Every summary claim links to stored GitHub evidence and a parser/policy
+- [x] Every summary claim links to stored GitHub evidence and a parser/policy
   version; uncertain or inferred fields are labeled accordingly.
-- [ ] Repository renames, repeated refreshes, changed content, duplicate
+- [x] Repository renames, repeated refreshes, changed content, duplicate
   artifacts, and bounded/malformed inputs behave deterministically.
-- [ ] Project evidence flows through existing receipts and capability mappings
+- [x] Project evidence flows through existing receipts and capability mappings
   without changing the user's profile automatically.
-- [ ] Postgres persistence and offline fixture tests cover onboarding, refresh,
+- [x] Postgres persistence and offline fixture tests cover onboarding, refresh,
   inspection, privacy boundaries, and version/provenance behavior.
-- [ ] Operator documentation explains approval, refresh bounds, disablement, and
+- [x] Operator documentation explains approval, refresh bounds, disablement, and
   the no-execution/no-private-code boundary.
 
 ## Handoff
@@ -91,3 +91,43 @@ summary after repository changes without losing prior snapshots.
 Report the project inventory schema, snapshot surfaces and bounds, capability
 mapping behavior, fixture evidence, and unresolved understanding gaps. G27 may
 consume only the compact project assessment and its cited evidence.
+
+## Cycle verification (2026-09-15)
+
+Implemented `src/riff/project_map.py` with the `github_project_inventory` and
+`github_project_snapshots` persistence contract in migration
+`018_github_project_maps.sql`. Explicit onboarding requires an existing public
+G03 repository identity and records reviewer metadata; archive is a durable
+status transition. Refresh reads at most 200 persisted G03 artifacts, produces
+compact purpose/capability/technology/activity/extension/unknown claims, and
+stores evidence, receipt, mapping, parser, and policy references without raw
+repository content. Input hashes make unchanged refreshes idempotent; changed
+inputs create a new version linked to the prior snapshot.
+
+The CLI commands are `github project onboard|refresh|inspect|archive`, and the
+compact inspection report is available at `GET /github/projects/{project_id}`.
+Decision 0012 records the identity, bounded-surface, and uncertainty choices.
+
+### Criterion status
+
+- **Pass:** onboarding and archive persist a user-reviewed inventory keyed by
+  stable `provider_repository_id`; archived projects cannot be refreshed.
+- **Pass:** the recorded G03 fixture produces an inspectable versioned summary
+  with purpose, release/issue activity, open issue extension seams, and
+  explicit unknowns.
+- **Pass:** every emitted claim contains evidence IDs plus parser/policy
+  versions; receipt-backed capability/technology claims also retain mapping and
+  receipt IDs and their proposed/accepted status.
+- **Pass:** repeated refreshes reuse the same snapshot; changed repository
+  metadata creates version 2 with `previous_snapshot_id`; G03 aliases remain
+  available for rename history and malformed/oversized inputs remain bounded by
+  the upstream collector.
+- **Pass:** project summaries are derived from stored GitHub evidence and do
+  not update the user capability profile; inferred text matches are explicitly
+  labeled `INFERRED`.
+- **Pass:** `tests/test_project_map.py` exercises Postgres onboarding, refresh,
+  idempotency, changed-content versioning, inspection history, and archive
+  behavior; the focused file passes 2 tests and the finalized full suite passes
+  **206 tests** with 2 known dependency deprecation warnings.
+- **Pass:** README documents approval, refresh bounds, archive/disablement, and
+  the no-execution/no-private-code boundary.

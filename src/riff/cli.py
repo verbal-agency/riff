@@ -35,6 +35,7 @@ from .engineer_rss import (
 )
 from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
+from .project_map import ProjectMapError, ProjectMapRepository
 from .github_discovery import (
     DiscoveryPolicyError,
     FixtureDiscoveryFetcher,
@@ -147,6 +148,20 @@ def build_parser() -> argparse.ArgumentParser:
     github_promote.add_argument("--registry", default="config/github_sources.json")
     github_promote.add_argument("--confirm", required=True, help="type PROMOTE to confirm the scoped write")
     github_promote.add_argument("--apply", action="store_true", help="write the registry and updated queue")
+    project = github_subparsers.add_parser("project", help="maintain an evidence-backed GitHub project map")
+    project_subparsers = project.add_subparsers(dest="project_command", required=True)
+    project_onboard = project_subparsers.add_parser("onboard", help="onboard an already-ingested public repository")
+    project_onboard.add_argument("--provider-repository-id", required=True)
+    project_onboard.add_argument("--display-name")
+    project_onboard.add_argument("--purpose")
+    project_onboard.add_argument("--reviewed-by", default="user")
+    project_refresh = project_subparsers.add_parser("refresh", help="build a bounded project snapshot")
+    project_refresh.add_argument("--project-id", required=True)
+    project_inspect = project_subparsers.add_parser("inspect", help="show the compact project assessment")
+    project_inspect.add_argument("--project-id", required=True)
+    project_archive = project_subparsers.add_parser("archive", help="archive a project from future refreshes")
+    project_archive.add_argument("--project-id", required=True)
+    project_archive.add_argument("--reviewed-by", default="user")
     ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
@@ -294,6 +309,26 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError) as exc:
             raise SystemExit(f"GitHub discovery fixture error: {exc}") from exc
         return 0
+    if args.command == "github" and args.github_command == "project":
+        try:
+            repository = ProjectMapRepository(Settings.from_env().database_url)
+            if args.project_command == "onboard":
+                result = repository.onboard(
+                    args.provider_repository_id,
+                    display_name=args.display_name,
+                    purpose=args.purpose,
+                    reviewed_by=args.reviewed_by,
+                ).to_dict()
+            elif args.project_command == "refresh":
+                result = repository.refresh(args.project_id).to_dict()
+            elif args.project_command == "inspect":
+                result = repository.inspect(args.project_id)
+            else:
+                result = repository.archive(args.project_id, reviewed_by=args.reviewed_by).to_dict()
+            print(json.dumps(result, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError, ProjectMapError) as exc:
+            raise SystemExit(f"GitHub project error: {exc}") from exc
     if args.command == "github" and args.github_command in {"discover", "queue", "review", "promote"}:
         try:
             if args.github_command == "discover":

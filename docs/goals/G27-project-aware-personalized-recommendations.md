@@ -1,6 +1,6 @@
 # G27 — Recommend extensions to existing projects
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G08, G11, G12, G23, G24, G26
 **Unlocks:** Personalized Riff-to-project dogfooding
 **PRD references:** Sections 4, 6, 9, 11–15, 18–21, 27–29, 32–33
@@ -92,3 +92,83 @@ Report the matching model and weights, disposition fixtures and metrics,
 target-project persistence contract, ChatGPT tool traces, approval behavior, and
 the user's qualitative judgment. Any request for automatic repository changes
 must become a separately approved goal.
+
+## Execution contract
+
+### Expected implementation surface
+
+- Add a focused `src/riff/recommendations.py` service and migration only if a
+  durable target-project reference or recommendation record cannot be represented
+  by an additive relation on the existing Exploration tables.
+- Extend `src/riff/adapter.py` and `src/riff/mcp_server.py` with bounded read
+  tools (`list_projects`, `inspect_project`, `match_riff_to_projects`) and a
+  confirmation-gated `propose_extension` operation; preserve the existing
+  `riff-tools-v1` error and response bounds.
+- Add `tests/fixtures/projects/` for at least one strong extension, one clear
+  greenfield, one insufficient-evidence case, and contradictory/changed project
+  snapshots. Add focused offline tests in `tests/test_recommendations.py` and
+  Postgres/conversational coverage in the existing adapter/MCP test seams.
+- Update `docs/architecture.md`, `README.md`, and a numbered decision record
+  with the scoring and target-reference choices.
+
+### Canonical contracts and invariants
+
+- Dispositions are exactly `EXTEND_EXISTING`, `START_NEW`, or `NOT_NOW`.
+- A recommendation contains `recommendation_id`, `riff_id`, `project_id` (null
+  for `START_NEW`/`NOT_NOW`), `disposition`, `fit_score`, `learning_value`,
+  `effort_hours`, `scope_risk`, `confidence`, `evidence_ids`,
+  `project_snapshot_id`, `rationale`, `uncertainty`, `policy_version`, and
+  `status` (`PROPOSED`, `OVERRIDDEN`, `ACCEPTED`, `DEFERRED`). Scores are in
+  `[0,1]`; effort is bounded to 4–20 focused hours.
+- `EXTEND_EXISTING` is illegal without an active project, a cited snapshot, a
+  non-empty extension seam, and at least one cited Riff receipt. `START_NEW`
+  must not carry a project target. `NOT_NOW` must include a missing-evidence or
+  scope-risk reason. A proposed recommendation never mutates a repository,
+  profile, Exploration, or PRD.
+- An accepted extension stores the stable `project_id` on the Exploration/PRD
+  relation; existing greenfield rows remain valid with a null target.
+
+### Deterministic behavior matrix
+
+| Input/evidence condition | Required result |
+|---|---|
+| Strong capability/seam fit and healthy active project | `EXTEND_EXISTING`, cited snapshot and seam, ranked score |
+| No credible seam or project health is poor, but Riff is actionable | `START_NEW`, project target null, greenfield rationale |
+| Missing snapshot, conflicting mappings, or insufficient evidence | `NOT_NOW`, explicit unknowns and next evidence request |
+| Archived/disabled project | Never `EXTEND_EXISTING`; exclude or explain as unavailable |
+| Repeated identical match request | Stable recommendation/input fingerprint; no duplicate mutation |
+| User chooses “start new” or “defer” | Append override status/reason; preserve original recommendation |
+| Model supplies a confirmation token | Ignore it; only the outer user-confirmation boundary may authorize mutation |
+
+### Authority and side-effect boundaries
+
+Matching reads persisted Riff receipts, profile slices, project inventories, and
+snapshots only. It performs no GitHub network call, repository execution,
+subprocess, credential access, model call, or repository mutation. Optional
+model text may explain a deterministic result but cannot change disposition,
+scores, citations, or approval status. Only explicit user confirmation may
+accept an extension, create an Exploration, or approve a PRD.
+
+### Fixtures, replay, and budgets
+
+Fixtures must cover positive extension, greenfield, insufficient/contradictory
+evidence, archived project, malformed snapshot, oversized text, and changed
+snapshot/version inputs. Every fixture is offline and secret-free. Matching is
+bounded to at most 5 projects, 10 receipts, 3 recommendations, 20k serialized
+response bytes, and 10 seconds; identical fingerprints are cached, while a
+changed project snapshot invalidates only the affected match. Restarting the
+adapter loses no recommendation or target reference. No retry may repeat an
+acceptance mutation.
+
+### Criterion-to-test map
+
+- Matching/disposition and score bounds: `tests/test_recommendations.py` fixture
+  cases `extension`, `greenfield`, and `insufficient`.
+- Citation/uncertainty/privacy and archived-project exclusion:
+  `tests/test_recommendations.py` evidence assertions.
+- Targeted Exploration/PRD and user overrides: Postgres tests in
+  `tests/test_recommendations.py` plus `tests/test_explorations.py`/`tests/test_prds.py`.
+- ChatGPT bounds, confirmation, restart, and stable IDs: adapter/MCP tests and
+  a scripted scenario under `tests/fixtures/chat/`.
+- Human usefulness/grounding comparison: a redacted report under
+  `docs/reports/g27-recommendation-evaluation.md`.

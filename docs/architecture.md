@@ -233,3 +233,15 @@ changing. The mounted transport inherits the same optional bearer token and
 keeps the SDK's DNS-rebinding host/origin checks enabled. The MCP session
 manager runs in the parent FastAPI lifespan so restarts discard only transport
 state; Postgres remains the sole canonical store.
+
+## G26 GitHub project understanding
+
+`src/riff/project_map.py` keeps user-approved GitHub repositories in a project
+inventory separate from generated PRD projects. Refreshes read only persisted
+G03 repository, README, release, and issue artifacts, cap the artifact count,
+and write immutable versioned summaries in `github_project_snapshots`. Claims
+carry evidence IDs and optional receipt/mapping IDs plus parser/policy
+versions, confidence, and observed/inferred/unknown status. Repeated input is
+content-addressed and returns the existing snapshot; changed input links a new
+version to its predecessor. Archive and onboarding are explicit user actions.
+No code is executed, private content is fetched, or profile state is mutated.

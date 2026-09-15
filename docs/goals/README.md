@@ -68,6 +68,8 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G30](G30-data-quality-remediation-and-rca.md) | Repair persisted data quality and close the feedback loop | G22, G29 |
 | [G31](G31-engineer-source-provenance-operations.md) | Execute and verify engineer-source provenance collection | G17, G19, G22, G30 |
 | [G32](G32-natural-language-conversational-continuity.md) | Make conversational Riff exploration natural and context-preserving | G10, G11, G12, G23, G24a |
+| [G33](G33-github-account-observation.md) | Observe the user's GitHub account with explicit scope | G03, G22, G24a, G26 |
+| [G34](G34-github-source-monitoring-and-quantitative-discovery.md) | Monitor selected repositories and run quantitative GitHub discovery | G18, G20, G25, G26, G33 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -102,6 +104,8 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Persisted data quality, collection health, and RCA | G30 |
 | Engineer-source collection provenance and evidence quality | G31 |
 | Automated job collection and listing URL intake | G04, G21 |
+| User-authorized GitHub account observation and project selection | G33 |
+| Selected-repository monitoring and quantitative discovery | G34 |
 
 ## Canonical project scenarios
 
@@ -131,6 +135,8 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-EPISTEMIC-001` — Riff distinguishes an interesting hypothesis from a well-supported claim and shows what provenance is needed next.
 - `SC-DATA-QUALITY-001` — Riff repairs persisted metadata and stale collection state, then explains every remaining data anomaly.
 - `SC-CHATGPT-004` — Riff carries a concept through natural-language investigation and refinement until the user explicitly requests a PRD.
+- `SC-GITHUB-ACCOUNT-001` — Riff observes a user-authorized GitHub account, presents bounded repository candidates, and onboards only explicitly selected projects.
+- `SC-GITHUB-MONITOR-001` — Riff monitors selected repositories and queues bounded, quantitatively qualified discovery candidates without silently enabling collection.
 
 ## Current handoff
 
@@ -141,8 +147,10 @@ transcript, Inspector protocol checks, and a recorded human evaluation. G24a now
 the native MCP `/mcp` transport, passes Inspector and ChatGPT acceptance, and
 is complete as a transport/lifecycle goal; its rough interaction quality is
 routed to G32. G25's offline, fixture-backed discovery and review slice and
-its promoted-scope G03/Postgres integration are complete. G26 is ready to
-build the user project map, followed by G27's project-aware recommendations.
+its promoted-scope G03/Postgres integration are complete. G26 now maintains a
+separate user-approved project inventory and versioned, evidence-backed map
+from bounded G03 artifacts; G27 is ready to build project-aware
+recommendations.
 G28 then adds
 opportunity-context modeling and iterative execution riffing so those
 recommendations become a search over distinctive, evidence-producing
@@ -166,6 +174,10 @@ shared scheduled and terminal path for compliant job collection plus
 one-listing URL intake. The earlier
 durable-execution/observability mini-project and workflow-reconciliation
 investigation remain in `docs/backlog.md`.
+G33 is ready to add explicit, scope-limited observation of the user's GitHub
+account and natural-language repository selection. G34 follows with durable
+monitoring of selected repositories and quantitative search rules that can
+auto-queue or propose disabled scopes without bypassing review.
 G32 removes UUID/tool relaying from the user experience while preserving
 bounded context, citations, uncertainty, and explicit mutation approvals.
 
