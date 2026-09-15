@@ -125,6 +125,19 @@ def test_tool_loop_enforces_turn_and_result_bounds():
     ]
 
 
+def test_tool_loop_compacts_old_tool_results_within_context_budget():
+    tools = [{"name": "daily_riffs", "description": "Read daily Riffs.", "required": ("run_date",)}]
+    model = ScriptedModelClient([
+        {"tool_calls": [{"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}}]},
+        {"tool_calls": [{"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}}]},
+        {"content": "Finished."},
+    ])
+    adapter = FixtureToolAdapter(tools, {"daily_riffs": {"result": "x" * 180}})
+    result = ChatToolLoop(model, adapter, policy=ToolLoopPolicy(max_message_chars=800)).run("Loop.")
+    assert result.status == "SUCCEEDED"
+    assert result.turns == 3
+
+
 def test_tool_loop_reports_deterministic_timeout_code():
     now = [0.0]
 

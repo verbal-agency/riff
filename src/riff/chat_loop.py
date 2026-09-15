@@ -184,6 +184,7 @@ class ChatToolLoop:
 
         for turn in range(1, self.policy.max_turns + 1):
             self._check_deadline(deadline)
+            _compact_context(messages, self.policy.max_message_chars)
             if _encoded_chars(messages) > self.policy.max_message_chars:
                 raise ChatLoopError(
                     "model context exceeded the configured bound",
@@ -279,6 +280,33 @@ def _bounded_result(result: Mapping[str, Any], limit: int) -> dict[str, Any]:
 
 def _encoded_chars(messages: Sequence[Mapping[str, Any]]) -> int:
     return len(json.dumps(list(messages), sort_keys=True, default=str))
+
+
+def _compact_context(messages: list[dict[str, Any]], limit: int) -> None:
+    """Compact old tool payloads while preserving the conversation protocol.
+
+    Tool results are already bounded individually, but a multi-step promotion
+    can still exceed the cumulative model-context budget. Replace the oldest
+    result bodies with an auditable marker first; assistant tool calls and
+    correlation IDs remain intact, and the most recent results stay available
+    to the model. If the remaining protocol envelope itself is too large, the
+    caller still raises ``CONTEXT_BUDGET_EXHAUSTED``.
+    """
+
+    if _encoded_chars(messages) <= limit:
+        return
+    for index, message in enumerate(messages):
+        if message.get("role") != "tool":
+            continue
+        content = message.get("content")
+        if not isinstance(content, str) or content.startswith("[Riff tool result compacted"):
+            continue
+        messages[index] = {
+            **message,
+            "content": f"[Riff tool result compacted; original_chars={len(content)}]",
+        }
+        if _encoded_chars(messages) <= limit:
+            return
 
 
 class ScriptedModelClient:

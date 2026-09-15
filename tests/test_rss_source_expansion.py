@@ -31,20 +31,37 @@ def test_g16_registry_contains_secret_free_pending_tier_one_sources():
         "writing-nist-taking-measure",
     }
     assert {source["source_id"] for source in sources} >= expected
-    assert all(source["source_type"] == "TECHNICAL_WRITING" for source in sources)
-    assert all(source["enabled"] is False for source in sources)
-    assert all(source["permission_status"] == "PENDING_REVIEW" for source in sources)
-    assert all(source["endpoint"].startswith(("https://", "http://")) for source in sources)
-    assert all(source["fixture_plan"].startswith("g16/") for source in sources)
+    g16_sources = [source for source in sources if source["source_id"] in expected]
+    assert len(g16_sources) == len(expected)
+    assert all(source["source_type"] == "TECHNICAL_WRITING" for source in g16_sources)
+    assert all(source["enabled"] is False for source in g16_sources)
+    assert all(source["permission_status"] == "PENDING_REVIEW" for source in g16_sources)
+    assert all(source["endpoint"].startswith(("https://", "http://")) for source in g16_sources)
+    assert all(source["fixture_plan"].startswith("g16/") for source in g16_sources)
 
 
 def test_g16_reviewed_manifest_inventory_matches_registry():
     manifest = load_manifest(MANIFEST)
     registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
     inventory = manifest["rss_inventory"]
-    assert len(inventory) == 13
+    g16_inventory = [source for source in inventory if source["source_id"].startswith("writing-") and source["source_id"] in {
+        "writing-openai-news",
+        "writing-google-deepmind",
+        "writing-google-research",
+        "writing-huggingface",
+        "writing-arxiv-cs-ai",
+        "writing-arxiv-cs-lg",
+        "writing-arxiv-cs-cl",
+        "writing-arxiv-stat-ml",
+        "writing-bair",
+        "writing-mit-ai",
+        "writing-aws-ml",
+        "writing-opentelemetry",
+        "writing-nist-taking-measure",
+    }]
+    assert len(g16_inventory) == 13
     registry_by_id = {source["source_id"]: source for source in registry["sources"]}
-    for source in inventory:
+    for source in g16_inventory:
         configured = registry_by_id[source["source_id"]]
         assert configured["endpoint"] == source["endpoint"]
         assert configured["source_root"] == source["source_root"]

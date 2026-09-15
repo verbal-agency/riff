@@ -24,7 +24,7 @@
       "selection_id": "select-engineer-eugene-yan",
       "engineer_source_id": "engineer-eugene-yan",
       "registry_source_id": "writing-engineer-eugene-yan",
-      "endpoint": "https://eugeneyan.com/rss.xml",
+      "endpoint": "https://eugeneyan.com/rss/",
       "source_root": "https://eugeneyan.com/",
       "source_ownership": "PERSONAL",
       "person_id": "eugene-yan",

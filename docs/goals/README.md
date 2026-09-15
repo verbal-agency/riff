@@ -152,9 +152,12 @@ coverage, and closes the loop with repeatable RCA before real-source dogfooding.
 G31 is the operational follow-up for engineer-source provenance: it turns only
 per-source-reviewed native RSS entries into evidence, then verifies that the
 person, employer, root, and correlation metadata survive collection. G17's
-engineer-source roster and attribution contract were approved by the user; all
-source entries remain disabled pending individual terms review. G19 added the
-fail-closed selection and attribution seam but did not enable any feed. G20
+engineer-source roster and attribution contract were approved by the user; G31
+approved and collected the initial Simon Willison, Eugene Yan, and Lilian Weng
+selections, followed by operator enablement of 13 additional validated native
+feeds. The three URL-only candidates remain disabled pending an adapter
+decision. G19 added the
+fail-closed selection and attribution seam. G20
 implements bounded topic/search discovery
 from the G18 decision and keeps discovered scopes behind review. G21 adds the
 shared scheduled and terminal path for compliant job collection plus
@@ -164,8 +167,8 @@ investigation remain in `docs/backlog.md`.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots
-and retention are reviewed; engineer RSS entries remain disabled unless a
-later operator action records per-source approval.
+and retention are reviewed; the 16 reviewed G31 engineer RSS selections are
+enabled, while URL-only engineer candidates remain disabled.
 ```
 
 After a goal is accepted, update its status to `Complete` and change every newly unblocked goal from `Queued` to `Ready`. Use `In progress` only while an agent is actively implementing that goal.

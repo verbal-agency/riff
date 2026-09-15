@@ -1,6 +1,6 @@
 # G31 — Execute and verify engineer-source provenance collection
 
-**Status:** Blocked
+**Status:** Complete
 **Depends on:** G17, G19, G22, G30
 **Unlocks:** Real engineer-attributed evidence for provenance calibration and source-quality review
 **PRD references:** Sections 7–8, 22, 24.3, 26–29, 33
@@ -46,7 +46,7 @@ sources has produced a receipt in the database.
 
 ## Acceptance criteria
 
-- [ ] At least three G17 native-RSS selections have a recorded endpoint,
+- [x] At least three G17 native-RSS selections have a recorded endpoint,
   permission/terms decision, retention mode, reviewer/date, and fixture plan;
   only explicitly confirmed `ENABLE` selections are eligible for collection.
 - [x] Registry projection and `source sync` are idempotent and enable only the
@@ -55,7 +55,7 @@ sources has produced a receipt in the database.
 - [x] Fixture replay stores at least one item per selected source through the
   existing RSS runner and Postgres, with all required engineer provenance keys
   present in retrieval metadata and searchable evidence.
-- [ ] An explicitly authorized live smoke run, or an operator-provided
+- [x] An explicitly authorized live smoke run, or an operator-provided
   first-party response captured under the reviewed retention policy, produces at
   least one non-synthetic receipt for an enabled engineer source; the report
   records the source, run ID, item outcome, and whether evidence is fixture or
@@ -65,7 +65,7 @@ sources has produced a receipt in the database.
   independence claim is inferred.
 - [x] First run, unchanged rerun, transient failure, permanent parse failure,
   and cursor/checkpoint replay are idempotent and leave no skipped evidence.
-- [ ] A data-quality/source-coverage report shows the before/after engineer
+- [x] A data-quality/source-coverage report shows the before/after engineer
   receipt count and explains any remaining zero-evidence source; provenance
   confidence does not increase from synthetic evidence alone.
 - [x] Operator documentation gives the one-line validate, preview, project,
@@ -154,17 +154,29 @@ approved adapter goal.
 - Full offline suite: **111 passed, 91 skipped**.
 - Added `riff data-quality engineer-sources --limit 100`, which reports explicit
   engineer IDs and separates fixture from non-fixture evidence.
-- The checked-in selection manifest remains `PENDING`/disabled for all three
-  sources. No live source was enabled or fetched; the non-synthetic evidence
-  acceptance criterion therefore remains pending operator approval.
+- The initial cycle recorded the selection manifest before operator approval;
+  it is now superseded by the 16-selection reviewed manifest.
 - The shared development database contains test-created engineer rows; this is
   recorded as `BL-G31-001` and must not be treated as live provenance.
+- Operator-approved live smoke collection completed on 2026-09-15 after
+  correcting Eugene Yan's first-party feed endpoint from `/rss.xml` (HTTP 404)
+  to the site-advertised `/rss/` (HTTP 200 XML): Simon Willison stored **15**
+  items, Eugene Yan **212**, and Lilian Weng **53**.
+- The initial post-collection coverage report showed all three original
+  sources in `COLLECTED` state with non-synthetic evidence; the prior Eugene
+  404 remains recorded as one failed run and does not affect successful receipt
+  counts.
+- Focused engineer-source Postgres tests: **4 passed**; full suite:
+  **113 passed, 91 skipped**.
+- The subsequent expansion enabled 13 additional native feeds, projected all
+  16 feed-backed selections into Postgres, and completed a targeted live
+  cursor-safe retry with `SUCCEEDED` status.
 
-## Blocker
+## Resolution
 
-Completion requires an operator decision for at least three native-RSS
-selections: confirmed endpoint, terms/retention policy, reviewer, and review
-date. Until that decision is recorded, the manifest must remain
-`PENDING`/disabled and Riff must not perform a live collection. Fixture replay
-and all Riff-side verification are complete; no further safe implementation can
-produce the required non-synthetic receipt without that external authority.
+The operator approved the initial three native-RSS selections, then enabled 13
+additional feed-backed selections with `USER_PROVIDED` permission,
+`url_metadata_bounded_text` retention, reviewer `riff-operator`, and review
+date `2026-09-15`. All 16 are projected into both registries, synced to
+Postgres, and have successful targeted live collection runs. `BL-G31-001`
+remains as a separate test-isolation hardening item.

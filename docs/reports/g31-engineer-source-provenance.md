@@ -6,7 +6,9 @@ The engineer-source collection path is implemented and verified through the
 existing RSS/Postgres pipeline. Riff now has a dedicated
 `data-quality engineer-sources` report that groups only by explicit
 `engineer_source_id` metadata and separates fixture evidence from non-fixture
-evidence.
+evidence. The initial G31 pass approved three reviewed feeds and completed live
+smoke collection. The subsequent 2026-09-15 expansion pass approved 13
+additional native feeds; the three URL-only candidates remain outside RSS.
 
 ## Automated evidence
 
@@ -20,18 +22,27 @@ evidence.
   attribution disposition metadata.
 - Attribution drift is recorded as a permanent failure and does not create an
   evidence row.
-- Existing RSS cursor/idempotence tests remain green; no live HTTP request or
-  credential is used by the automated suite.
+- Existing RSS cursor/idempotence tests remain green; automated tests use no
+  credentials or live HTTP. The explicitly authorized live smoke runs stored
+  15 Simon Willison items, 212 Eugene Yan items, and 53 Lilian Weng items.
 
 ## Current operational database finding
 
-The configured local database still has no clean, reviewed engineer-source
-projection. The current engineer coverage report shows test-created rows for
-`engineer-simon-willison`, including duplicate random source IDs and a mixture
-of fixture and unmarked synthetic evidence. These rows came from integration
-tests that use the shared development database; they are not evidence that a
-reviewed live source has been collected. No user data was deleted to hide this
-condition.
+The configured local database initially had reviewed, enabled projections for
+three engineer sources. The current expanded registry has 16 reviewed,
+enabled feed-backed projections; the expansion report records current
+per-source coverage and separates test-created rows from live evidence.
+
+The following counts are the initial G31 snapshot, before the expansion:
+
+- Simon Willison: 47 non-synthetic items (69 total, including fixture rows).
+- Eugene Yan: 212 non-synthetic items (216 total); one earlier 404 run remains
+  recorded as a failed run.
+- Lilian Weng: 53 non-synthetic items (57 total, including fixture rows).
+
+The report still includes test-created rows from prior shared-database runs;
+they are explicitly separated by `fixture` metadata and are not promoted into
+confidence merely because they exist.
 
 This is a test-isolation/RCA finding, not a reason to infer authorship or to
 promote the current rows into provenance confidence. Future Postgres tests
@@ -54,7 +65,9 @@ uv run riff ingest --source-type TECHNICAL_WRITING --source-id <registry-source-
 uv run riff source disable --source-id <registry-source-id>
 ```
 
-The checked-in selections remain `PENDING` and disabled. Project/apply and live
-collection require the operator to record per-source endpoint, terms,
-retention, reviewer, and date. A live run is not claimed by this report; it is
-the explicit final acceptance gate for G31.
+The checked-in selections record explicit `ENABLE` decisions, reviewer
+`riff-operator`, and review date `2026-09-15`; the initial three use
+`CONFIRMED` permission and the 13-source expansion uses `USER_PROVIDED`
+permission. Project/apply and live collection remain bounded to the explicit
+first-party endpoints and the `url_metadata_bounded_text` retention mode. No
+credentials were used.

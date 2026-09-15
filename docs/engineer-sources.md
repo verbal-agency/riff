@@ -1,9 +1,12 @@
 # Engineer-authored source map
 
 This is the G17 research artifact. It is a qualification roster, not an
-enablement list: every entry in `config/engineer_sources.json` is disabled and
-`PENDING_REVIEW` until the operator confirms the endpoint, attribution, and
-retention terms.
+enablement list: entries remain disabled and `PENDING_REVIEW` until the
+operator confirms the endpoint, attribution, and retention terms. The separate
+RSS selection manifest now contains 16 reviewed and enabled feed-backed
+selections; the roster remains the source of identity and correlation metadata.
+The three URL-only candidates remain outside the RSS pipeline pending a bounded
+HTML or official-API adapter.
 
 The roster is intentionally mixed. Simon Willison documents a set of public
 Atom feeds for his own site, while Sebastian Raschka, Hamel Husain, Eugene Yan,
@@ -21,7 +24,7 @@ organizations. See the public source descriptions for [Simon Willison](https://f
 |---|---|---|---|---|---|
 | Simon Willison | applied AI, open source | [Atom entries](https://simonwillison.net/atom/entries/) | Personal | Native RSS/Atom; review terms | `person:simon-willison` |
 | Chip Huyen | AI engineering, production ML | [Blog](https://huyenchip.com/blog/) / `https://huyenchip.com/feed.xml` | Personal | Pending endpoint review | `person:chip-huyen` |
-| Eugene Yan | applied ML, LLM systems, evals | [RSS](https://eugeneyan.com/rss.xml) | Personal | Native RSS; review terms | `person:eugene-yan` |
+| Eugene Yan | applied ML, LLM systems, evals | [RSS](https://eugeneyan.com/rss/) | Personal | Native RSS; review terms | `person:eugene-yan` |
 | Lilian Weng | agents, research, safety | [Lil'Log](https://lilianweng.github.io/) / `https://lilianweng.github.io/index.xml` | Personal | Native RSS; review terms | `person:lilian-weng` |
 | Sebastian Raschka | LLM training, evaluation | [Blog and notes](https://sebastianraschka.com/blog/) / `https://sebastianraschka.com/feed.xml` | Personal | Pending endpoint review | `person:sebastian-raschka` |
 | Hamel Husain | evals, LLM infrastructure | [Hamel's Blog](https://hamel.dev/) / `https://hamel.dev/feed.xml` | Personal | Pending endpoint review | `person:hamel-husain` |
@@ -35,13 +38,30 @@ organizations. See the public source descriptions for [Simon Willison](https://f
 | Maxim Fateev | durable execution, workflow runtime | [Temporal Blog](https://temporal.io/blog) | Employer | No native feed found; author filter required | `org:temporal` |
 | Harrison Chase | agent frameworks, observability | [LangChain Blog](https://www.langchain.com/blog) | Employer | No native feed found; author filter required | `org:langchain` |
 | Shreya Shankar | AI evaluation, data quality | [Personal site](https://shreyashankar.com/) | Personal | No permitted machine-readable source found | `person:shreya-shankar` |
+| Ethan Mollick | AI in work, human-AI interaction | [One Useful Thing](https://www.oneusefulthing.org/feed) | Personal | Native RSS; pending terms review | `person:ethan-mollick` |
+| Nathan Lambert | post-training, open models, evals | [Interconnects](https://www.interconnects.ai/feed) | Personal publication | Native RSS; bounded public-feed retention review | `person:nathan-lambert` |
+| Chris Olah | mechanistic interpretability, model internals | [colah's blog](https://colah.github.io/rss.xml) | Personal | Native RSS; pending terms review | `person:chris-olah` |
+| Evan Anders | interpretability, transformer circuits | [Research blog](https://evanhanders.blog/feed/) | Personal | Native RSS; pending terms review | `person:evan-anders` |
+| Kevin Chen | reasoning, ML systems, simulation | [Personal blog](https://kevinchen.co/feed.xml) | Personal | Native RSS; OpenAI affiliation correlated | `person:kevin-chen` |
+| Nishanth J. Kumar | robotics, planning, long-horizon agents | [Personal blog](https://nishanthjkumar.com/feed.xml) | Personal | Native RSS; Meta affiliation correlated | `person:nishanth-kumar` |
+| Praj Bhargava | pretraining infrastructure, long context | [Personal blog](https://prajjwal1.github.io/atom.xml) | Personal | Native RSS; Meta affiliation correlated | `person:praj-bhargava` |
+| Jeremy Howard | practical ML, end-user AI, education | [fast.ai posts](https://www.fast.ai/index.xml) | Community | Native RSS; fast.ai/Answer.AI correlation required | `person:jeremy-howard` |
+| Julia Evans | systems, networking, debugging | [jvns.ca](https://jvns.ca/atom.xml) | Personal | Native RSS; pending terms review | `person:julia-evans` |
+| Armin Ronacher | agentic coding, runtimes, open source | [Technology blog](https://lucumr.pocoo.org/feed.atom) | Personal | Native Atom; pending terms review | `person:armin-ronacher` |
+| Mario Zechner | coding-agent harnesses, developer tools | [Personal blog](https://mariozechner.at/rss.xml) | Personal | Native RSS; pending terms review | `person:mario-zechner` |
+| Mitchell Hashimoto | developer tools, systems performance | [Writing](https://mitchellh.com/feed.xml) | Personal | Native RSS; pending terms review | `person:mitchell-hashimoto` |
+| Geoffrey Litt | malleable software, HCI, AI-assisted programming | [Personal site](https://www.geoffreylitt.com/feed.xml) | Personal | Native RSS; employer correlation required | `person:geoffrey-litt` |
+| Matt Lim | agent research, tool use, product engineering | [Personal site](https://www.mattlim.me/) | Personal | URL-only; bounded adapter required | `person:matt-lim` |
+| Saffron Huang | AI societal impacts, human-AI interaction, safety | [Personal site](https://saffronhuang.com/) | Personal | URL-only; bounded adapter required | `person:saffron-huang` |
+| François Chollet | AI foundations, program synthesis, evaluation | [Personal site](https://fchollet.com/) | Personal | URL-only; bounded adapter required | `person:francois-chollet` |
 
-The feed URLs for Simon Willison, Lilian Weng, Eugene Yan, Sebastian Raschka,
-Andrej Karpathy, Jay Alammar, and Hamel Husain are candidate endpoints gathered
-from their public sites or public feed indexes; G17 keeps them pending until a
-live endpoint/terms check is explicitly performed. Hamel's writing is directly
-about practical AI engineering and evals, and Eugene Yan's published themes
-include production LLM systems and evaluation.
+The feed URLs for Sebastian Raschka, Andrej Karpathy, Jay Alammar, and Hamel
+Husain are candidate endpoints gathered from their public sites or public feed
+indexes; G17 keeps them pending until a live endpoint/terms check is explicitly
+performed. G31 completed the initial check for three approved selections, and
+the 2026-09-15 expansion pass validated 13 additional native feeds. Hamel's
+writing is directly about practical AI engineering and evals, and Eugene Yan's
+published themes include production LLM systems and evaluation.
 
 ## Attribution and independence rules
 
@@ -75,8 +95,10 @@ deliberately deterministic and does not contact any source.
 
 `config/engineer_rss_selections.json` is the bridge from this qualification
 roster to the existing RSS registry. It references stable G17 source IDs and
-keeps every selection `PENDING` and disabled until its own endpoint, terms,
-retention, reviewer, and date are recorded.
+keeps unreviewed selections `PENDING` and disabled until their own endpoint,
+terms, retention, reviewer, and date are recorded. The 16 feed-backed
+selections are reviewed and enabled; `NONE_FOUND` URL-only entries remain
+outside the RSS pipeline.
 
 Use the local review workflow:
 
