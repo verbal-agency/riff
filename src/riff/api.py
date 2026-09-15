@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import date
 from dataclasses import asdict
 
-from fastapi import Depends, FastAPI, HTTPException, status
+import hmac
+
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 
 from .config import Settings
 from .db import database_ready
@@ -29,6 +31,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     def resolve_settings() -> Settings:
         return configured_settings or get_settings()
+
+    def require_adapter_auth(
+        authorization: str | None = Header(default=None),
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> None:
+        expected_token = effective_settings.adapter_token
+        if expected_token is None:
+            return
+        expected = f"Bearer {expected_token}"
+        if authorization is None or not hmac.compare_digest(authorization, expected):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="adapter authentication required",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     @app.get("/health/live", tags=["health"])
     def live() -> dict[str, str]:
@@ -207,13 +224,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     @app.get("/adapter/tools", tags=["adapter"])
-    def adapter_tools() -> dict:
-        return {"protocol": "riff-tools-v1", "tools": RiffToolAdapter(resolve_settings().database_url).list_tools()}
+    def adapter_tools(
+        _auth: None = Depends(require_adapter_auth),
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        return {"protocol": "riff-tools-v1", "tools": RiffToolAdapter(effective_settings.database_url).list_tools()}
 
     @app.post("/adapter/tools/{tool_name}", tags=["adapter"])
     def adapter_call(
         tool_name: str,
         payload: dict,
+        _auth: None = Depends(require_adapter_auth),
         effective_settings: Settings = Depends(resolve_settings),
     ) -> dict:
         try:

@@ -17,6 +17,7 @@ class Settings:
     database_url: str
     environment: str = "development"
     log_level: str = "INFO"
+    adapter_token: str | None = None
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "Settings":
@@ -36,5 +37,5 @@ class Settings:
 
         environment = source.get("RIFF_ENV", "development").strip() or "development"
         log_level = source.get("RIFF_LOG_LEVEL", "INFO").strip().upper() or "INFO"
-        return cls(database_url=database_url, environment=environment, log_level=log_level)
-
+        adapter_token = source.get("RIFF_ADAPTER_TOKEN", "").strip() or None
+        return cls(database_url=database_url, environment=environment, log_level=log_level, adapter_token=adapter_token)

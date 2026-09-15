@@ -323,6 +323,24 @@ paths return typed errors. A real ChatGPT connector will supply the model client
 and call the same adapter endpoints; it must provide explicit user confirmation
 separately from model-generated tool arguments.
 
+G24 also includes a bounded HTTP connector for exercising that contract against
+a running Riff instance. Start the API with an optional bearer token, then
+probe the catalog or replay the scripted model fixture over HTTP:
+
+```sh
+export RIFF_ADAPTER_TOKEN=local-connector-only
+uv run riff api --host 127.0.0.1 --port 8000
+uv run riff connector probe --url http://127.0.0.1:8000 --token "$RIFF_ADAPTER_TOKEN"
+uv run riff chat replay --file tests/fixtures/chat/tool-loop-v1.json --scenario daily \
+  --url http://127.0.0.1:8000 --token "$RIFF_ADAPTER_TOKEN"
+```
+
+Loopback HTTP is for local dogfooding only. A deployed connector must use an
+HTTPS, private/restricted origin with a secret-managed `RIFF_ADAPTER_TOKEN`,
+bounded network timeouts, and rotation without logging the token. The connector
+does not retry calls, so mutation disconnects cannot be silently duplicated;
+Riff remains the system of record.
+
 The G15 dogfood packet is fixture-only and replayable: use
 `tests/fixtures/dogfood/manifest.json` and inspect
 `docs/reports/g15-dogfood-report.json` plus the recorded review in

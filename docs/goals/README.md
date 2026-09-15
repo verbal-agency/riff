@@ -123,8 +123,10 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 ## Current handoff
 
 G00 through G23 are complete. G23's provider-neutral model tool loop now runs
-against persisted Postgres adapter state; G24 is ready to connect it to a
-supported ChatGPT surface for end-to-end evaluation. G25's
+against persisted Postgres adapter state; G24's provider-neutral HTTP connector
+and Riff-side Postgres promotion path are implemented and verified, but the
+goal remains incomplete pending a supported ChatGPT surface and the user's
+human evaluation. G25's
 offline, fixture-backed discovery and review slice is implemented but remains
 incomplete pending its G03/Postgres integration. After that, G26 builds the user
 project map and G27 makes recommendations project-aware. G28 then adds

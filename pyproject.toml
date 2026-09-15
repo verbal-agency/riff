@@ -10,13 +10,13 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "fastapi>=0.115,<1",
+  "httpx>=0.27,<1",
   "psycopg[binary]>=3.2,<4",
   "uvicorn[standard]>=0.30,<1",
 ]
 
 [dependency-groups]
 test = [
-  "httpx>=0.27,<1",
   "pytest>=8,<10",
 ]
 
@@ -32,4 +32,3 @@ addopts = "-q"
 markers = [
   "postgres: requires a reachable Postgres database configured by RIFF_DATABASE_URL",
 ]
-

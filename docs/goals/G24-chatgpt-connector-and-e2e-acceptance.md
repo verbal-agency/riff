@@ -1,6 +1,6 @@
 # G24 — Connect ChatGPT and run the end-to-end conversation
 
-**Status:** Ready
+**Status:** Incomplete
 **Depends on:** G22, G23
 **Unlocks:** User-facing conversational dogfood of Riff
 **PRD references:** Sections 4, 10, 15, 27, 32–33
@@ -76,12 +76,12 @@ the connector becoming the system of record.
 
 - [ ] A supported ChatGPT-compatible connector successfully discovers and calls
   the documented Riff tools against a running instance.
-- [ ] The complete read-and-promote conversation succeeds against Postgres,
+- [x] The complete read-and-promote conversation succeeds against Postgres,
   with persisted IDs, provenance, and approval state verified afterward.
-- [ ] No confirmation-free model sequence can create an Exploration or PRD,
+- [x] No confirmation-free model sequence can create an Exploration or PRD,
   and no connector retry duplicates a mutation.
-- [ ] Privacy, credential, transport, timeout, and error-boundary checks pass.
-- [ ] Local setup and connector configuration are documented with safe
+- [x] Privacy, credential, transport, timeout, and error-boundary checks pass.
+- [x] Local setup and connector configuration are documented with safe
   placeholder credentials and readiness checks.
 - [ ] Automated connector tests and the G22 Postgres regression suite pass;
   the user records a human evaluation of the conversational experience.
@@ -92,3 +92,40 @@ Report the selected integration mechanism, endpoint/auth configuration,
 conversation evidence, persisted object IDs, automated results, and the user's
 qualitative judgment. Any provider-specific limitation becomes a documented
 follow-up rather than a change to Riff's product invariants.
+
+## Cycle verification (2026-09-14)
+
+The provider-neutral equivalent selected for the transport slice is bounded
+HTTP over the existing `riff-tools-v1` adapter
+(`docs/decisions/0010-provider-neutral-http-connector.md`). `riff connector
+probe` discovers the catalog, and `riff chat replay --url` runs the existing
+deterministic model fixture against a live API. `RIFF_ADAPTER_TOKEN` enables
+optional bearer enforcement; loopback HTTP is documented as local-only.
+
+Automated connector tests cover catalog validation, auth headers, response
+limits, sanitized HTTP errors, invalid tool paths, and the no-retry mutation
+boundary. The remaining G24 acceptance is external: run the documented replay
+against the G22 Postgres instance, then connect the currently supported ChatGPT
+surface and record the human usefulness/grounding/confirmation evaluation.
+
+### Criterion status
+
+- **Pass (Riff-side equivalent):** the authenticated HTTP connector discovered
+  all `riff-tools-v1` tools and a live daily replay returned the persisted
+  `daily_run_id` from Postgres.
+- **Pass:** the focused Postgres connector test completed read → decision →
+  Exploration → experiment selection → PRD approval → generation → export,
+  then re-read the project without creating a duplicate.
+- **Pass:** confirmation-free promotion remains rejected by the existing loop;
+  the HTTP connector performs no automatic retries, and the test suite verifies
+  one request per call.
+- **Pass:** connector auth, credential-safe URL validation, response bounds,
+  timeout/error codes, path validation, and private-profile omission are
+  covered by `tests/test_connector.py`.
+- **Pass:** local setup, safe placeholder token configuration, readiness probe,
+  HTTPS/restricted-origin requirements, and rotation guidance are documented
+  in `README.md` and `docs/decisions/0010-provider-neutral-http-connector.md`.
+- **Pending external evaluation:** a provider's current ChatGPT connector must
+  be pointed at the documented boundary, and the user must record the human
+  usefulness/grounding/confirmation judgment. This is intentionally not
+  replaced with a Perplexity-specific implementation or a job-specific rule.

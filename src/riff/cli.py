@@ -21,6 +21,7 @@ from .chat_loop import (
     load_chat_fixture,
 )
 from .config import Settings
+from .connector import ConnectorConfig, ConnectorError, HttpToolAdapter
 from .db import migrate
 from .daily import load_fixture, run_fixture
 from .evidence import SourceType
@@ -231,6 +232,15 @@ def build_parser() -> argparse.ArgumentParser:
     chat_replay = chat_subparsers.add_parser("replay", help="replay a recorded model/tool conversation")
     chat_replay.add_argument("--file", required=True)
     chat_replay.add_argument("--scenario")
+    chat_replay.add_argument("--url", help="use a running HTTP adapter instead of fixture results")
+    chat_replay.add_argument("--token", help="bearer token for the HTTP adapter (prefer RIFF_ADAPTER_TOKEN)")
+    chat_replay.add_argument("--timeout", type=float, default=10.0)
+    connector = subparsers.add_parser("connector", help="inspect a running Riff connector boundary")
+    connector_subparsers = connector.add_subparsers(dest="connector_command", required=True)
+    connector_probe = connector_subparsers.add_parser("probe", help="discover adapter tools and print a bounded catalog")
+    connector_probe.add_argument("--url", default=os.environ.get("RIFF_CONNECTOR_URL", "http://127.0.0.1:8000"))
+    connector_probe.add_argument("--token", default=os.environ.get("RIFF_ADAPTER_TOKEN"))
+    connector_probe.add_argument("--timeout", type=float, default=10.0)
     return parser
 
 
@@ -336,18 +346,34 @@ def main(argv: list[str] | None = None) -> int:
             confirmations = scenario.get("confirmations", {})
             if not isinstance(confirmations, dict):
                 raise ChatLoopError("scenario confirmations must be an object")
-            adapter = FixtureToolAdapter(fixture["tools"], scenario.get("adapter_results", {}))
+            adapter = (
+                HttpToolAdapter(ConnectorConfig(args.url, bearer_token=args.token, timeout_seconds=args.timeout))
+                if args.url
+                else FixtureToolAdapter(fixture["tools"], scenario.get("adapter_results", {}))
+            )
             model = ScriptedModelClient(scenario["turns"])
             confirmation_provider = (
                 lambda name, _arguments: "USER_CONFIRMED" if confirmations.get(name) is True else None
             )
-            result = ChatToolLoop(model, adapter, confirmation_provider=confirmation_provider).run(
-                str(scenario.get("user_message", "")),
-                system_prompt=str(fixture.get("system_prompt", "")) or None,
-            )
+            try:
+                result = ChatToolLoop(model, adapter, confirmation_provider=confirmation_provider).run(
+                    str(scenario.get("user_message", "")),
+                    system_prompt=str(fixture.get("system_prompt", "")) or None,
+                )
+            finally:
+                if isinstance(adapter, HttpToolAdapter):
+                    adapter.close()
             print(json.dumps({"fixture_id": fixture.get("fixture_id"), "scenario": scenario["id"], **result.to_dict()}, sort_keys=True, default=str))
         except (OSError, ValueError, ChatLoopError) as exc:
             raise SystemExit(f"chat replay error: {exc}") from exc
+        return 0
+    if args.command == "connector" and args.connector_command == "probe":
+        try:
+            with HttpToolAdapter(ConnectorConfig(args.url, bearer_token=args.token, timeout_seconds=args.timeout)) as adapter:
+                tools = adapter.list_tools()
+            print(json.dumps({"protocol": "riff-tools-v1", "url": args.url, "tools": tools}, sort_keys=True))
+        except (ConnectorError, OSError, ValueError) as exc:
+            raise SystemExit(f"connector probe error: {exc}") from exc
         return 0
     if args.command == "source" and args.source_command == "validate-manifest":
         try:

@@ -213,6 +213,10 @@ Model-generated confirmation tokens are never trusted; promotion tools receive
 `USER_CONFIRMED` only from the outer user-confirmation boundary.
 
 `src/riff/chat_loop.py` supplies provider-neutral protocols and deterministic
-scripted fakes. The real model client and ChatGPT-compatible transport remain
-replaceable follow-on work; fixture replay never requires a model, network, or
-database.
+scripted fakes. G24 adds `src/riff/connector.py` as a bounded HTTP implementation
+of the same `ToolAdapter` protocol. It discovers `riff-tools-v1`, calls the
+existing adapter endpoints without retries, caps response size and timeout, and
+optionally uses `RIFF_ADAPTER_TOKEN`; no provider or model state is persisted.
+Loopback HTTP is limited to local dogfooding, while deployment requires HTTPS,
+restricted network origin, and secret-managed token rotation. A future MCP or
+provider SDK can replace the transport without changing Riff's invariants.
