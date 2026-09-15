@@ -177,6 +177,7 @@ does not contact a provider):
 
 ```sh
 export RIFF_POSTGRES_PASSWORD=riff-local-only
+export RIFF_DATABASE_URL=postgresql://riff:riff-local-only@localhost:5432/riff
 docker compose up -d postgres
 uv run riff migrate
 uv run riff source add --source-id jobs-permitted-api --source-type JOBS --name "Permitted job API" --endpoint https://jobs.example/api/listings --disabled

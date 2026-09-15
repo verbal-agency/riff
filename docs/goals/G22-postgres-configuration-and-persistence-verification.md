@@ -1,6 +1,6 @@
 # G22 — Configure Postgres and verify persistence boundaries
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G00, G04, G21
 **Unlocks:** Repeatable database-backed development and confidence in the job-ingestion persistence path
 **PRD references:** Sections 8, 21, 27, 33
@@ -128,6 +128,7 @@ The goal should leave a tested sequence equivalent to:
 
 ```sh
 export RIFF_POSTGRES_PASSWORD=riff-local-only
+export RIFF_DATABASE_URL=postgresql://riff:riff-local-only@localhost:5432/riff
 docker compose up -d postgres
 docker compose exec postgres pg_isready -U riff -d riff
 uv run riff migrate
@@ -138,6 +139,21 @@ uv run riff migrate
 The exact commands may vary by local Postgres installation, but the same
 database URL, migration runner, and test marker must be used for the evidence
 report.
+
+## Cycle verification
+
+- Docker Compose Postgres readiness: `/var/run/postgresql:5432 - accepting connections`.
+- PostgreSQL server: `16.15`.
+- Applied migrations: `001_initial` through `015_engineer_rss_metadata` (15 total).
+- Repeated migration invocation: `applied: []` on both runs.
+- `.venv/bin/python -m pytest -m postgres`: `86 passed, 93 deselected, 2 warnings`.
+- `.venv/bin/python -m pytest -m 'not postgres'`: `93 passed, 86 deselected, 2 warnings`.
+- One stale global-row assertion in `tests/test_job_collection.py` was fixed to
+  query the evidence ID returned by the URL-intake receipt; the focused test and
+  complete Postgres suite pass afterward.
+- Remaining warnings are FastAPI/Starlette/httpx and AnyIO dependency
+  deprecations; they do not affect correctness and are deferred to dependency
+  maintenance.
 
 ## Handoff
 

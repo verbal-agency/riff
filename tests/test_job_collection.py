@@ -115,8 +115,9 @@ def test_url_intake_persists_raw_evidence_and_decomposition(postgres_repositorie
         ingestion, evidence, load_policy(POLICY), FixtureJobFetcher()
     ).run("https://jobs.example/listings/url-1", source_id="jobs-user-url")
     assert result["status"] == "SUCCEEDED"
+    evidence_id = result["synthesis_receipt"]["evidence_ids"][0]
     with connection(database_url) as conn:
-        row = conn.execute("SELECT role_title, seniority, metadata->>'parser_version' FROM job_postings").fetchone()
-        raw = conn.execute("SELECT raw_content FROM evidence_versions ORDER BY retrieved_at DESC LIMIT 1").fetchone()
+        row = conn.execute("SELECT role_title, seniority, metadata->>'parser_version' FROM job_postings WHERE evidence_id = %s", (evidence_id,)).fetchone()
+        raw = conn.execute("SELECT raw_content FROM evidence_versions WHERE evidence_id = %s", (evidence_id,)).fetchone()
     assert tuple(value.decode() if isinstance(value, bytes) else value for value in row) == ("Platform Engineer", None, "jobposting-jsonld-v1")
     assert "JobPosting" in (raw[0].decode() if isinstance(raw[0], bytes) else raw[0])

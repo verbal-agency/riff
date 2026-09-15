@@ -122,18 +122,15 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 
 ## Current handoff
 
-G00 through G21 are complete. G22 remains the next database prerequisite:
-configure a reproducible local Postgres path and run the complete persistence
-suite, including G21's job collection and URL-intake flows. G23's offline
-provider-neutral model tool loop is implemented but remains incomplete pending
-the G22 Postgres-backed adapter exercise; G24 connects it to a supported ChatGPT
-surface for end-to-end evaluation. G25's offline, fixture-backed discovery and
-review slice is implemented but incomplete pending its G03/Postgres integration
-through G22. After that, G26 builds the user project map and G27 makes
-recommendations project-aware. G28 then adds opportunity-context modeling and
-iterative execution riffing so those recommendations become a search over
-distinctive, evidence-producing demonstrations rather than a single generic
-project suggestion.
+G00 through G22 are complete. G23's offline provider-neutral model tool loop is
+implemented and is now ready for its Postgres-backed adapter exercise; G24
+connects it to a supported ChatGPT surface for end-to-end evaluation. G25's
+offline, fixture-backed discovery and review slice is implemented but remains
+incomplete pending its G03/Postgres integration. After that, G26 builds the user
+project map and G27 makes recommendations project-aware. G28 then adds
+opportunity-context modeling and iterative execution riffing so those
+recommendations become a search over distinctive, evidence-producing
+demonstrations rather than a single generic project suggestion.
 G17's engineer-source
 roster and attribution contract were approved by the user; all source entries remain disabled pending
 individual terms review. G19 added the fail-closed selection and attribution
@@ -145,7 +142,7 @@ durable-execution/observability mini-project and workflow-reconciliation
 investigation remain in `docs/backlog.md`.
 
 ```text
-G22 is ready. Keep live job sources disabled until terms/robots
+G22 is complete. Keep live job sources disabled until terms/robots
 and retention are reviewed; engineer RSS entries remain disabled unless a
 later operator action records per-source approval.
 ```

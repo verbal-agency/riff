@@ -1,6 +1,6 @@
 # G23 — Wire the ChatGPT tool-loop client
 
-**Status:** Incomplete
+**Status:** Ready
 **Depends on:** G14, G22
 **Unlocks:** A real ChatGPT-compatible connector and end-to-end conversational acceptance
 **PRD references:** Sections 4, 10, 15, 27–29, 32–33
