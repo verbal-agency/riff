@@ -20,7 +20,7 @@ USER_CONFIRMATION_TOKEN = "USER_CONFIRMED"
 
 TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "daily_riffs": {"description": "Read the persisted daily zero-to-three Riff result.", "required": ("run_date",)},
-    "investigate_riff": {"description": "Inspect one Riff's evidence, counterevidence, gap, and provenance.", "required": ("riff_id",)},
+    "investigate_riff": {"description": "Inspect one Riff's score, calibrated provenance, evidence, counterevidence, gap, and provenance.", "required": ("riff_id",)},
     "search_riffs": {"description": "Search persisted Riffs by capability or text.", "required": ("query",)},
     "profile_lookup": {"description": "Read the public profile slice and gap classification for one capability.", "required": ("capability_id",)},
     "capability_lookup": {"description": "Read normalized capability and technology relationships.", "required": ("capability_id",)},
@@ -75,7 +75,8 @@ class RiffToolAdapter:
         evidence = [self._evidence_item(item) for item in investigation.supporting_evidence]
         counter = [self._evidence_item(item) for item in investigation.counterevidence]
         companies = sorted({str(item.get("source_metadata", {}).get(key)) for item in evidence + counter for key in ("company", "company_name", "organization", "employer") if item.get("source_metadata", {}).get(key)})
-        return {"riff_id": investigation.riff_id, "status": investigation.status, "riff": riff, "strongest_evidence": evidence, "counterevidence": counter, "profile_gap": riff.get("user_relevance"), "sources": investigation.source_breakdown, "companies": companies, "provenance": {"supporting_receipt_ids": [item["receipt_id"] for item in evidence], "counter_receipt_ids": [item["receipt_id"] for item in counter]}}
+        quality = investigation.provenance_quality
+        return {"riff_id": investigation.riff_id, "status": investigation.status, "riff": riff, "score": riff.get("candidate_score", riff.get("confidence")), "evidence_quality": quality.get("evidence_quality", 0), "epistemic_confidence": quality.get("epistemic_confidence", 0), "confidence_policy_version": quality.get("policy_version"), "promotion": {"allowed": quality.get("promotion_allowed", False), "state": quality.get("state"), "limitations": quality.get("limitations", [])}, "strongest_evidence": evidence, "counterevidence": counter, "profile_gap": riff.get("user_relevance"), "sources": investigation.source_breakdown, "companies": companies, "provenance": {"supporting_receipt_ids": [item["receipt_id"] for item in evidence], "counter_receipt_ids": [item["receipt_id"] for item in counter], **quality}}
 
     def _search_riffs(self, query: str, **kwargs: Any) -> dict[str, Any]:
         needle = f"%{query.strip()}%"
@@ -95,7 +96,12 @@ class RiffToolAdapter:
 
     @staticmethod
     def _evidence_item(item: Mapping[str, Any]) -> dict[str, Any]:
-        return {"receipt_id": item.get("receipt_id"), "evidence_id": item.get("evidence_id"), "summary": item.get("summary"), "title": item.get("title"), "canonical_url": item.get("canonical_url"), "raw_content": item.get("raw_content"), "source_metadata": item.get("source_metadata", {})}
+        raw = item.get("raw_content")
+        bounded = raw[:4000] if isinstance(raw, str) else raw
+        result = {"receipt_id": item.get("receipt_id"), "evidence_id": item.get("evidence_id"), "summary": item.get("summary"), "title": item.get("title"), "canonical_url": item.get("canonical_url"), "raw_content": bounded, "source_metadata": item.get("source_metadata", {})}
+        if isinstance(raw, str) and len(raw) > 4000:
+            result["raw_content_truncated"] = True
+        return result
 
     def _record_decision(self, riff_id: str, decision: str, reason: str, **kwargs: Any) -> dict[str, Any]:
         result = DecisionRepository(self.database_url).record_decision(riff_id, decision, reason, actor=str(kwargs.get("actor", "user")), actor_kind=str(kwargs.get("actor_kind", "USER")), structured_reason=kwargs.get("structured_reason"))

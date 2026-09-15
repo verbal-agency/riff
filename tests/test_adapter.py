@@ -56,6 +56,10 @@ def test_scripted_adapter_flow_enforces_approvals_and_survives_restart(graph):
     assert daily["status"] == "COMPLETED" and len(daily["riffs"]) == 3
     investigation = adapter.call("investigate_riff", {"riff_id": riffs[0]})["result"]
     assert investigation["strongest_evidence"] and "profile_slice" not in investigation
+    assert investigation["score"] == 0.95
+    assert investigation["evidence_quality"] < 0.1
+    assert investigation["epistemic_confidence"] <= 0.2
+    assert investigation["promotion"]["allowed"] is False
     with pytest.raises(AdapterError, match="confirmation"):
         adapter.call("create_exploration", {"riff_id": riffs[0]})
     DecisionRepository(database_url).record_decision(riffs[0], "APPROVE_EXPLORATION", "User approves exploration.")
@@ -84,6 +88,9 @@ def test_adapter_api_lists_tools_and_preserves_core_api(graph):
     assert missing.status_code == 409
     daily = client.get("/riffs/daily/2026-09-14")
     assert daily.status_code == 200 and len(daily.json()["riffs"]) == 3
+    inspected = client.get(f"/riffs/{riffs[0]}/investigation")
+    assert inspected.status_code == 200
+    assert inspected.json()["provenance_quality"]["state"] == "FIXTURE_ONLY"
 
 
 @pytest.mark.postgres

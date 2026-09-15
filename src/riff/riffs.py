@@ -17,6 +17,7 @@ from typing import Any, Mapping, Protocol, Sequence
 from psycopg.types.json import Jsonb
 
 from .db import connection
+from .provenance import POLICY_VERSION, assess_provenance
 
 
 RIFF_STATUSES = {"DRAFT", "PUBLISHED", "REJECTED", "SKIPPED"}
@@ -85,6 +86,11 @@ class RiffDraft:
     supporting_receipt_ids: tuple[str, ...]
     counter_receipt_ids: tuple[str, ...]
     citations: tuple[dict[str, str], ...] = ()
+    candidate_score: float = 0.0
+    evidence_quality: float = 0.0
+    epistemic_confidence: float = 0.0
+    confidence_policy_version: str = POLICY_VERSION
+    provenance_summary: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +113,11 @@ class PublishedRiff:
     associated_technologies: tuple[str, ...]
     supporting_receipt_ids: tuple[str, ...]
     counter_receipt_ids: tuple[str, ...]
+    candidate_score: float = 0.0
+    evidence_quality: float = 0.0
+    epistemic_confidence: float = 0.0
+    confidence_policy_version: str = POLICY_VERSION
+    provenance_summary: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,7 +171,9 @@ class RiffRepository:
                           why_it_matters, user_relevance, underlying_capability, recommendation,
                           confidence, strongest_counterargument, alternative_explanation,
                           falsification_conditions, associated_technologies,
-                          supporting_receipt_ids, counter_receipt_ids
+                          supporting_receipt_ids, counter_receipt_ids,
+                          candidate_score, evidence_quality, epistemic_confidence,
+                          confidence_policy_version, provenance_summary
                    FROM riffs WHERE daily_run_id = %s AND status = 'PUBLISHED' ORDER BY rank""",
                 (row[0],),
             ).fetchall()
@@ -179,7 +192,9 @@ class RiffRepository:
                           why_it_matters, user_relevance, underlying_capability, recommendation,
                           confidence, strongest_counterargument, alternative_explanation,
                           falsification_conditions, associated_technologies,
-                          supporting_receipt_ids, counter_receipt_ids
+                          supporting_receipt_ids, counter_receipt_ids,
+                          candidate_score, evidence_quality, epistemic_confidence,
+                          confidence_policy_version, provenance_summary
                    FROM riffs WHERE daily_run_id = %s AND status = 'PUBLISHED' ORDER BY rank""",
                 (row[0],),
             ).fetchall()
@@ -206,10 +221,12 @@ class RiffRepository:
                     """INSERT INTO riffs (riff_id, daily_run_id, candidate_id, rank, status, observation, hypothesis, why_now,
                        why_it_matters, user_relevance, underlying_capability, recommendation, confidence,
                        strongest_counterargument, alternative_explanation, falsification_conditions,
-                       associated_technologies, supporting_receipt_ids, counter_receipt_ids)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       associated_technologies, supporting_receipt_ids, counter_receipt_ids,
+                       candidate_score, evidence_quality, epistemic_confidence,
+                       confidence_policy_version, provenance_summary)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                        ON CONFLICT (daily_run_id, rank) DO NOTHING""",
-                    (riff_id, run_id, contexts[rank - 1].candidate_id if rank <= len(contexts) else None, rank, status, draft.observation, draft.hypothesis, draft.why_now, draft.why_it_matters, draft.user_relevance, draft.underlying_capability, draft.recommendation, draft.confidence, draft.strongest_counterargument, draft.alternative_explanation, Jsonb(list(draft.falsification_conditions)), Jsonb(list(draft.associated_technologies)), Jsonb(list(draft.supporting_receipt_ids)), Jsonb(list(draft.counter_receipt_ids))),
+                    (riff_id, run_id, contexts[rank - 1].candidate_id if rank <= len(contexts) else None, rank, status, draft.observation, draft.hypothesis, draft.why_now, draft.why_it_matters, draft.user_relevance, draft.underlying_capability, draft.recommendation, draft.confidence, draft.strongest_counterargument, draft.alternative_explanation, Jsonb(list(draft.falsification_conditions)), Jsonb(list(draft.associated_technologies)), Jsonb(list(draft.supporting_receipt_ids)), Jsonb(list(draft.counter_receipt_ids)), draft.candidate_score, draft.evidence_quality, draft.epistemic_confidence, draft.confidence_policy_version, Jsonb(draft.provenance_summary)),
                 )
                 if status == "PUBLISHED":
                     for citation in draft.citations:
@@ -234,10 +251,26 @@ class RiffContextAssembler:
             raise RiffValidationError("candidate context contains an unknown or ineligible receipt")
         with connection(self.repository.database_url) as conn:
             rows = conn.execute(
-                "SELECT receipt_id, summary, source_metadata, uncertainty FROM evidence_receipts WHERE receipt_id = ANY(%s) AND status = 'SUCCEEDED' ORDER BY receipt_id",
+                """SELECT r.receipt_id, r.summary, r.source_metadata, r.uncertainty,
+                          si.canonical_url, si.title, e.content_hash,
+                          s.source_id, s.name, s.canonical_root
+                   FROM evidence_receipts r
+                   JOIN evidence_versions e ON e.evidence_id = r.evidence_id
+                   JOIN source_items si ON si.source_item_id = e.source_item_id
+                   JOIN sources s ON s.source_id = si.source_id
+                   WHERE r.receipt_id = ANY(%s) AND r.status = 'SUCCEEDED'
+                   ORDER BY r.receipt_id""",
                 (list(receipt_ids),),
             ).fetchall()
-        summaries = tuple({"receipt_id": _text(row[0]), "summary": _text(row[1]), "source_metadata": _json(row[2]), "uncertainty": _json(row[3])} for row in rows)
+        summaries = []
+        for row in rows:
+            metadata = _json(row[2])
+            metadata = dict(metadata) if isinstance(metadata, dict) else {}
+            metadata.setdefault("source_id", _text(row[7]))
+            metadata.setdefault("source_name", _text(row[8]))
+            metadata.setdefault("canonical_root", _text(row[9]) if row[9] else None)
+            summaries.append({"receipt_id": _text(row[0]), "summary": _text(row[1]), "source_metadata": metadata, "uncertainty": _json(row[3]), "canonical_url": _text(row[4]), "title": _text(row[5]), "content_hash": _text(row[6])})
+        summaries = tuple(summaries)
         return RiffContext(candidate.candidate_id, candidate.capability_id, candidate.score, candidate.classification, candidate.observation, receipt_ids, summaries, tuple(candidate.profile_slice[: self.max_profile_items]), tuple(candidate.decision_ids[: self.max_decisions]), candidate.profile_state, tuple(candidate.associated_technologies))
 
 
@@ -310,6 +343,10 @@ class DailyRiffService:
                 context = self.assembler.assemble(candidate)
                 contexts.append(context)
                 draft = validate_draft(self.provider.generate(context), context, set(context.receipt_ids))
+                support_items = [item for item in context.receipt_summaries if item["receipt_id"] in draft.supporting_receipt_ids]
+                counter_items = [item for item in context.receipt_summaries if item["receipt_id"] in draft.counter_receipt_ids]
+                quality = assess_provenance(support_items, counter_items, candidate_score=context.score, generated_confidence=draft.confidence)
+                draft = replace(draft, candidate_score=context.score, evidence_quality=quality.evidence_quality, epistemic_confidence=quality.epistemic_confidence, confidence_policy_version=quality.policy_version, provenance_summary=quality.to_dict())
                 if len(drafts) < self.max_riffs:
                     drafts.append((len(drafts) + 1, draft, "PUBLISHED"))
             except (RiffValidationError, RuntimeError):
@@ -322,7 +359,7 @@ class DailyRiffService:
 
 
 def _published_preview(_riff_id: str, _run_id: str, rank: int, draft: RiffDraft) -> PublishedRiff:
-    return PublishedRiff("", "", rank, "PUBLISHED", draft.observation, draft.hypothesis, draft.why_now, draft.why_it_matters, draft.user_relevance, draft.underlying_capability, draft.recommendation, draft.confidence, draft.strongest_counterargument, draft.alternative_explanation, draft.falsification_conditions, draft.associated_technologies, draft.supporting_receipt_ids, draft.counter_receipt_ids)
+    return PublishedRiff("", "", rank, "PUBLISHED", draft.observation, draft.hypothesis, draft.why_now, draft.why_it_matters, draft.user_relevance, draft.underlying_capability, draft.recommendation, draft.confidence, draft.strongest_counterargument, draft.alternative_explanation, draft.falsification_conditions, draft.associated_technologies, draft.supporting_receipt_ids, draft.counter_receipt_ids, draft.candidate_score, draft.evidence_quality, draft.epistemic_confidence, draft.confidence_policy_version, draft.provenance_summary)
 
 
 def _fingerprint(run_date: date, policy: str, candidates: Sequence[CandidateContext]) -> str:
@@ -340,13 +377,14 @@ def _daily_result(row: tuple[Any, ...], riffs: Sequence[tuple[Any, ...]]) -> Dai
 
 
 def _riff(row: tuple[Any, ...]) -> PublishedRiff:
-    values = [_json(value) if index >= 14 else value for index, value in enumerate(row)]
+    json_indexes = {14, 15, 16, 17, 22}
+    values = [_json(value) if index in json_indexes else value for index, value in enumerate(row)]
     return PublishedRiff(
         _text(values[0]), _text(values[1]), int(values[2]), _text(values[3]),
         _text(values[4]), _text(values[5]), _text(values[6]), _text(values[7]),
         _text(values[8]), _text(values[9]), _text(values[10]), float(values[11]),
         _text(values[12]), _text(values[13]), tuple(values[14]), tuple(values[15]),
-        tuple(values[16]), tuple(values[17]),
+        tuple(values[16]), tuple(values[17]), float(values[18] or 0), float(values[19] or 0), float(values[20] or 0), _text(values[21]) if values[21] else POLICY_VERSION, _json(values[22]) if values[22] else {},
     )
 
 

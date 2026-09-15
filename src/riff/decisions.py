@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
 from psycopg.types.json import Jsonb
 
 from .db import connection
+from .provenance import POLICY_VERSION, assess_provenance
 
 
 DECISIONS = {"WATCH", "REJECT", "ARCHIVE", "APPROVE_EXPLORATION", "CONFIRM_PROFILE_UPDATE", "CORRECT"}
@@ -55,6 +56,7 @@ class Investigation:
     profile_slice: tuple[dict[str, Any], ...]
     decision_history: tuple[Decision, ...]
     source_breakdown: dict[str, int]
+    provenance_quality: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,25 +150,38 @@ class DecisionRepository:
                 why_it_matters, user_relevance, underlying_capability, recommendation,
                 confidence, strongest_counterargument, alternative_explanation,
                 falsification_conditions, associated_technologies, supporting_receipt_ids,
-                counter_receipt_ids FROM riffs WHERE riff_id = %s""", (riff_id,)).fetchone()
+                counter_receipt_ids, candidate_score, evidence_quality,
+                epistemic_confidence, confidence_policy_version, provenance_summary
+                FROM riffs WHERE riff_id = %s""", (riff_id,)).fetchone()
             if riff is None:
                 raise DecisionError("Riff not found")
-            riff_data = {"riff_id": _text(riff[0]), "status": _text(riff[3]), "observation": _text(riff[4]), "hypothesis": _text(riff[5]), "why_now": _text(riff[6]), "why_it_matters": _text(riff[7]), "user_relevance": _text(riff[8]), "underlying_capability": _text(riff[9]), "recommendation": _text(riff[10]), "confidence": float(riff[11]), "strongest_counterargument": _text(riff[12]), "alternative_explanation": _text(riff[13]), "falsification_conditions": _json(riff[14]), "associated_technologies": _json(riff[15])}
+            riff_data = {"riff_id": _text(riff[0]), "status": _text(riff[3]), "observation": _text(riff[4]), "hypothesis": _text(riff[5]), "why_now": _text(riff[6]), "why_it_matters": _text(riff[7]), "user_relevance": _text(riff[8]), "underlying_capability": _text(riff[9]), "recommendation": _text(riff[10]), "confidence": float(riff[11]), "strongest_counterargument": _text(riff[12]), "alternative_explanation": _text(riff[13]), "falsification_conditions": _json(riff[14]), "associated_technologies": _json(riff[15]), "candidate_score": float(riff[18] or 0), "evidence_quality": float(riff[19] or 0), "epistemic_confidence": float(riff[20] or 0), "confidence_policy_version": _text(riff[21]) if riff[21] else POLICY_VERSION, "provenance_summary": _json(riff[22]) if riff[22] else {}}
             support_ids, counter_ids = _json(riff[16]), _json(riff[17])
             evidence = conn.execute("""SELECT e.evidence_id, e.raw_content, si.canonical_url, si.title,
-                r.receipt_id, r.summary, r.source_metadata FROM evidence_versions e
+                r.receipt_id, r.summary, r.source_metadata, e.content_hash, s.source_id,
+                s.name, s.canonical_root FROM evidence_versions e
                 JOIN source_items si ON si.source_item_id = e.source_item_id
+                JOIN sources s ON s.source_id = si.source_id
                 JOIN evidence_receipts r ON r.evidence_id = e.evidence_id
                 WHERE r.receipt_id = ANY(%s) ORDER BY r.receipt_id""", (support_ids + counter_ids,)).fetchall() if support_ids + counter_ids else []
             contexts = conn.execute("SELECT profile_slice FROM riff_contexts WHERE daily_run_id = %s AND candidate_id = %s ORDER BY created_at DESC LIMIT 1", (riff[1], riff[2])).fetchone() if riff[2] else None
         support_set, source_breakdown = set(support_ids), {}
         supporting, counter = [], []
         for row in evidence:
-            item = {"receipt_id": _text(row[4]), "evidence_id": _text(row[0]), "summary": _text(row[5]), "raw_content": _text(row[1]), "canonical_url": _text(row[2]), "title": _text(row[3]), "source_metadata": _json(row[6])}
+            metadata = _json(row[6])
+            metadata = dict(metadata) if isinstance(metadata, dict) else {}
+            metadata.setdefault("source_id", _text(row[8]))
+            metadata.setdefault("source_name", _text(row[9]))
+            metadata.setdefault("canonical_root", _text(row[10]) if row[10] else None)
+            raw_content = _text(row[1])
+            item = {"receipt_id": _text(row[4]), "evidence_id": _text(row[0]), "summary": _text(row[5]), "raw_content": raw_content[:4000] if isinstance(raw_content, str) else raw_content, "canonical_url": _text(row[2]), "title": _text(row[3]), "content_hash": _text(row[7]), "source_metadata": metadata}
+            if isinstance(raw_content, str) and len(raw_content) > 4000:
+                item["raw_content_truncated"] = True
             source = str(item["source_metadata"].get("source_type", "UNKNOWN"))
             source_breakdown[source] = source_breakdown.get(source, 0) + 1
             (supporting if item["receipt_id"] in support_set else counter).append(item)
-        return Investigation(_text(riff[0]), _text(riff[3]), riff_data, tuple(supporting), tuple(counter), tuple(_json(contexts[0])) if contexts else (), tuple(self.list_decisions(riff_id)), source_breakdown)
+        quality = assess_provenance(supporting, counter, candidate_score=float(riff[18] or riff[11] or 0), generated_confidence=float(riff[11] or 0), policy_version=_text(riff[21]) if riff[21] else POLICY_VERSION)
+        return Investigation(_text(riff[0]), _text(riff[3]), riff_data, tuple(supporting), tuple(counter), tuple(_json(contexts[0])) if contexts else (), tuple(self.list_decisions(riff_id)), source_breakdown, quality.to_dict())
 
     def effective_implications(self, riff_id: str) -> dict[str, Any]:
         decisions = self.list_decisions(riff_id)

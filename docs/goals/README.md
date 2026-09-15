@@ -64,6 +64,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G26](G26-github-project-understanding.md) | Build an evidence-backed understanding of user GitHub projects | G03, G22, G25 |
 | [G27](G27-project-aware-personalized-recommendations.md) | Recommend extensions to existing projects | G08, G11, G12, G23, G24, G26 |
 | [G28](G28-opportunity-context-and-execution-riffing.md) | Model opportunity context and riff on execution candidates | G21, G24, G26, G27 |
+| [G29](G29-provenance-aware-confidence-calibration.md) | Calibrate Riff confidence from provenance quality | G05, G08, G09, G22 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -94,6 +95,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | User-owned GitHub project understanding | G26 |
 | Project-aware personalized recommendations | G27 |
 | Opportunity constraints, candidate generation, and iterative execution riffing | G28 |
+| Provenance-aware confidence, independence, and synthetic-evidence disclosure | G29 |
 | Automated job collection and listing URL intake | G04, G21 |
 
 ## Canonical project scenarios
@@ -121,6 +123,7 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-PROJECT-MAP-001` — Riff maintains a versioned, evidence-backed understanding of selected user GitHub projects.
 - `SC-EXTEND-001` — Riff recommends extending an existing project when the evidence supports it, while preserving a greenfield alternative.
 - `SC-EXECUTION-RIFF-001` — Riff extracts opportunity constraints, detects obvious platform requirements, generates execution candidates, and preserves iterative riffs until the user chooses a distinctive direction.
+- `SC-EPISTEMIC-001` — Riff distinguishes an interesting hypothesis from a well-supported claim and shows what provenance is needed next.
 
 ## Current handoff
 
@@ -136,7 +139,9 @@ incomplete pending its G03/Postgres integration. After that, G26 builds the user
 project map and G27 makes recommendations project-aware. G28 then adds
 opportunity-context modeling and iterative execution riffing so those
 recommendations become a search over distinctive, evidence-producing
-demonstrations rather than a single generic project suggestion.
+demonstrations rather than a single generic project suggestion. G29 then
+calibrates confidence from provenance quality so synthetic or thin evidence is
+not presented as an established claim.
 G17's engineer-source
 roster and attribution contract were approved by the user; all source entries remain disabled pending
 individual terms review. G19 added the fail-closed selection and attribution
