@@ -62,6 +62,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G25](G25-meaningful-github-discovery-and-integration.md) | Make GitHub discovery meaningful and pipeline-integrated | G18, G20, G22 |
 | [G26](G26-github-project-understanding.md) | Build an evidence-backed understanding of user GitHub projects | G03, G22, G25 |
 | [G27](G27-project-aware-personalized-recommendations.md) | Recommend extensions to existing projects | G08, G11, G12, G23, G24, G26 |
+| [G28](G28-opportunity-context-and-execution-riffing.md) | Model opportunity context and riff on execution candidates | G21, G24, G26, G27 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -91,6 +92,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Meaningful GitHub discovery and pipeline integration | G25 |
 | User-owned GitHub project understanding | G26 |
 | Project-aware personalized recommendations | G27 |
+| Opportunity constraints, candidate generation, and iterative execution riffing | G28 |
 | Automated job collection and listing URL intake | G04, G21 |
 
 ## Canonical project scenarios
@@ -116,6 +118,7 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-GITHUB-DISCOVERY-002` — Riff discovers user-relevant GitHub candidates and integrates only explicitly promoted scopes into evidence collection.
 - `SC-PROJECT-MAP-001` — Riff maintains a versioned, evidence-backed understanding of selected user GitHub projects.
 - `SC-EXTEND-001` — Riff recommends extending an existing project when the evidence supports it, while preserving a greenfield alternative.
+- `SC-EXECUTION-RIFF-001` — Riff extracts opportunity constraints, detects obvious platform requirements, generates execution candidates, and preserves iterative riffs until the user chooses a distinctive direction.
 
 ## Current handoff
 
@@ -127,7 +130,10 @@ the G22 Postgres-backed adapter exercise; G24 connects it to a supported ChatGPT
 surface for end-to-end evaluation. G25's offline, fixture-backed discovery and
 review slice is implemented but incomplete pending its G03/Postgres integration
 through G22. After that, G26 builds the user project map and G27 makes
-recommendations project-aware.
+recommendations project-aware. G28 then adds opportunity-context modeling and
+iterative execution riffing so those recommendations become a search over
+distinctive, evidence-producing demonstrations rather than a single generic
+project suggestion.
 G17's engineer-source
 roster and attribution contract were approved by the user; all source entries remain disabled pending
 individual terms review. G19 added the fail-closed selection and attribution
