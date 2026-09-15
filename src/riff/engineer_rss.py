@@ -124,6 +124,52 @@ def selection_report(payload: Mapping[str, Any]) -> dict[str, Any]:
     return {"schema_version": payload["schema_version"], "selections": result}
 
 
+def record_review(
+    payload: Mapping[str, Any],
+    selection_ids: list[str],
+    *,
+    reviewed_at: str,
+    reviewed_by: str,
+    permission_status: str,
+    collection_decision: str,
+    confirmation: str,
+) -> dict[str, Any]:
+    """Record an explicit per-source review without contacting the endpoint."""
+
+    validate_selection_manifest(payload)
+    if not selection_ids:
+        raise EngineerRssSelectionError("at least one selection_id is required")
+    expected_confirmation = "ENABLE" if collection_decision == "ENABLE" else "REVIEW"
+    if confirmation != expected_confirmation:
+        raise EngineerRssSelectionError(
+            f"review confirmation must be {expected_confirmation} for {collection_decision}"
+        )
+    if not isinstance(reviewed_at, str) or not reviewed_at.strip():
+        raise EngineerRssSelectionError("reviewed_at is required")
+    if not isinstance(reviewed_by, str) or not reviewed_by.strip():
+        raise EngineerRssSelectionError("reviewed_by is required")
+    if permission_status not in PERMISSION_STATUSES:
+        raise EngineerRssSelectionError(f"invalid permission_status: {permission_status}")
+    if collection_decision not in DECISIONS - {"DRY_RUN"}:
+        raise EngineerRssSelectionError(f"invalid collection_decision: {collection_decision}")
+    requested = set(selection_ids)
+    available = {item["selection_id"] for item in payload["selections"]}
+    unknown = requested - available
+    if unknown:
+        raise EngineerRssSelectionError(f"unknown selection_id(s): {', '.join(sorted(unknown))}")
+    updated = copy.deepcopy(dict(payload))
+    for item in updated["selections"]:
+        if item["selection_id"] not in requested:
+            continue
+        item["permission_status"] = permission_status
+        item["reviewed_at"] = reviewed_at
+        item["reviewed_by"] = reviewed_by
+        item["collection_decision"] = collection_decision
+        item["enabled"] = collection_decision == "ENABLE"
+    validate_selection_manifest(updated)
+    return updated
+
+
 def project_registries(
     payload: Mapping[str, Any],
     technical_registry: Mapping[str, Any],

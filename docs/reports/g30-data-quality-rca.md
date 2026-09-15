@@ -53,7 +53,7 @@ decision tables.
    engineer-source configurations contain person and organization metadata,
    but none of those configured sources has produced a receipt in this
    database. No author or employer is inferred. This remains an evidence
-   collection gap, routed to the engineer-RSS operational follow-up.
+   collection gap, routed to G31's engineer-RSS provenance operations goal.
 3. **Stale `RUNNING` runs — fixed.** Runs were created before an interrupted
    process exited and had no terminal reconciliation. The new age-bounded
    command derives a terminal state only from recorded item outcomes and stores
@@ -83,7 +83,7 @@ decision tables.
 
 - The absence of author/organization evidence should be addressed by running
   the already-reviewed engineer RSS sources and verifying receipt propagation;
-  it is recorded as `BL-G30-001` in the backlog rather than inferred here.
+  it is scoped in G31 rather than inferred here.
 - Failed, empty, and never-collected enabled sources need operator review before
   they are treated as a healthy production feed set.
 - No raw evidence was included in this report or emitted by the checks.

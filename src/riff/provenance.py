@@ -155,6 +155,118 @@ def source_coverage_report(database_url: str, *, limit: int = 100) -> dict[str, 
     return {"limit": limit, "total": len(items), "returned": min(limit, len(items)), "states": counts, "sources": items[:limit]}
 
 
+def engineer_source_coverage_report(database_url: str, *, limit: int = 100) -> dict[str, Any]:
+    """Report engineer-attributed source coverage without inferring identity.
+
+    Rows are grouped by the explicit ``engineer_source_id`` carried in the
+    ingestion source configuration.  Evidence counts come from persisted
+    evidence/retrieval rows, so fixture-only coverage cannot masquerade as live
+    provenance.
+    """
+
+    if not 1 <= limit <= 500:
+        raise ValueError("limit must be between 1 and 500")
+    with connection(database_url) as conn:
+        rows = conn.execute(
+            """WITH run_counts AS (
+                   SELECT source_id.value AS source_id,
+                          count(*) AS collection_runs,
+                          count(*) FILTER (WHERE cr.status = 'FAILED') AS failed_runs
+                   FROM collection_runs cr
+                   CROSS JOIN LATERAL jsonb_array_elements_text(cr.source_ids) AS source_id(value)
+                   GROUP BY source_id.value
+               ), source_counts AS (
+                   SELECT isc.source_id,
+                          isc.metadata->>'engineer_source_id' AS engineer_source_id,
+                          isc.metadata->>'person_id' AS person_id,
+                          isc.metadata->>'person_name' AS person_name,
+                          isc.metadata->>'organization_at_publication' AS organization_at_publication,
+                          isc.metadata->>'source_root' AS source_root,
+                          isc.metadata->>'correlation_group' AS correlation_group,
+                          s.enabled,
+                          count(DISTINCT e.evidence_id) AS evidence_count,
+                          count(DISTINCT e.evidence_id) FILTER (WHERE r.metadata->>'fixture' = 'true') AS fixture_evidence_count,
+                          count(DISTINCT e.evidence_id) FILTER (WHERE COALESCE(r.metadata->>'fixture', 'false') <> 'true') AS non_fixture_evidence_count,
+                          COALESCE(rc.collection_runs, 0) AS collection_runs,
+                          COALESCE(rc.failed_runs, 0) AS failed_runs
+                   FROM ingestion_source_configs isc
+                   JOIN sources s ON s.source_id = isc.source_id
+                   LEFT JOIN source_items si ON si.source_id = isc.source_id
+                   LEFT JOIN evidence_versions e ON e.source_item_id = si.source_item_id
+                   LEFT JOIN retrievals r ON r.evidence_id = e.evidence_id
+                   LEFT JOIN run_counts rc ON rc.source_id = isc.source_id
+                   WHERE isc.metadata ? 'engineer_source_id'
+                   GROUP BY isc.source_id, isc.metadata, s.enabled, rc.collection_runs, rc.failed_runs
+               )
+               SELECT engineer_source_id,
+                      min(person_id), min(person_name), min(organization_at_publication),
+                      min(source_root), min(correlation_group),
+                      count(*) AS source_count,
+                      count(*) FILTER (WHERE enabled) AS enabled_source_count,
+                      array_agg(source_id ORDER BY source_id) AS source_ids,
+                      sum(evidence_count), sum(fixture_evidence_count),
+                      sum(non_fixture_evidence_count), sum(collection_runs), sum(failed_runs),
+                      jsonb_object_agg(source_id, jsonb_build_object(
+                          'enabled', enabled,
+                          'evidence_count', evidence_count,
+                          'fixture_evidence_count', fixture_evidence_count,
+                          'non_fixture_evidence_count', non_fixture_evidence_count,
+                          'collection_runs', collection_runs,
+                          'failed_runs', failed_runs
+                      )) AS sources
+               FROM source_counts
+               GROUP BY engineer_source_id
+               ORDER BY engineer_source_id"""
+        ).fetchall()
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        evidence_count = int(row[9] or 0)
+        fixture_count = int(row[10] or 0)
+        non_fixture_count = int(row[11] or 0)
+        collection_runs = int(row[12] or 0)
+        failed_runs = int(row[13] or 0)
+        if evidence_count == 0 and collection_runs == 0:
+            state = "NEVER_COLLECTED"
+        elif evidence_count == 0 and failed_runs:
+            state = "FAILED"
+        elif evidence_count == 0:
+            state = "EMPTY"
+        elif non_fixture_count == 0:
+            state = "FIXTURE_ONLY"
+        else:
+            state = "COLLECTED"
+        items.append(
+            {
+                "engineer_source_id": str(row[0]),
+                "person_id": row[1],
+                "person_name": row[2],
+                "organization_at_publication": row[3],
+                "source_root": row[4],
+                "correlation_group": row[5],
+                "source_count": int(row[6]),
+                "enabled_source_count": int(row[7]),
+                "source_ids": [str(value) for value in (row[8] or [])],
+                "evidence_count": evidence_count,
+                "fixture_evidence_count": fixture_count,
+                "non_fixture_evidence_count": non_fixture_count,
+                "collection_runs": collection_runs,
+                "failed_runs": failed_runs,
+                "state": state,
+                "sources": row[14] or {},
+            }
+        )
+    states: dict[str, int] = {}
+    for item in items:
+        states[item["state"]] = states.get(item["state"], 0) + 1
+    return {
+        "limit": limit,
+        "total": len(items),
+        "returned": min(limit, len(items)),
+        "states": states,
+        "engineer_sources": items[:limit],
+    }
+
+
 def recalibrate_riffs(database_url: str, *, force: bool = False) -> dict[str, Any]:
     """Persist current provenance summaries without changing decisions/statuses."""
 

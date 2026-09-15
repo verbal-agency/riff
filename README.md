@@ -54,6 +54,7 @@ writing registries:
 ```sh
 uv run riff source engineer-rss validate
 uv run riff source engineer-rss preview
+uv run riff source engineer-rss review --selection-id <selection-id> --reviewed-at <YYYY-MM-DD> --reviewed-by <operator> --permission-status CONFIRMED --decision ENABLE --confirm ENABLE --apply
 uv run riff source engineer-rss project --selection-id <selection-id>
 uv run riff source engineer-rss project --selection-id <selection-id> --apply
 uv run riff source sync --registry config/technical_sources.json
@@ -64,6 +65,17 @@ reviewer, and a review date can be projected. The manifest is fail-closed and
 all roster selections remain disabled until these per-source terms and
 retention decisions are recorded. Engineer identity, ownership, organization,
 and correlation metadata are carried into RSS retrieval metadata.
+
+Inspect engineer-specific coverage without conflating fixture data with live
+evidence:
+
+```sh
+uv run riff data-quality engineer-sources --limit 100
+```
+
+The report groups only explicit `engineer_source_id` metadata and shows source,
+fixture, non-fixture, run, and failure counts. Fixture-only results are not
+treated as independent production evidence.
 
 ## GitHub collection
 

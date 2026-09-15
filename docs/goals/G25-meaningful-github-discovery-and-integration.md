@@ -117,3 +117,84 @@ Keep user-owned project inventory and extension recommendations in G26/G27.
 - G25 remains incomplete until a promoted fixture scope is exercised through
   the real G03/Postgres pipeline after G22. No live GitHub requests or source
   enablement were performed.
+
+## Next-cycle execution contract
+
+This is the remaining G25 slice. It proves that the existing discovery review
+boundary feeds the existing G03 collector; it must not redesign discovery or
+enable a live source.
+
+### Expected implementation surface
+
+- `src/riff/github_discovery.py`: preserve `promote_candidates`; make only
+  additive provenance or validation changes if integration exposes a gap.
+- `src/riff/cli.py`: reuse `sources sync` and `ingest --source-type GITHUB`;
+  do not add a second GitHub collection command unless the report names the
+  compatibility reason.
+- `tests/test_github_discovery.py`: retain review/promotion and malformed-case
+  coverage.
+- `tests/test_github_ingestion.py` (Postgres): add the promotion-to-collection
+  proof using recorded discovery and collector fixtures.
+- `tests/fixtures/github/discovery/`: record the exact promoted candidate and
+  registry projection used by the integration test.
+- `docs/reports/g25-github-integration.md`, `README.md`, and
+  `docs/architecture.md`: document offline replay, review/promotion, registry
+  sync, collection, disablement, and rollback commands.
+
+### Canonical contracts and invariants
+
+- Discovery queue schema remains version `1`; candidate identity is the stable
+  `provider_repository_id`, with aliases and `root_id` retained.
+- Review transitions remain `NEW -> APPROVED -> PROMOTED`; filtered, rejected,
+  unknown, or duplicate candidates cannot be promoted.
+- Promotion requires the literal operator confirmation `PROMOTE`, writes a
+  disabled `GITHUB` source with `permission_status=PENDING_REVIEW`, and carries
+  `discovery_run_id`, `discovered_by`, authors, correlation metadata, and
+  uncertainty into registry/source metadata.
+- `riff sources sync` is the only registry-to-Postgres projection. Collection
+  uses `GitHubIngestionRunner` through the G03 `riff ingest --source-type GITHUB`
+  path and persists evidence, repository identity, artifact metadata, run/item
+  outcomes, and cursors in the canonical store.
+- Promotion never enables a source, and a disabled source produces
+  `SKIPPED/SOURCE_DISABLED` with zero evidence writes. No private repository,
+  arbitrary URL, direct SQL from discovery, or inferred authorship is allowed.
+
+### Deterministic behavior matrix
+
+| Condition | Required result |
+|---|---|
+| Valid reviewed candidate + `PROMOTE` | One disabled registry entry with discovery provenance; queue status `PROMOTED` |
+| Missing/wrong confirmation, filtered, rejected, or unknown candidate | Typed refusal; registry and queue unchanged |
+| Sync promoted registry | One `GITHUB` source with preserved metadata; repeat sync is idempotent |
+| Collect while source disabled | `SKIPPED/SOURCE_DISABLED`; zero evidence/artifact rows |
+| Explicitly enabled fixture scope | G03 stores searchable evidence and artifacts with source, author, organization, root, and discovery provenance |
+| Repeat unchanged collection | `stored=0`, duplicate outcomes only, unchanged evidence count |
+| New fixture release/README version | One new version linked to prior evidence; cursor advances after durable item commit |
+| Malformed, rate-limited, or mid-page fixture response | Typed partial/permanent outcome; no cursor skip; retry/replay is idempotent |
+
+### Authority, side effects, and replay boundaries
+
+- Discovery fixture replay and Postgres integration may write only the test
+  database and temporary queue/registry files. Live GitHub requests require an
+  explicit `--live` policy and remain outside acceptance evidence.
+- The operator alone approves candidates and enables a promoted source; neither
+  a model response nor a fixture can satisfy either authority boundary.
+- Credentials stay in environment variables and never enter fixtures, logs, or
+  registry metadata. The collector is read-only against GitHub and bounded by
+  page, byte, retry, and content limits.
+- Replaying the same manifest, promotion, sync, or collection must not create
+  duplicate source, repository, artifact, evidence, or provenance records.
+
+### Criterion-to-proof map
+
+| G25 criterion | Required proof |
+|---|---|
+| Promoted scope enters G03/Postgres with provenance | `test_promoted_fixture_scope_reuses_g03_pipeline` |
+| Review/promotion safety and metadata | Existing `test_review_and_promotion_require_explicit_transitions` plus registry assertions |
+| Duplicate/rename/fork/bot handling | Existing discovery tests plus `test_repository_rename_preserves_identity` and `test_related_repository_flags_are_retained` |
+| Replay/idempotence and cursor safety | `test_github_three_passes`, `test_rate_limit_preserves_cursor_until_retry`, and `test_mid_page_termination_replays_without_missing_items` |
+| Operator/privacy boundary | CLI/docs report, `git diff --check`, and no-live-network fixture run |
+
+The goal may be marked complete only after the promoted fixture scope has been
+enabled explicitly in an isolated Postgres test, collected through G03, and
+the resulting evidence is searchable with all discovery metadata intact.

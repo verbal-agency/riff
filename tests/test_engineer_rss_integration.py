@@ -12,6 +12,7 @@ from riff.engineer_rss import (
     EngineerRssSelectionError,
     load_selection_manifest,
     project_registries,
+    record_review,
     selection_report,
     validate_selection_manifest,
 )
@@ -19,6 +20,7 @@ from riff.evidence import SourceType
 from riff.evidence_repository import EvidenceRepository
 from riff.ingestion import FeedResponse, PermanentFeedError
 from riff.ingestion_repository import IngestionRepository, RunStatus
+from riff.provenance import engineer_source_coverage_report
 from riff.writing_ingestion import WritingIngestionRunner
 
 
@@ -101,6 +103,23 @@ def test_cli_dry_run_and_validation_are_explicit(capsys):
     assert preview["selections"][0]["status"] == "pending"
 
 
+def test_review_command_requires_explicit_enable_confirmation(tmp_path, capsys):
+    manifest = tmp_path / "selection.json"
+    manifest.write_text(json.dumps(_selection_payload()), encoding="utf-8")
+    with pytest.raises(SystemExit, match="confirmation"):
+        main([
+            "source", "engineer-rss", "review", "--manifest", str(manifest),
+            "--selection-id", "select-engineer-simon-willison", "--reviewed-at", "2026-09-15",
+            "--reviewed-by", "operator", "--permission-status", "CONFIRMED", "--decision", "ENABLE",
+            "--confirm", "REVIEW",
+        ])
+    reviewed = record_review(
+        _selection_payload(), ["select-engineer-simon-willison"], reviewed_at="2026-09-15",
+        reviewed_by="operator", permission_status="CONFIRMED", collection_decision="ENABLE", confirmation="ENABLE",
+    )
+    assert reviewed["selections"][0]["enabled"] is True
+
+
 @pytest.fixture()
 def repositories():
     database_url = os.environ.get("RIFF_DATABASE_URL")
@@ -125,6 +144,74 @@ class FixtureFetcher:
 
 
 @pytest.mark.postgres
+def test_approved_three_source_projection_and_collection(repositories):
+    database_url, ingestion, evidence = repositories
+    approved = _approved_selection()
+    technical, _ = project_registries(
+        approved,
+        json.loads(TECHNICAL_PATH.read_text(encoding="utf-8")),
+        json.loads(INGESTION_PATH.read_text(encoding="utf-8")),
+    )
+    assert {item["enabled"] for item in technical["sources"] if item["source_id"].startswith("writing-engineer-")} == {True}
+
+    fixture_by_engineer = {
+        "engineer-simon-willison": "rss-personal.xml",
+        "engineer-eugene-yan": "rss-eugene.xml",
+        "engineer-lilian-weng": "rss-lilian.xml",
+    }
+    for selection in approved["selections"]:
+        projected = next(item for item in technical["sources"] if item["source_id"] == selection["registry_source_id"])
+        source = evidence.create_source(SourceType.TECHNICAL_WRITING, projected["name"], enabled=True)
+        metadata = {key: projected[key] for key in (
+            "engineer_source_id", "person_id", "person_name", "source_ownership",
+            "organization_at_publication", "source_root", "correlation_group",
+            "attribution_policy"
+        )}
+        metadata["fixture"] = True
+        ingestion.configure_source(source.source_id, projected["endpoint"], enabled=True, metadata=metadata)
+        summary = WritingIngestionRunner(ingestion, evidence, FixtureFetcher(fixture_by_engineer[selection["engineer_source_id"]])).run(source_ids=[source.source_id])
+        assert summary.stored >= 1
+
+    coverage = engineer_source_coverage_report(database_url)
+    by_engineer = {item["engineer_source_id"]: item for item in coverage["engineer_sources"]}
+    for engineer_source_id in fixture_by_engineer:
+        item = by_engineer[engineer_source_id]
+        assert item["evidence_count"] >= 1
+        assert item["fixture_evidence_count"] >= 1
+        assert item["non_fixture_evidence_count"] >= 0
+        assert item["state"] in {"FIXTURE_ONLY", "COLLECTED"}
+
+
+@pytest.mark.postgres
+def test_approved_engineer_registry_sync_is_idempotent(repositories, tmp_path, monkeypatch, capsys):
+    database_url, _, evidence = repositories
+    approved = _approved_selection()
+    technical, _ = project_registries(
+        approved,
+        json.loads(TECHNICAL_PATH.read_text(encoding="utf-8")),
+        json.loads(INGESTION_PATH.read_text(encoding="utf-8")),
+    )
+    ids = {item["registry_source_id"] for item in approved["selections"]}
+    registry_path = tmp_path / "technical.json"
+    registry_path.write_text(
+        json.dumps({"schema_version": 1, "sources": [item for item in technical["sources"] if item["source_id"] in ids]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("RIFF_DATABASE_URL", database_url)
+    assert main(["source", "sync", "--registry", str(registry_path)]) == 0
+    capsys.readouterr()
+    assert main(["source", "sync", "--registry", str(registry_path)]) == 0
+    capsys.readouterr()
+    with connection(database_url) as conn:
+        rows = conn.execute(
+            "SELECT source_id, count(*) FROM sources WHERE source_id = ANY(%s) GROUP BY source_id",
+            (sorted(ids),),
+        ).fetchall()
+    assert {str(row[0]) for row in rows} == ids
+    assert {int(row[1]) for row in rows} == {1}
+
+
+@pytest.mark.postgres
 def test_engineer_metadata_survives_rss_ingestion(repositories):
     database_url, ingestion, evidence = repositories
     source = evidence.create_source(SourceType.TECHNICAL_WRITING, "Simon engineer fixture", enabled=True)
@@ -137,6 +224,7 @@ def test_engineer_metadata_survives_rss_ingestion(repositories):
         "source_root": "https://simonwillison.net/",
         "correlation_group": "person:simon-willison",
         "attribution_policy": "SOURCE_OWNED_PERSONAL",
+        "fixture": True,
     }
     configured = ingestion.configure_source(source.source_id, "https://example.com/simon.xml", metadata=metadata)
     summary = WritingIngestionRunner(ingestion, evidence, FixtureFetcher("rss-personal.xml")).run(source_ids=[source.source_id])
@@ -151,6 +239,12 @@ def test_engineer_metadata_survives_rss_ingestion(repositories):
     assert {item["engineer_source_id"] for item in values} == {"engineer-simon-willison"}
     assert {item["attribution_disposition"] for item in values} == {"PERSONAL_MATCH", "CO_AUTHORED"}
     assert configured.metadata["person_id"] == "simon-willison"
+    coverage = engineer_source_coverage_report(database_url)
+    simon = next(item for item in coverage["engineer_sources"] if item["engineer_source_id"] == "engineer-simon-willison")
+    assert simon["evidence_count"] >= 2
+    source_coverage = simon["sources"][source.source_id]
+    assert source_coverage["fixture_evidence_count"] >= 2
+    assert source_coverage["non_fixture_evidence_count"] == 0
 
 
 @pytest.mark.postgres

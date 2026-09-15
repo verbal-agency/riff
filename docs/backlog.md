@@ -37,15 +37,15 @@ goal only when the next development slice is selected.
   changes the fetcher state contract and requires provider-response fixtures.
 - **Priority:** Medium.
 
-## BL-G30-001 — Collect and verify engineer-source provenance
+## BL-G31-001 — Isolate engineer-source Postgres fixtures
 
-- **Source:** 2026-09-15 G30 Postgres data-quality RCA.
-- **Gap:** The reviewed engineer-source configurations contain person and
-  organization metadata, but none has produced a receipt in the current
-  database, so author/employer diversity cannot yet affect provenance quality.
-- **Next step:** Run the approved engineer RSS sources through the existing
-  incremental collector, verify receipt metadata propagation, and inspect
-  whether source roots/correlation groups remain independent.
-- **Destination:** Engineer RSS operations follow-up after G19; do not infer
-  authors or organizations from article text.
-- **Priority:** High before real-evidence confidence evaluation.
+- **Source:** 2026-09-15 G31 operational database audit.
+- **Gap:** Engineer RSS integration tests create random source rows in the
+  shared development database; earlier fixture runs also lacked an explicit
+  `fixture=true` marker, so aggregate coverage mixed synthetic rows with
+  non-fixture-looking evidence.
+- **Next step:** Run Postgres integration tests in an isolated database or clean
+  test-owned rows, and require fixture metadata on every recorded fixture run.
+- **Destination:** Test infrastructure/data-quality hardening before evaluating
+  live engineer-source diversity.
+- **Priority:** High before the live provenance acceptance gate.

@@ -29,6 +29,7 @@ from .engineer_rss import (
     EngineerRssSelectionError,
     load_selection_manifest,
     project_registries,
+    record_review,
     selection_report,
     write_json,
 )
@@ -56,7 +57,13 @@ from .job_url_intake import JobUrlIntakeRunner
 from .logging import configure_logging, event
 from .mcp_server import create_service_app
 from .profile import ProfileRepository
-from .provenance import backfill_receipt_metadata, recalibrate_riffs, reconcile_stale_collection_runs, source_coverage_report
+from .provenance import (
+    backfill_receipt_metadata,
+    engineer_source_coverage_report,
+    recalibrate_riffs,
+    reconcile_stale_collection_runs,
+    source_coverage_report,
+)
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
 from .signal_evaluation import evaluate_fixture as evaluate_signal_fixture
 from .source_manifest import load_manifest
@@ -104,6 +111,15 @@ def build_parser() -> argparse.ArgumentParser:
     engineer_rss_validate.add_argument("--manifest", default="config/engineer_rss_selections.json")
     engineer_rss_preview = engineer_rss_subparsers.add_parser("preview", help="show pending, blocked, and eligible selections")
     engineer_rss_preview.add_argument("--manifest", default="config/engineer_rss_selections.json")
+    engineer_rss_review = engineer_rss_subparsers.add_parser("review", help="record explicit per-source terms and collection review")
+    engineer_rss_review.add_argument("--manifest", default="config/engineer_rss_selections.json")
+    engineer_rss_review.add_argument("--selection-id", action="append", required=True)
+    engineer_rss_review.add_argument("--reviewed-at", required=True)
+    engineer_rss_review.add_argument("--reviewed-by", required=True)
+    engineer_rss_review.add_argument("--permission-status", choices=["CONFIRMED", "USER_PROVIDED", "PENDING_REVIEW", "UNAVAILABLE"], required=True)
+    engineer_rss_review.add_argument("--decision", choices=["PENDING", "ENABLE", "BLOCK"], required=True)
+    engineer_rss_review.add_argument("--confirm", required=True, help="type REVIEW, or ENABLE when enabling a source")
+    engineer_rss_review.add_argument("--apply", action="store_true", help="write the reviewed manifest")
     engineer_rss_project = engineer_rss_subparsers.add_parser("project", help="project enabled selections into both source registries")
     engineer_rss_project.add_argument("--manifest", default="config/engineer_rss_selections.json")
     engineer_rss_project.add_argument("--technical-registry", default="config/technical_sources.json")
@@ -246,6 +262,8 @@ def build_parser() -> argparse.ArgumentParser:
     quality_subparsers = quality.add_subparsers(dest="quality_command", required=True)
     quality_report = quality_subparsers.add_parser("report", help="show bounded source coverage")
     quality_report.add_argument("--limit", type=int, default=100)
+    quality_engineers = quality_subparsers.add_parser("engineer-sources", help="show explicit engineer-source provenance coverage")
+    quality_engineers.add_argument("--limit", type=int, default=100)
     quality_repair = quality_subparsers.add_parser("repair", help="backfill metadata, reconcile runs, and recalibrate Riffs")
     quality_repair.add_argument("--stale-after-seconds", type=int, default=3600)
     quality_repair.add_argument("--force-recalibrate", action="store_true")
@@ -390,6 +408,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.quality_command == "report":
                 print(json.dumps(source_coverage_report(Settings.from_env().database_url, limit=args.limit), sort_keys=True, default=str))
                 return 0
+            if args.quality_command == "engineer-sources":
+                print(json.dumps(engineer_source_coverage_report(Settings.from_env().database_url, limit=args.limit), sort_keys=True, default=str))
+                return 0
             database_url = Settings.from_env().database_url
             metadata = backfill_receipt_metadata(database_url)
             runs = reconcile_stale_collection_runs(database_url, stale_after=timedelta(seconds=args.stale_after_seconds))
@@ -423,6 +444,20 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             if args.engineer_rss_command == "preview":
                 print(json.dumps(selection_report(selection), sort_keys=True))
+                return 0
+            if args.engineer_rss_command == "review":
+                reviewed = record_review(
+                    selection,
+                    args.selection_id,
+                    reviewed_at=args.reviewed_at,
+                    reviewed_by=args.reviewed_by,
+                    permission_status=args.permission_status,
+                    collection_decision=args.decision,
+                    confirmation=args.confirm,
+                )
+                if args.apply:
+                    write_json(args.manifest, reviewed)
+                print(json.dumps({"status": "applied" if args.apply else "dry_run", "selection_ids": sorted(args.selection_id), "decision": args.decision}, sort_keys=True))
                 return 0
             technical = json.loads(Path(args.technical_registry).read_text(encoding="utf-8"))
             ingestion_manifest = json.loads(Path(args.ingestion_manifest).read_text(encoding="utf-8"))

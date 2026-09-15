@@ -66,6 +66,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G28](G28-opportunity-context-and-execution-riffing.md) | Model opportunity context and riff on execution candidates | G21, G24, G26, G27 |
 | [G29](G29-provenance-aware-confidence-calibration.md) | Calibrate Riff confidence from provenance quality | G05, G08, G09, G22 |
 | [G30](G30-data-quality-remediation-and-rca.md) | Repair persisted data quality and close the feedback loop | G22, G29 |
+| [G31](G31-engineer-source-provenance-operations.md) | Execute and verify engineer-source provenance collection | G17, G19, G22, G30 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -98,6 +99,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Opportunity constraints, candidate generation, and iterative execution riffing | G28 |
 | Provenance-aware confidence, independence, and synthetic-evidence disclosure | G29 |
 | Persisted data quality, collection health, and RCA | G30 |
+| Engineer-source collection provenance and evidence quality | G31 |
 | Automated job collection and listing URL intake | G04, G21 |
 
 ## Canonical project scenarios
@@ -147,10 +149,13 @@ calibrates confidence from provenance quality so synthetic or thin evidence is
 not presented as an established claim.
 G30 then repairs persisted metadata and stale collection state, provides source
 coverage, and closes the loop with repeatable RCA before real-source dogfooding.
-G17's engineer-source
-roster and attribution contract were approved by the user; all source entries remain disabled pending
-individual terms review. G19 added the fail-closed selection and attribution
-seam but did not enable any feed. G20 implements bounded topic/search discovery
+G31 is the operational follow-up for engineer-source provenance: it turns only
+per-source-reviewed native RSS entries into evidence, then verifies that the
+person, employer, root, and correlation metadata survive collection. G17's
+engineer-source roster and attribution contract were approved by the user; all
+source entries remain disabled pending individual terms review. G19 added the
+fail-closed selection and attribution seam but did not enable any feed. G20
+implements bounded topic/search discovery
 from the G18 decision and keeps discovered scopes behind review. G21 adds the
 shared scheduled and terminal path for compliant job collection plus
 one-listing URL intake. The earlier
