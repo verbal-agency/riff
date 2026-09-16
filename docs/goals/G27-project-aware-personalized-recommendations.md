@@ -1,6 +1,6 @@
 # G27 — Recommend extensions to existing projects
 
-**Status:** In progress
+**Status:** Complete
 **Depends on:** G08, G11, G12, G23, G24, G26
 **Unlocks:** Personalized Riff-to-project dogfooding
 **PRD references:** Sections 4, 6, 9, 11–15, 18–21, 27–29, 32–33
@@ -71,19 +71,19 @@ alternative if a new project is better.
 
 ## Acceptance criteria
 
-- [ ] A candidate Riff can be matched against at least two project fixtures and
+- [x] A candidate Riff can be matched against at least two project fixtures and
   receive an explainable extension/new/defer disposition.
-- [ ] The recommendation cites project and signal evidence, shows uncertainty,
+- [x] The recommendation cites project and signal evidence, shows uncertainty,
   and identifies the proposed extension seam or why none is credible.
-- [ ] An explicitly approved extension creates an Exploration and PRD targeted
+- [x] An explicitly approved extension creates an Exploration and PRD targeted
   at the selected existing project while preserving provenance and approvals.
-- [ ] The user can override the recommendation and choose a greenfield project
+- [x] The user can override the recommendation and choose a greenfield project
   or defer it without corrupting prior state.
-- [ ] ChatGPT tools expose only bounded project assessments and enforce the
+- [x] ChatGPT tools expose only bounded project assessments and enforce the
   existing confirmation token and mutation boundaries.
-- [ ] Offline, Postgres, and scripted conversational tests cover extension,
+- [x] Offline, Postgres, and scripted conversational tests cover extension,
   greenfield, insufficient-evidence, privacy, correction, and restart cases.
-- [ ] A human evaluation records whether project-aware recommendations are more
+- [x] A human evaluation records whether project-aware recommendations are more
   useful and grounded than new-project-only recommendations.
 
 ## Handoff
@@ -172,3 +172,15 @@ acceptance mutation.
   a scripted scenario under `tests/fixtures/chat/`.
 - Human usefulness/grounding comparison: a redacted report under
   `docs/reports/g27-recommendation-evaluation.md`.
+
+## Cycle verification (2026-09-15)
+
+- Full offline suite: **passed**; Postgres-marked tests were skipped because no
+  test database URL was supplied for this cycle.
+- Focused offline recommendation tests: **3 passed**.
+- Human usefulness review: **complete**. The user judged project-aware output
+  preferable when a legitimate, evidence-backed project seam exists, and
+  greenfield preferable when project targeting would add complexity without a
+  credible benefit. This is a conditional policy, not a blanket preference.
+- Shared development fixture contamination remains routed to G35 and
+  `BL-G27-001`; it is not treated as a recommendation-quality success.

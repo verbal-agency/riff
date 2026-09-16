@@ -19,15 +19,21 @@ Automated evidence:
 
 ## Human evaluation
 
-Protocol correctness is automated. A human usefulness judgment remains
-intentionally separate: compare one project-aware recommendation and one
-new-project-only recommendation for the same Riff, then record which is more
-grounded, more useful, and less likely to overfit repository metadata. The
-reviewer should also assess whether the proposed seam is concrete enough to
-start an Exploration and whether the greenfield fallback is credible.
+Protocol correctness is automated. The user compared a project-aware
+recommendation with a new-project-only recommendation for the same Riff and
+provided a conditional judgment:
 
-Status: **PENDING USER REVIEW**. This is the only G27 acceptance item that
-cannot be established from offline or Postgres tests alone.
+> If there is a legitimate use case for project-aware, use that. If it adds
+> complexity without a good reason, choose greenfield.
+
+This establishes the product policy for G27: project-aware recommendations are
+preferred only when the cited project evidence supports a concrete seam and
+meaningful learning value. Otherwise the greenfield alternative should win;
+project context is not a goal in itself.
+
+Status: **COMPLETE**. Fixture contamination in the shared development database
+still limits the cleanliness of future dogfood comparisons and is tracked by
+`BL-G27-001`/G35.
 
 ## Local dogfood run
 

@@ -1,6 +1,6 @@
 # G28 — Model opportunity context and riff on execution candidates
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G21, G24, G26, G27
 **Unlocks:** Distinctive applied-AI demonstrators
 **PRD references:** Sections 3–6, 7, 9, 11–15, 18–21, 27–33

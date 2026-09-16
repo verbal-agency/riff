@@ -152,7 +152,9 @@ routed to G32. G25's offline, fixture-backed discovery and review slice and
 its promoted-scope G03/Postgres integration are complete. G26 now maintains a
 separate user-approved project inventory and versioned, evidence-backed map
 from bounded G03 artifacts; G27's deterministic project-aware recommendation
-implementation is complete and awaits the required human usefulness review.
+implementation is complete. The user's review established a conditional policy:
+use project-aware recommendations only when a legitimate evidence-backed seam
+exists; otherwise prefer greenfield.
 G28 then adds
 opportunity-context modeling and iterative execution riffing so those
 recommendations become a search over distinctive, evidence-producing
