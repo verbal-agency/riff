@@ -317,7 +317,7 @@ class RiffToolAdapter:
 
     def _list_projects(self, **kwargs: Any) -> dict[str, Any]:
         limit = int(kwargs.get("limit", 5))
-        return {"projects": RecommendationRepository(self.database_url).list_projects(limit=limit)}
+        return {"projects": RecommendationRepository(self.database_url).list_projects(limit=limit, include_non_live=bool(kwargs.get("include_non_live", False)))}
 
     def _inspect_project(self, project_id: str) -> dict[str, Any]:
         return ProjectMapRepository(self.database_url).inspect(project_id)

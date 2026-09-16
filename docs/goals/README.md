@@ -193,8 +193,9 @@ confirmation-gated selective onboarding into G26, and auditable revoke/scope
 narrowing. G34 is complete: it adds durable monitoring of selected repositories
 and quantitative search rules that can auto-queue or propose disabled scopes
 without bypassing review.
-G35 is ready for data-origin, fixture-ownership, retention, and safe-cleanup
-hardening; G36 remains queued behind G34 and G35.
+G35 is complete: it adds origin/owner policy, safe fixture cleanup, quarantine,
+and reviewable retention without deleting live provenance. G36 is now ready to
+turn monitored deltas into personalized, evidence-backed guidance.
 G36 then turns those monitored deltas into personalized, evidence-backed
 guidance through separate evidence, project, decision, guidance, and
 disposable-conversation memory layers; it must not infer proficiency or persist

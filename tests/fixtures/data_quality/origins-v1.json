@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "fixture_id": "data-governance-origins-v1",
+  "records": [
+    {"table": "github_project_inventory", "row_key": "g27-project-fixture", "data_origin": "FIXTURE", "origin_owner": "governance-fixture"},
+    {"table": "github_project_inventory", "row_key": "ambiguous-project", "data_origin": "UNCLASSIFIED", "origin_owner": null},
+    {"table": "evidence_versions", "row_key": "malformed-evidence", "data_origin": "QUARANTINED", "reason_code": "MALFORMED_PAYLOAD"},
+    {"table": "collection_runs", "row_key": "partial-run", "data_origin": "TEST", "origin_owner": "governance-fixture"}
+  ]
+}

@@ -69,6 +69,7 @@ from .provenance import (
     reconcile_stale_collection_runs,
     source_coverage_report,
 )
+from .data_governance import GovernanceError, backfill_known_fixtures, cleanup_apply, cleanup_preview, origin_report, quarantine, retention_apply, retention_preview
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
 from .signal_evaluation import evaluate_fixture as evaluate_signal_fixture
 from .source_manifest import load_manifest
@@ -360,8 +361,24 @@ def build_parser() -> argparse.ArgumentParser:
     quality_subparsers = quality.add_subparsers(dest="quality_command", required=True)
     quality_report = quality_subparsers.add_parser("report", help="show bounded source coverage")
     quality_report.add_argument("--limit", type=int, default=100)
+    quality_report.add_argument("--include-non-live", action="store_true")
     quality_engineers = quality_subparsers.add_parser("engineer-sources", help="show explicit engineer-source provenance coverage")
     quality_engineers.add_argument("--limit", type=int, default=100)
+    quality_engineers.add_argument("--include-non-live", action="store_true")
+    quality_origins = quality_subparsers.add_parser("origins", help="show persisted data origins")
+    quality_origins.add_argument("--include-non-live", action="store_true")
+    quality_origins.add_argument("--limit", type=int, default=100)
+    quality_cleanup = quality_subparsers.add_parser("cleanup", help="preview or apply owner-scoped fixture/test cleanup")
+    quality_cleanup.add_argument("--origin", choices=["FIXTURE", "TEST"], required=True)
+    quality_cleanup.add_argument("--owner", required=True)
+    quality_cleanup.add_argument("--apply", action="store_true")
+    quality_cleanup.add_argument("--confirm", help="type CLEANUP to apply")
+    quality_backfill = quality_subparsers.add_parser("backfill-origins", help="classify known synthetic project projections")
+    quality_backfill.add_argument("--owner", default="legacy-project-fixture")
+    quality_retention = quality_subparsers.add_parser("retention", help="preview or apply non-live retention plan")
+    quality_retention.add_argument("--older-than-days", type=int, required=True)
+    quality_retention.add_argument("--apply", action="store_true")
+    quality_retention.add_argument("--confirm", help="type RETENTION to apply")
     quality_repair = quality_subparsers.add_parser("repair", help="backfill metadata, reconcile runs, and recalibrate Riffs")
     quality_repair.add_argument("--stale-after-seconds", type=int, default=3600)
     quality_repair.add_argument("--force-recalibrate", action="store_true")
@@ -600,12 +617,26 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             if args.quality_command == "report":
-                print(json.dumps(source_coverage_report(Settings.from_env().database_url, limit=args.limit), sort_keys=True, default=str))
+                print(json.dumps(source_coverage_report(Settings.from_env().database_url, limit=args.limit, include_non_live=args.include_non_live), sort_keys=True, default=str))
                 return 0
             if args.quality_command == "engineer-sources":
-                print(json.dumps(engineer_source_coverage_report(Settings.from_env().database_url, limit=args.limit), sort_keys=True, default=str))
+                print(json.dumps(engineer_source_coverage_report(Settings.from_env().database_url, limit=args.limit, include_non_live=args.include_non_live), sort_keys=True, default=str))
                 return 0
             database_url = Settings.from_env().database_url
+            if args.quality_command == "origins":
+                print(json.dumps(origin_report(database_url, include_non_live=args.include_non_live, limit=args.limit), sort_keys=True, default=str))
+                return 0
+            if args.quality_command == "backfill-origins":
+                print(json.dumps(backfill_known_fixtures(database_url, owner=args.owner), sort_keys=True, default=str))
+                return 0
+            if args.quality_command == "cleanup":
+                result = cleanup_apply(database_url, origin=args.origin, owner=args.owner, confirmation=args.confirm or "") if args.apply else cleanup_preview(database_url, origin=args.origin, owner=args.owner)
+                print(json.dumps(result, sort_keys=True, default=str))
+                return 0
+            if args.quality_command == "retention":
+                result = retention_apply(database_url, older_than_days=args.older_than_days, confirmation=args.confirm or "") if args.apply else retention_preview(database_url, older_than_days=args.older_than_days)
+                print(json.dumps(result, sort_keys=True, default=str))
+                return 0
             metadata = backfill_receipt_metadata(database_url)
             runs = reconcile_stale_collection_runs(database_url, stale_after=timedelta(seconds=args.stale_after_seconds))
             riffs = recalibrate_riffs(database_url, force=args.force_recalibrate)

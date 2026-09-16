@@ -297,6 +297,21 @@ independent evidence are labeled deterministically. Accepted rows are
 promotion, and promotion never enables collection. CLI and MCP share these
 boundaries with confirmation-gated state changes.
 
+## G35 data origin and retention
+
+`src/riff/data_governance.py` supplies the origin/owner policy shared by source,
+evidence, run, project, and recommendation records. New writes can explicitly
+label `LIVE`, `FIXTURE`, `TEST`, `QUARANTINED`, or `UNCLASSIFIED`; the known
+fixture backfill is deliberately narrow. Reports filter non-live data by
+default, while a bounded audit mode exposes origin labels and policy versions.
+
+Cleanup is a two-phase preview/apply operation scoped to an origin and owner.
+It checks exploration dependencies, deletes only owned project projections in
+dependency order, and writes an audit record; live evidence, daily Riffs, and
+operational history are never selected. Malformed payloads are preserved in an
+append-only quarantine ledger. Retention remains dry-runnable and records an
+immutable archival decision without deleting evidence history.
+
 ## G27 project-aware recommendations
 
 `src/riff/recommendations.py` compares a bounded Riff/profile slice with

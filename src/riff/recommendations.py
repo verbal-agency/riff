@@ -347,7 +347,7 @@ class RecommendationRepository:
     def __init__(self, database_url: str):
         self.database_url = database_url
 
-    def _project_inputs(self, limit: int = 5) -> list[dict[str, Any]]:
+    def _project_inputs(self, limit: int = 5, *, include_non_live: bool = False) -> list[dict[str, Any]]:
         if not 1 <= limit <= 5:
             raise RecommendationError("project limit must be between 1 and 5")
         with connection(self.database_url) as conn:
@@ -364,10 +364,11 @@ class RecommendationRepository:
                     LIMIT 1
                 ) s ON TRUE
                 WHERE i.review_status = 'APPROVED'
+                  AND (%s OR COALESCE(i.data_origin, 'UNCLASSIFIED') NOT IN ('FIXTURE', 'TEST', 'QUARANTINED'))
                 ORDER BY i.updated_at DESC, i.project_id
                 LIMIT %s
                 """,
-                (limit,),
+                (include_non_live, limit),
             ).fetchall()
         return [
             {
@@ -381,10 +382,10 @@ class RecommendationRepository:
             for row in rows
         ]
 
-    def list_projects(self, *, limit: int = 5) -> list[dict[str, Any]]:
+    def list_projects(self, *, limit: int = 5, include_non_live: bool = False) -> list[dict[str, Any]]:
         """Return bounded project summaries suitable for a conversational client."""
 
-        return self._project_inputs(limit)
+        return self._project_inputs(limit, include_non_live=include_non_live)
 
     def match_riff(self, riff_id: str, *, limit: int = 3) -> dict[str, Any]:
         investigation = DecisionRepository(self.database_url).investigation(riff_id)

@@ -65,7 +65,7 @@ class EvidenceRepository:
             normalized_root = canonicalize_url(canonical_root)
         source = Source(source_id=source_id or _id(), source_type=normalized_type, name=name.strip(), canonical_root=normalized_root, enabled=enabled)
         with connection(self.database_url) as conn:
-            conn.execute(
+                conn.execute(
                 """
                 INSERT INTO sources (source_id, source_type, name, canonical_root, enabled)
                 VALUES (%s, %s, %s, %s, %s)
@@ -81,6 +81,14 @@ class EvidenceRepository:
 
     def ingest(self, submission: EvidenceSubmission) -> IngestResult:
         item = submission.validate()
+        # Recorded fixture writers historically signaled origin in retrieval
+        # metadata. Preserve that compatibility while making the persisted
+        # governance columns explicit for every new evidence version.
+        data_origin = item.data_origin
+        origin_owner = item.origin_owner
+        if data_origin == "LIVE" and item.retrieval_metadata.get("fixture") is True:
+            data_origin = "FIXTURE"
+            origin_owner = origin_owner or "retrieval-fixture"
         with connection(self.database_url) as conn:
             source = conn.execute(
                 "SELECT source_id FROM sources WHERE source_id = %s",
@@ -166,8 +174,9 @@ class EvidenceRepository:
                     """
                     INSERT INTO evidence_versions
                     (evidence_id, source_item_id, content_hash, retrieved_at, published_at,
-                     raw_content, snapshot_ref, schema_version, previous_evidence_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     raw_content, snapshot_ref, schema_version, previous_evidence_id,
+                     data_origin, origin_owner, origin_run_id, origin_policy_version)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         evidence_id,
@@ -179,6 +188,10 @@ class EvidenceRepository:
                         item.snapshot_ref,
                         SCHEMA_VERSION,
                         version_of,
+                        data_origin,
+                        origin_owner,
+                        item.origin_run_id,
+                        item.origin_policy_version,
                     ),
                 )
                 if insert_evidence.rowcount and version_of:
@@ -204,14 +217,18 @@ class EvidenceRepository:
 
             retrieval_id = _id()
             conn.execute(
-                "INSERT INTO retrievals (retrieval_id, evidence_id, retrieved_at, outcome, metadata) "
-                "VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO retrievals (retrieval_id, evidence_id, retrieved_at, outcome, metadata, data_origin, origin_owner, origin_run_id, origin_policy_version) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     retrieval_id,
                     evidence_id,
                     item.retrieved_at,
                     RetrievalOutcome.SUCCESS.value,
                     Jsonb(item.retrieval_metadata),
+                    data_origin,
+                    origin_owner,
+                    item.origin_run_id,
+                    item.origin_policy_version,
                 ),
             )
             return IngestResult(evidence_id, source_item_id, retrieval_id, created, version_of)

@@ -77,6 +77,24 @@ The report groups only explicit `engineer_source_id` metadata and shows source,
 fixture, non-fixture, run, and failure counts. Fixture-only results are not
 treated as independent production evidence.
 
+### Data origin, cleanup, and retention
+
+G35 labels persisted records as `LIVE`, `FIXTURE`, `TEST`, `QUARANTINED`, or
+`UNCLASSIFIED`. Inspect origins and classify the known synthetic projections:
+
+```sh
+uv run riff data-quality origins --include-non-live --limit 100
+uv run riff data-quality backfill-origins
+uv run riff data-quality cleanup --origin FIXTURE --owner legacy-project-fixture
+uv run riff data-quality cleanup --origin FIXTURE --owner legacy-project-fixture --apply --confirm CLEANUP
+uv run riff data-quality retention --older-than-days 90
+```
+
+Cleanup is dry-run by default, owner-scoped, transactional, and preserves live
+evidence and daily results. Retention is also dry-run by default and records an
+immutable plan; `CLEANUP` or `RETENTION` confirmation is required for apply.
+Use `--include-non-live` for bounded audit reports.
+
 ## GitHub collection
 
 Configure one explicit repository per `GITHUB` source in

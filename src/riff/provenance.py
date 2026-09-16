@@ -103,7 +103,7 @@ def reconcile_stale_collection_runs(database_url: str, *, stale_after: timedelta
     return {"stale_after_seconds": int(stale_after.total_seconds()), "reconciled": len(changed), "runs": changed}
 
 
-def source_coverage_report(database_url: str, *, limit: int = 100) -> dict[str, Any]:
+def source_coverage_report(database_url: str, *, limit: int = 100, include_non_live: bool = False) -> dict[str, Any]:
     """Return bounded, aggregate coverage for configured sources."""
 
     if not 1 <= limit <= 500:
@@ -117,6 +117,7 @@ def source_coverage_report(database_url: str, *, limit: int = 100) -> dict[str, 
                    FROM source_items si
                    JOIN evidence_versions e ON e.source_item_id = si.source_item_id
                    LEFT JOIN evidence_receipts r ON r.evidence_id = e.evidence_id
+                   WHERE (%s OR COALESCE(e.data_origin, 'UNCLASSIFIED') NOT IN ('FIXTURE', 'TEST', 'QUARANTINED'))
                    GROUP BY si.source_id
                ), run_counts AS (
                    SELECT source_id.value AS source_id,
@@ -133,7 +134,9 @@ def source_coverage_report(database_url: str, *, limit: int = 100) -> dict[str, 
                FROM sources s
                LEFT JOIN evidence_counts e ON e.source_id = s.source_id
                LEFT JOIN run_counts rc ON rc.source_id = s.source_id
-               ORDER BY COALESCE(e.evidence_count, 0), s.source_id"""
+               WHERE (%s OR COALESCE(s.data_origin, 'UNCLASSIFIED') NOT IN ('FIXTURE', 'TEST', 'QUARANTINED'))
+               ORDER BY COALESCE(e.evidence_count, 0), s.source_id""",
+            (include_non_live, include_non_live),
         ).fetchall()
     items = []
     for row in rows:
@@ -155,7 +158,7 @@ def source_coverage_report(database_url: str, *, limit: int = 100) -> dict[str, 
     return {"limit": limit, "total": len(items), "returned": min(limit, len(items)), "states": counts, "sources": items[:limit]}
 
 
-def engineer_source_coverage_report(database_url: str, *, limit: int = 100) -> dict[str, Any]:
+def engineer_source_coverage_report(database_url: str, *, limit: int = 100, include_non_live: bool = False) -> dict[str, Any]:
     """Report engineer-attributed source coverage without inferring identity.
 
     Rows are grouped by the explicit ``engineer_source_id`` carried in the
@@ -196,6 +199,7 @@ def engineer_source_coverage_report(database_url: str, *, limit: int = 100) -> d
                    LEFT JOIN retrievals r ON r.evidence_id = e.evidence_id
                    LEFT JOIN run_counts rc ON rc.source_id = isc.source_id
                    WHERE isc.metadata ? 'engineer_source_id'
+                     AND (%s OR COALESCE(s.data_origin, 'UNCLASSIFIED') NOT IN ('FIXTURE', 'TEST', 'QUARANTINED'))
                    GROUP BY isc.source_id, isc.metadata, s.enabled, rc.collection_runs, rc.failed_runs
                )
                SELECT engineer_source_id,
@@ -216,7 +220,8 @@ def engineer_source_coverage_report(database_url: str, *, limit: int = 100) -> d
                       )) AS sources
                FROM source_counts
                GROUP BY engineer_source_id
-               ORDER BY engineer_source_id"""
+               ORDER BY engineer_source_id""",
+            (include_non_live,),
         ).fetchall()
     items: list[dict[str, Any]] = []
     for row in rows:

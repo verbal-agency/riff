@@ -65,16 +65,16 @@ def seed_fixture(database_url: str, fixture: DailyFixture) -> None:
     source_id = "riff-daily-fixture-source"
     now = datetime.now(timezone.utc)
     with connection(database_url) as conn:
-        conn.execute("INSERT INTO sources (source_id, source_type, name) VALUES (%s, 'TECHNICAL_WRITING', %s) ON CONFLICT DO NOTHING", (source_id, "Riff daily fixture"))
+        conn.execute("INSERT INTO sources (source_id, source_type, name, data_origin, origin_owner, origin_policy_version) VALUES (%s, 'TECHNICAL_WRITING', %s, 'FIXTURE', %s, 'governance-v1') ON CONFLICT DO NOTHING", (source_id, "Riff daily fixture", "daily-fixture"))
         for item in fixture.receipts:
             receipt_id = str(item["receipt_id"])
             raw = str(item.get("raw_content", item.get("summary", "fixture evidence")))
             evidence_id = f"riff-fixture-evidence-{receipt_id}"
             source_item_id = f"riff-fixture-item-{receipt_id}"
             digest = content_hash(raw)
-            conn.execute("INSERT INTO source_items (source_item_id, source_id, native_id, canonical_url, title) VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING", (source_item_id, source_id, receipt_id, f"https://fixture.riff.local/evidence/{receipt_id}", item.get("title", receipt_id)))
-            conn.execute("INSERT INTO evidence_versions (evidence_id, source_item_id, content_hash, retrieved_at, raw_content, schema_version) VALUES (%s, %s, %s, %s, %s, 1) ON CONFLICT DO NOTHING", (evidence_id, source_item_id, digest, now, raw))
-            conn.execute("INSERT INTO retrievals (retrieval_id, evidence_id, retrieved_at, outcome, metadata) VALUES (%s, %s, %s, 'SUCCESS', %s) ON CONFLICT DO NOTHING", (str(uuid.uuid5(uuid.NAMESPACE_URL, evidence_id)), evidence_id, now, Jsonb({"fixture": True})))
+            conn.execute("INSERT INTO source_items (source_item_id, source_id, native_id, canonical_url, title, data_origin, origin_owner, origin_policy_version) VALUES (%s, %s, %s, %s, %s, 'FIXTURE', %s, 'governance-v1') ON CONFLICT DO NOTHING", (source_item_id, source_id, receipt_id, f"https://fixture.riff.local/evidence/{receipt_id}", item.get("title", receipt_id), "daily-fixture"))
+            conn.execute("INSERT INTO evidence_versions (evidence_id, source_item_id, content_hash, retrieved_at, raw_content, schema_version, data_origin, origin_owner, origin_policy_version) VALUES (%s, %s, %s, %s, %s, 1, 'FIXTURE', %s, 'governance-v1') ON CONFLICT DO NOTHING", (evidence_id, source_item_id, digest, now, raw, "daily-fixture"))
+            conn.execute("INSERT INTO retrievals (retrieval_id, evidence_id, retrieved_at, outcome, metadata, data_origin, origin_owner, origin_policy_version) VALUES (%s, %s, %s, 'SUCCESS', %s, 'FIXTURE', %s, 'governance-v1') ON CONFLICT DO NOTHING", (str(uuid.uuid5(uuid.NAMESPACE_URL, evidence_id)), evidence_id, now, Jsonb({"fixture": True}), "daily-fixture"))
             conn.execute("""INSERT INTO evidence_receipts
                 (receipt_id, evidence_id, content_hash, extractor_version, schema_version, status,
                  summary, relevant_spans, capability_candidates, technology_candidates, claims,

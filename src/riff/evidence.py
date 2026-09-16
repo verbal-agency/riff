@@ -117,8 +117,16 @@ class EvidenceSubmission:
     snapshot_ref: str | None = None
     supplied_content_hash: str | None = None
     retrieval_metadata: dict[str, object] = field(default_factory=dict)
+    data_origin: str = "LIVE"
+    origin_owner: str | None = None
+    origin_run_id: str | None = None
+    origin_policy_version: str = "governance-v1"
 
     def validate(self) -> "EvidenceSubmission":
+        if self.data_origin not in {"LIVE", "FIXTURE", "TEST", "QUARANTINED", "UNCLASSIFIED"}:
+            raise EvidenceValidationError("invalid data_origin")
+        if not self.origin_policy_version.strip():
+            raise EvidenceValidationError("origin_policy_version is required")
         if not self.source_id.strip():
             raise EvidenceValidationError("source_id is required")
         normalized_url = canonicalize_url(self.canonical_url)
@@ -155,6 +163,10 @@ class EvidenceSubmission:
             snapshot_ref=self.snapshot_ref.strip() if self.snapshot_ref else None,
             supplied_content_hash=normalized_hash,
             retrieval_metadata=dict(self.retrieval_metadata),
+            data_origin=self.data_origin,
+            origin_owner=self.origin_owner,
+            origin_run_id=self.origin_run_id,
+            origin_policy_version=self.origin_policy_version,
         )
 
 

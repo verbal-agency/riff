@@ -1,6 +1,6 @@
 # G36 — Turn monitored GitHub changes into personalized guidance and durable memory
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G26, G27, G32, G33, G34, G35
 **Unlocks:** Evidence-backed, account-aware guidance about what to build or learn next
 **PRD references:** Sections 4, 7.2, 8, 11, 13, 15, 21–22, 27–29, 32–33

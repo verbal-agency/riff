@@ -1,6 +1,6 @@
 # G35 — Govern data origin, fixture ownership, and retention
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G22, G27, G30, G31
 **Unlocks:** Trusted live-data evaluation, safe fixture cleanup, and future quarantine/garbage-collection policy
 **PRD references:** Sections 7–9, 22, 29, 33
@@ -25,7 +25,7 @@ quarantined records instead of being silently discarded.
 ### 1. Origin and lifecycle contract
 
 - Add additive origin metadata to fixture-capable persisted records:
-  `data_origin` (`LIVE`, `FIXTURE`, `TEST`, `QUARANTINED`), an optional
+  `data_origin` (`LIVE`, `FIXTURE`, `TEST`, `QUARANTINED`, `UNCLASSIFIED`), an optional
   `origin_run_id`/owner, and `policy_version`.
 - Require new fixture/test writers to set origin metadata explicitly; retain
   stable raw payloads and evidence hashes.
@@ -68,31 +68,35 @@ quarantined records instead of being silently discarded.
 
 ## Acceptance criteria
 
-- [ ] A migration adds origin/owner/policy fields without breaking existing
+- [x] A migration adds origin/owner/policy fields without breaking existing
   provenance joins; all new fixture writers populate them.
-- [ ] A dry-run identifies the known G26/G27 synthetic project projections and
+- [x] A dry-run identifies the known G26/G27 synthetic project projections and
   their dependent recommendations without selecting live source/evidence rows.
-- [ ] Applying cleanup removes only explicitly owned fixture/test projections,
+- [x] Applying cleanup removes only explicitly owned fixture/test projections,
   leaves live evidence and audit history intact, and is repeatable with zero
   additional deletions.
-- [ ] Default reports and project recommendations exclude fixture, test, and
+- [x] Default reports and project recommendations exclude fixture, test, and
   quarantined data; an explicit include mode exposes them for audits.
-- [ ] Malformed/nonstandard records retain raw payloads, receive a typed
+- [x] Malformed/nonstandard records retain raw payloads, receive a typed
   quarantine reason, and cannot raise provenance confidence or become live
   collection inputs.
-- [ ] Retention/archival policy is versioned, dry-runnable, and records what it
+- [x] Retention/archival policy is versioned, dry-runnable, and records what it
   would remove; no garbage collection occurs without explicit operator apply.
-- [ ] Offline and Postgres tests cover backfill, ownership scoping, foreign-key
+- [x] Offline and Postgres tests cover backfill, ownership scoping, foreign-key
   cleanup, idempotence, filtering, quarantine, retention preview, rollback,
   provenance preservation, and protection of operator-owned daily results.
-- [ ] Operator documentation gives one-line preview/apply/rollback/report
+- [x] Operator documentation gives one-line preview/apply/rollback/report
   commands and explains when an isolated test database remains preferable.
 
 ## Execution contract
 
 ### Expected implementation surface
 
-- Add a migration and origin/retention repository under `src/riff/`.
+- Add `src/riff/data_governance.py` with origin classification, ownership
+  resolution, quarantine, cleanup preview/apply, retention preview/apply, and
+  immutable audit reporting. Add migration
+  `src/riff/migrations/023_data_governance.sql` (or the next available number)
+  with additive nullable columns and audit tables.
 - Extend `riff data-quality` with bounded `origins`, `cleanup`, and `retention`
   subcommands; keep destructive operations confirmation-gated.
 - Update ingestion, project-map, recommendation, and quality-report query
@@ -113,8 +117,50 @@ quarantined records instead of being silently discarded.
 - Retention actions produce an immutable audit record and include policy and
   input fingerprints.
 
+### Authority and side-effect boundaries
+
+- Reads and dry-runs may inspect Postgres and recorded fixtures only. No
+  cleanup or retention command may call GitHub, mutate a source registry, or
+  invoke a model.
+- Apply requires an explicit `CLEANUP` or `RETENTION` confirmation plus an
+  origin and owner/run selector. The transaction must lock and validate all
+  dependent rows before deleting or archiving anything.
+- Live evidence, daily Riffs, and operational failure history are protected by
+  an explicit live-origin predicate and may not be selected by fixture/test
+  cleanup.
+
+### Deterministic behavior matrix and test map
+
+| Input/state | Required result | Verification |
+|---|---|---|
+| Known `g26-*`/`g27-*` projection | `FIXTURE` with owner and evidence dependency count | `test_backfill_known_projects` |
+| Ambiguous legacy row | `UNCLASSIFIED`, reported, never auto-cleaned | `test_ambiguous_rows_are_reported` |
+| Dry-run with origin + owner | Stable deletion/archive plan and input fingerprint; no writes | `test_cleanup_preview_is_non_mutating` |
+| Apply same plan twice | First applies; second reports zero additional changes | `test_cleanup_is_idempotent` |
+| Dependency would orphan live evidence | Transaction aborts with typed dependency error | `test_cleanup_protects_live_evidence` |
+| Malformed/nonstandard payload | Raw payload retained; `QUARANTINED` and typed reason | `test_quarantine_preserves_raw_payload` |
+| Default report query | Excludes `FIXTURE`, `TEST`, `QUARANTINED`, and `UNCLASSIFIED` | `test_reports_are_live_only_by_default` |
+| Explicit audit include | Returns bounded non-live rows with origin labels | `test_reports_include_audit_origins` |
+| Retention preview/apply | Versioned plan and immutable audit; no apply without confirmation | `test_retention_preview_and_apply` |
+| Rollback/restart after failure | Prior transaction remains intact; rerun is safe | `test_cleanup_failure_rolls_back` |
+
+Use `tests/fixtures/data_quality/origins-v1.json` for positive, ambiguous,
+malformed, contradictory, partial-failure, and ownership-collision cases.
+Postgres tests must create a unique owner/run scope and clean only those rows;
+they must not truncate the operator database.
+
 ## Handoff
 
 The goal is complete when the known synthetic project rows can be previewed and
 removed safely, default reports show live-only results, and future origin and
 retention policies are executable without changing the provenance model.
+
+## Verification
+
+Migration `023_data_governance` applied successfully. Known daily and G26/G27
+synthetic rows were backfilled with explicit `FIXTURE` ownership. The cleanup
+dry-run selected eight owned G27 projections and eight snapshots with no
+exploration dependencies; no live evidence or daily result was selected. The
+focused Postgres test verified owner-scoped deletion, dependency ordering,
+repeatability, and repository preservation. Full offline verification passed.
+Applying the known cleanup remains confirmation-gated and has not been run.
