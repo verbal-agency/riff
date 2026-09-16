@@ -71,6 +71,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G33](G33-github-account-observation.md) | Observe the user's GitHub account with explicit scope | G03, G22, G24a, G26 |
 | [G34](G34-github-source-monitoring-and-quantitative-discovery.md) | Monitor selected repositories and run quantitative GitHub discovery | G18, G20, G25, G26, G33 |
 | [G35](G35-data-origin-ownership-and-retention.md) | Govern data origin, fixture ownership, retention, and safe cleanup | G22, G27, G30, G31 |
+| [G36](G36-personalized-github-guidance-and-memory.md) | Turn monitored GitHub changes into personalized guidance and durable memory | G26, G27, G32, G33, G34, G35 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -108,6 +109,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Automated job collection and listing URL intake | G04, G21 |
 | User-authorized GitHub account observation and project selection | G33 |
 | Selected-repository monitoring and quantitative discovery | G34 |
+| Personalized repository guidance and bounded memory | G36 |
 
 ## Canonical project scenarios
 
@@ -139,6 +141,7 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-CHATGPT-004` — Riff carries a concept through natural-language investigation and refinement until the user explicitly requests a PRD.
 - `SC-GITHUB-ACCOUNT-001` — Riff observes a user-authorized GitHub account, presents bounded repository candidates, and onboards only explicitly selected projects.
 - `SC-GITHUB-MONITOR-001` — Riff monitors selected repositories and queues bounded, quantitatively qualified discovery candidates without silently enabling collection.
+- `SC-PERSONALIZED-GITHUB-001` — Riff explains meaningful changes in a selected repository, connects them to the user's bounded project/profile context, and records inspectable guidance feedback without treating ownership as proficiency.
 
 ## Current handoff
 
@@ -190,6 +193,10 @@ confirmation-gated selective onboarding into G26, and auditable revoke/scope
 narrowing. G34 follows with durable
 monitoring of selected repositories and quantitative search rules that can
 auto-queue or propose disabled scopes without bypassing review.
+G36 then turns those monitored deltas into personalized, evidence-backed
+guidance through separate evidence, project, decision, guidance, and
+disposable-conversation memory layers; it must not infer proficiency or persist
+unbounded conversation history.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots
