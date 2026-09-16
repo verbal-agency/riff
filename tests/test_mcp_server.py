@@ -68,6 +68,12 @@ def test_mcp_initialize_and_list_tools_expose_complete_catalog():
             "match_riff_to_projects",
             "propose_extension",
             "override_recommendation",
+            "create_opportunity_context",
+            "inspect_opportunity",
+            "list_execution_candidates",
+            "riff_execution_candidate",
+            "compare_execution_candidates",
+            "select_execution_direction",
         }
         by_name = {item["name"]: item for item in tools}
         assert by_name["daily_riffs"]["annotations"]["readOnlyHint"] is True

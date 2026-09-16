@@ -155,6 +155,31 @@ The resulting Exploration and generated PRD retain the target project ID while
 keeping repository contents, profile claims, and upstream GitHub mutations out
 of scope.
 
+### Opportunity context and execution riffing
+
+G28 keeps an opportunity's actors, workflow, platforms, connectors, permissions,
+security boundaries, success measures, and unknowns separate from capability
+claims. Extract a permitted, fixture-backed opportunity without a database:
+
+```sh
+uv run riff opportunity extract --source-url https://example.test/opportunity --file tests/fixtures/opportunities/perplexity-computer.json
+```
+
+Persist the context and three initial candidates, then inspect, riff, compare,
+and record a direction without creating an Exploration or PRD:
+
+```sh
+uv run riff opportunity ingest --source-url https://example.test/opportunity --file tests/fixtures/opportunities/perplexity-computer.json --project-seam "Extend Riff runtime"
+uv run riff opportunity candidates --opportunity-id <opportunity-id>
+uv run riff opportunity riff --opportunity-id <opportunity-id> --candidate-id <candidate-id> --operation NARROW
+uv run riff opportunity compare --opportunity-id <opportunity-id>
+uv run riff opportunity select --opportunity-id <opportunity-id> --candidate-id <candidate-id> --reason "Chosen after comparing the bounded variants."
+```
+
+Named platforms such as Perplexity Computer are opportunity constraints, not
+automatic implementation requirements. Candidate transformations preserve
+parent lineage and expose a later `APPROVE_EXPLORATION` boundary.
+
 ## Job-market import
 
 G04 uses a permitted, offline-first JSON import seam rather than scraping a job

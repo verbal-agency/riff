@@ -16,6 +16,7 @@ from .profile import ProfileRepository, ProfileValidationError
 from .capabilities import CapabilityRepository, NormalizationError
 from .recommendations import RecommendationError, RecommendationRepository
 from .project_map import ProjectMapRepository
+from .opportunities import OpportunityError, OpportunityRepository, build_execution_candidates, compare_candidates, extract_context, riff_candidate
 
 
 USER_CONFIRMATION_TOKEN = "USER_CONFIRMED"
@@ -41,6 +42,12 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "match_riff_to_projects": {"description": "Match a Riff to existing projects with explainable dispositions.", "required": ("riff_id",)},
     "propose_extension": {"description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.", "required": ("recommendation_id", "confirmation_token")},
     "override_recommendation": {"description": "Override a project recommendation with an explicit greenfield or defer choice.", "required": ("recommendation_id", "disposition", "reason", "confirmation_token")},
+    "create_opportunity_context": {"description": "Extract and persist a bounded opportunity context plus execution candidates from structured input.", "required": ("source_url", "payload")},
+    "inspect_opportunity": {"description": "Read a bounded opportunity context, evidence, constraints, and unknowns.", "required": ("opportunity_id",)},
+    "list_execution_candidates": {"description": "List bounded execution candidates for an opportunity with project seams and risks.", "required": ("opportunity_id",)},
+    "riff_execution_candidate": {"description": "Create one traceable candidate variant using a named bounded riff operation.", "required": ("opportunity_id", "candidate_id", "operation")},
+    "compare_execution_candidates": {"description": "Compare bounded execution candidates on feasibility, distinctiveness, fit, learning, evidence, risk, and usefulness.", "required": ("opportunity_id",)},
+    "select_execution_direction": {"description": "Record the user's selected execution direction without creating an Exploration or PRD.", "required": ("opportunity_id", "candidate_id", "reason", "confirmation_token")},
 }
 
 
@@ -66,7 +73,7 @@ class RiffToolAdapter:
             raise AdapterError(f"missing required tool arguments: {', '.join(missing)}")
         try:
             result = getattr(self, f"_{name}")(**args)
-        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, ValueError) as exc:
+        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, ValueError) as exc:
             raise AdapterError(str(exc)) from exc
         return {"tool": name, "result": result}
 
@@ -167,3 +174,59 @@ class RiffToolAdapter:
     def _override_recommendation(self, recommendation_id: str, disposition: str, reason: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
         self._require_confirmation(confirmation_token)
         return RecommendationRepository(self.database_url).override(recommendation_id, disposition, reason).to_dict()
+
+    def _create_opportunity_context(self, source_url: str, payload: Any, **kwargs: Any) -> dict[str, Any]:
+        if isinstance(payload, str):
+            import json
+            try:
+                payload = json.loads(payload)
+            except json.JSONDecodeError as exc:
+                raise AdapterError("payload must be valid JSON") from exc
+        if not isinstance(payload, Mapping):
+            raise AdapterError("payload must be an object")
+        context = extract_context(source_url, payload)
+        repository = OpportunityRepository(self.database_url)
+        repository.persist_context(context)
+        candidates = repository.persist_candidates(build_execution_candidates(context, project_seam=kwargs.get("project_seam")))
+        return {"context": context.to_dict(), "candidates": [item.to_dict() for item in candidates], "brief": _brief(context, candidates)}
+
+    def _inspect_opportunity(self, opportunity_id: str, **kwargs: Any) -> dict[str, Any]:
+        return OpportunityRepository(self.database_url).get_context(opportunity_id).to_dict()
+
+    def _list_execution_candidates(self, opportunity_id: str, **kwargs: Any) -> dict[str, Any]:
+        candidates = OpportunityRepository(self.database_url).list_candidates(opportunity_id, limit=int(kwargs.get("limit", 10)))
+        return {"opportunity_id": opportunity_id, "candidates": [item.to_dict() for item in candidates]}
+
+    def _riff_execution_candidate(self, candidate_id: str, operation: str, **kwargs: Any) -> dict[str, Any]:
+        repository = OpportunityRepository(self.database_url)
+        opportunity_id = str(kwargs.get("opportunity_id", ""))
+        if not opportunity_id:
+            raise AdapterError("opportunity_id is required to riff a candidate")
+        candidates = repository.list_candidates(opportunity_id, limit=10)
+        candidate = next((item for item in candidates if item.candidate_id == candidate_id), None)
+        if candidate is None:
+            raise AdapterError("candidate not found")
+        other_id = str(kwargs.get("other_candidate_id", ""))
+        other = next((item for item in candidates if item.candidate_id == other_id), None) if other_id else None
+        variant = riff_candidate(candidate, operation, other=other, constraint=kwargs.get("constraint"))
+        repository.persist_candidates([variant])
+        return variant.to_dict()
+
+    def _compare_execution_candidates(self, opportunity_id: str, **kwargs: Any) -> dict[str, Any]:
+        candidates = OpportunityRepository(self.database_url).list_candidates(opportunity_id, limit=int(kwargs.get("limit", 10)))
+        return {"opportunity_id": opportunity_id, **compare_candidates(candidates)}
+
+    def _select_execution_direction(self, opportunity_id: str, candidate_id: str, reason: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
+        self._require_confirmation(confirmation_token)
+        return OpportunityRepository(self.database_url).select(opportunity_id, candidate_id, reason)
+
+
+def _brief(context: Any, candidates: list[Any]) -> dict[str, Any]:
+    return {
+        "title": context.title,
+        "source_url": context.source_url,
+        "constraints": {"platforms": list(context.platforms), "connectors": list(context.connectors), "permissions": list(context.permissions), "approvals": list(context.approvals), "security_boundaries": list(context.security_boundaries)},
+        "unknowns": list(context.unknowns),
+        "candidate_ids": [item.candidate_id for item in candidates],
+        "next_approval": "APPROVE_EXPLORATION",
+    }

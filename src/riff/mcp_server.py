@@ -30,6 +30,9 @@ _MUTATING_TOOLS = {
     "generate_prd",
     "propose_extension",
     "override_recommendation",
+    "create_opportunity_context",
+    "riff_execution_candidate",
+    "select_execution_direction",
 }
 
 
@@ -145,6 +148,24 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
             {"recommendation_id": recommendation_id, "disposition": disposition, "reason": reason, "confirmation_token": confirmation_token},
         )
 
+    def create_opportunity_context(source_url: str, payload: str) -> dict[str, Any]:
+        return dispatch("create_opportunity_context", {"source_url": source_url, "payload": payload})
+
+    def inspect_opportunity(opportunity_id: str) -> dict[str, Any]:
+        return dispatch("inspect_opportunity", {"opportunity_id": opportunity_id})
+
+    def list_execution_candidates(opportunity_id: str) -> dict[str, Any]:
+        return dispatch("list_execution_candidates", {"opportunity_id": opportunity_id})
+
+    def riff_execution_candidate(candidate_id: str, operation: str, opportunity_id: str, other_candidate_id: str = "", constraint: str = "") -> dict[str, Any]:
+        return dispatch("riff_execution_candidate", {"candidate_id": candidate_id, "operation": operation, "opportunity_id": opportunity_id, "other_candidate_id": other_candidate_id, "constraint": constraint})
+
+    def compare_execution_candidates(opportunity_id: str) -> dict[str, Any]:
+        return dispatch("compare_execution_candidates", {"opportunity_id": opportunity_id})
+
+    def select_execution_direction(opportunity_id: str, candidate_id: str, reason: str, confirmation_token: str) -> dict[str, Any]:
+        return dispatch("select_execution_direction", {"opportunity_id": opportunity_id, "candidate_id": candidate_id, "reason": reason, "confirmation_token": confirmation_token})
+
     functions = {
         "daily_riffs": daily_riffs,
         "investigate_riff": investigate_riff,
@@ -166,6 +187,12 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "match_riff_to_projects": match_riff_to_projects,
         "propose_extension": propose_extension,
         "override_recommendation": override_recommendation,
+        "create_opportunity_context": create_opportunity_context,
+        "inspect_opportunity": inspect_opportunity,
+        "list_execution_candidates": list_execution_candidates,
+        "riff_execution_candidate": riff_execution_candidate,
+        "compare_execution_candidates": compare_execution_candidates,
+        "select_execution_direction": select_execution_direction,
     }
     for name, function in functions.items():
         schema = TOOL_SCHEMAS[name]

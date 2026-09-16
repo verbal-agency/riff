@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "title": "Applied AI systems engineer",
+  "source_url": "https://example.test/opportunities/perplexity-computer",
+  "description": "Build agent workflows with Perplexity Computer, browser and API tools. The system needs human approval, OAuth permissions, auditability, prompt-injection defenses, and recovery after interruption. Measure task completion and replay determinism.",
+  "actors": ["operator", "agent", "end user"],
+  "jobs_to_be_done": ["complete a consequential multi-step research workflow", "recover after interruption"],
+  "workflow_stages": ["intake", "plan", "execute with Computer", "request approval", "verify"],
+  "data_surfaces": ["web pages", "API responses", "workflow state"],
+  "platforms": ["Perplexity Computer"],
+  "connectors": ["browser automation", "MCP", "REST APIs"],
+  "permissions": ["least-privilege OAuth scopes"],
+  "approvals": ["human approval before consequential actions"],
+  "security_boundaries": ["prompt/tool injection defenses", "audit log"],
+  "success_measures": ["task completion", "replay determinism", "safe recovery"],
+  "unknowns": ["provider rate limits", "acceptable approval latency"],
+  "evidence": [{"source_url": "https://example.test/opportunities/perplexity-computer", "kind": "role_description", "confidence": 0.9}]
+}

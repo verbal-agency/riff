@@ -55,6 +55,7 @@ from .job_source_policy import JobPolicyError, load_policy as load_job_source_po
 from .job_collection import JobCollectionRunner, dry_run_fixture
 from .job_fetch import FixtureJobFetcher, HttpJobFetcher, JobFetchError
 from .job_url_intake import JobUrlIntakeRunner
+from .opportunities import OpportunityRepository, build_execution_candidates, compare_candidates, extract_context, riff_candidate
 from .logging import configure_logging, event
 from .mcp_server import create_service_app
 from .profile import ProfileRepository
@@ -184,6 +185,31 @@ def build_parser() -> argparse.ArgumentParser:
     job_submit.add_argument("--dry-run", action="store_true", help="decompose without writing evidence")
     job_validate = job_subparsers.add_parser("validate-policy", help="validate the versioned job-source policy")
     job_validate.add_argument("--policy", default="config/job_sources.json")
+    opportunity = subparsers.add_parser("opportunity", help="extract opportunity context and riff execution candidates")
+    opportunity_subparsers = opportunity.add_subparsers(dest="opportunity_command", required=True)
+    opportunity_extract = opportunity_subparsers.add_parser("extract", help="extract a bounded context from a JSON fixture")
+    opportunity_extract.add_argument("--source-url", required=True)
+    opportunity_extract.add_argument("--file", required=True)
+    opportunity_ingest = opportunity_subparsers.add_parser("ingest", help="persist context and initial execution candidates")
+    opportunity_ingest.add_argument("--source-url", required=True)
+    opportunity_ingest.add_argument("--file", required=True)
+    opportunity_ingest.add_argument("--project-seam")
+    opportunity_inspect = opportunity_subparsers.add_parser("inspect", help="inspect persisted opportunity context")
+    opportunity_inspect.add_argument("--opportunity-id", required=True)
+    opportunity_candidates = opportunity_subparsers.add_parser("candidates", help="list persisted execution candidates")
+    opportunity_candidates.add_argument("--opportunity-id", required=True)
+    opportunity_riff = opportunity_subparsers.add_parser("riff", help="create a candidate variant")
+    opportunity_riff.add_argument("--opportunity-id", required=True)
+    opportunity_riff.add_argument("--candidate-id", required=True)
+    opportunity_riff.add_argument("--operation", required=True, choices=["COMBINE", "EXTEND", "NARROW", "INVERT", "TRANSFER", "CONSTRAIN"])
+    opportunity_riff.add_argument("--other-candidate-id")
+    opportunity_riff.add_argument("--constraint")
+    opportunity_compare = opportunity_subparsers.add_parser("compare", help="compare persisted candidates")
+    opportunity_compare.add_argument("--opportunity-id", required=True)
+    opportunity_select = opportunity_subparsers.add_parser("select", help="record a chosen candidate without creating a project")
+    opportunity_select.add_argument("--opportunity-id", required=True)
+    opportunity_select.add_argument("--candidate-id", required=True)
+    opportunity_select.add_argument("--reason", required=True)
     receipt = subparsers.add_parser("receipt", help="process and evaluate Evidence Receipts")
     receipt_subparsers = receipt.add_subparsers(dest="receipt_command", required=True)
     receipt_process = receipt_subparsers.add_parser("process", help="process pending evidence with the local extractor")
@@ -393,6 +419,14 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError, JobPolicyError, JobFetchError) as exc:
             raise SystemExit(f"job URL intake error: {exc}") from exc
         print(json.dumps(result, sort_keys=True, default=str))
+        return 0
+    if args.command == "opportunity" and args.opportunity_command == "extract":
+        try:
+            payload = json.loads(Path(args.file).read_text(encoding="utf-8"))
+            context = extract_context(args.source_url, payload)
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"opportunity error: {exc}") from exc
+        print(json.dumps(context.to_dict(), sort_keys=True, default=str))
         return 0
     if args.command == "chat" and args.chat_command == "replay":
         try:
@@ -716,6 +750,44 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"unsupported profile command: {args.profile_command}")
         print(json.dumps(asdict(result), sort_keys=True, default=str))
         return 0
+    if args.command == "opportunity":
+        try:
+            payload = json.loads(Path(args.file).read_text(encoding="utf-8")) if hasattr(args, "file") else None
+            if args.opportunity_command == "extract":
+                context = extract_context(args.source_url, payload)
+                print(json.dumps(context.to_dict(), sort_keys=True, default=str))
+                return 0
+            repository = OpportunityRepository(settings.database_url)
+            if args.opportunity_command == "ingest":
+                context = extract_context(args.source_url, payload)
+                repository.persist_context(context)
+                candidates = repository.persist_candidates(build_execution_candidates(context, project_seam=args.project_seam))
+                print(json.dumps({"context": context.to_dict(), "candidates": [item.to_dict() for item in candidates]}, sort_keys=True, default=str))
+                return 0
+            if args.opportunity_command == "inspect":
+                print(json.dumps(repository.get_context(args.opportunity_id).to_dict(), sort_keys=True, default=str))
+                return 0
+            if args.opportunity_command == "candidates":
+                print(json.dumps({"opportunity_id": args.opportunity_id, "candidates": [item.to_dict() for item in repository.list_candidates(args.opportunity_id)]}, sort_keys=True, default=str))
+                return 0
+            candidates = repository.list_candidates(args.opportunity_id)
+            if args.opportunity_command == "riff":
+                candidate = next((item for item in candidates if item.candidate_id == args.candidate_id), None)
+                if candidate is None:
+                    raise ValueError("candidate not found")
+                other = next((item for item in candidates if item.candidate_id == args.other_candidate_id), None) if args.other_candidate_id else None
+                variant = riff_candidate(candidate, args.operation, other=other, constraint=args.constraint)
+                repository.persist_candidates([variant])
+                print(json.dumps(variant.to_dict(), sort_keys=True, default=str))
+                return 0
+            if args.opportunity_command == "compare":
+                print(json.dumps(compare_candidates(candidates), sort_keys=True, default=str))
+                return 0
+            if args.opportunity_command == "select":
+                print(json.dumps(repository.select(args.opportunity_id, args.candidate_id, args.reason), sort_keys=True))
+                return 0
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"opportunity error: {exc}") from exc
     if args.command == "signal" and args.signal_command == "rank":
         payload = json.loads(Path(args.file).read_text(encoding="utf-8"))
         if payload.get("schema_version") != 1 or not isinstance(payload.get("observations"), list):

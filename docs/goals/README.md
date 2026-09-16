@@ -155,10 +155,12 @@ from bounded G03 artifacts; G27's deterministic project-aware recommendation
 implementation is complete. The user's review established a conditional policy:
 use project-aware recommendations only when a legitimate evidence-backed seam
 exists; otherwise prefer greenfield.
-G28 then adds
-opportunity-context modeling and iterative execution riffing so those
-recommendations become a search over distinctive, evidence-producing
-demonstrations rather than a single generic project suggestion. G29 then
+G28 is complete: it adds opportunity-context modeling and iterative execution
+riffing so those recommendations become a search over distinctive,
+evidence-producing demonstrations rather than a single generic project
+suggestion. Its selected downstream direction is a comparative memory lab using
+one representative Riff workflow; implementing that artifact is separate from
+Riff's core. G29 then
 calibrates confidence from provenance quality so synthetic or thin evidence is
 not presented as an established claim.
 G30 then repairs persisted metadata and stale collection state, provides source

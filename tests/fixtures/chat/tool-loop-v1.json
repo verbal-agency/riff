@@ -102,6 +102,36 @@
       "name": "override_recommendation",
       "description": "Override a project recommendation with an explicit greenfield or defer choice.",
       "required": ["recommendation_id", "disposition", "reason", "confirmation_token"]
+    },
+    {
+      "name": "create_opportunity_context",
+      "description": "Extract and persist a bounded opportunity context plus execution candidates from structured input.",
+      "required": ["source_url", "payload"]
+    },
+    {
+      "name": "inspect_opportunity",
+      "description": "Read a bounded opportunity context, evidence, constraints, and unknowns.",
+      "required": ["opportunity_id"]
+    },
+    {
+      "name": "list_execution_candidates",
+      "description": "List bounded execution candidates for an opportunity with project seams and risks.",
+      "required": ["opportunity_id"]
+    },
+    {
+      "name": "riff_execution_candidate",
+      "description": "Create one traceable candidate variant using a named bounded riff operation.",
+      "required": ["opportunity_id", "candidate_id", "operation"]
+    },
+    {
+      "name": "compare_execution_candidates",
+      "description": "Compare bounded execution candidates on feasibility, distinctiveness, fit, learning, evidence, risk, and usefulness.",
+      "required": ["opportunity_id"]
+    },
+    {
+      "name": "select_execution_direction",
+      "description": "Record the user's selected execution direction without creating an Exploration or PRD.",
+      "required": ["opportunity_id", "candidate_id", "reason", "confirmation_token"]
     }
   ],
   "scenarios": [
@@ -251,6 +281,57 @@
             ]
           }
         }
+      }
+    },
+    {
+      "id": "opportunity-riff",
+      "user_message": "Riff on this opportunity and compare a narrower execution path.",
+      "turns": [
+        {
+          "tool_calls": [
+            {
+              "call_id": "opportunity-1",
+              "name": "inspect_opportunity",
+              "arguments": {"opportunity_id": "opp-1"}
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "call_id": "opportunity-2",
+              "name": "list_execution_candidates",
+              "arguments": {"opportunity_id": "opp-1"}
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "call_id": "opportunity-3",
+              "name": "riff_execution_candidate",
+              "arguments": {"opportunity_id": "opp-1", "candidate_id": "cand-1", "operation": "NARROW"}
+            }
+          ]
+        },
+        {
+          "tool_calls": [
+            {
+              "call_id": "opportunity-4",
+              "name": "compare_execution_candidates",
+              "arguments": {"opportunity_id": "opp-1"}
+            }
+          ]
+        },
+        {
+          "content": "The narrowed path is more distinctive because it makes one recovery boundary measurable; no Exploration was created."
+        }
+      ],
+      "adapter_results": {
+        "inspect_opportunity": {"tool": "inspect_opportunity", "result": {"opportunity_id": "opp-1", "platforms": ["Perplexity Computer"], "unknowns": ["provider limits"]}},
+        "list_execution_candidates": {"tool": "list_execution_candidates", "result": {"opportunity_id": "opp-1", "candidates": [{"candidate_id": "cand-1", "operation": "GENERATE"}]}},
+        "riff_execution_candidate": {"tool": "riff_execution_candidate", "result": {"candidate_id": "cand-2", "parent_candidate_id": "cand-1", "operation": "NARROW"}},
+        "compare_execution_candidates": {"tool": "compare_execution_candidates", "result": {"opportunity_id": "opp-1", "candidates": [{"candidate_id": "cand-2", "weighted_score": 0.8}]}}
       }
     }
   ]

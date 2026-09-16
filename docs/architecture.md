@@ -264,3 +264,20 @@ required before an extension attaches a stable project ID to an Exploration;
 PRD approval remains separate. Greenfield/defer overrides preserve the
 original recommendation and do not mutate GitHub, profile state, or source
 collection.
+
+## G28 opportunity context and execution riffing
+
+`src/riff/opportunities.py` separates an opportunity's actors, workflow,
+platforms, connectors, permissions, approvals, security boundaries, success
+measures, and unknowns from capability claims. Structured fixtures are
+deterministically extracted into versioned `opportunities` records with source
+evidence and input hashes; named platforms such as Perplexity Computer remain
+constraints of that opportunity rather than universal implementation choices.
+
+Three bounded execution candidates are generated with project seams when a
+credible seam is supplied, plus greenfield and failure-first alternatives.
+`COMBINE`, `EXTEND`, `NARROW`, `INVERT`, `TRANSFER`, and `CONSTRAIN` create
+parent-linked immutable variants in `execution_candidates`. Comparison scores
+remain deterministic and inspectable. The adapter/MCP and terminal surfaces
+can record a selected direction, but selection never creates an Exploration or
+PRD; those existing approvals remain the next authority boundary.

@@ -1,6 +1,6 @@
 # G28 — Model opportunity context and riff on execution candidates
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G21, G24, G26, G27
 **Unlocks:** Distinctive applied-AI demonstrators
 **PRD references:** Sections 3–6, 7, 9, 11–15, 18–21, 27–33
@@ -104,23 +104,23 @@ directions, and choose one for a later Exploration/PRD.
 
 ## Acceptance criteria
 
-- [ ] A permitted opportunity fixture produces a versioned context record with
+- [x] A permitted opportunity fixture produces a versioned context record with
   actors, workflow, platform, data, permission, approval, security, success,
   and unknown fields, each linked to evidence or marked uncertain.
-- [ ] The Perplexity Computer fixture identifies Computer as an opportunity
+- [x] The Perplexity Computer fixture identifies Computer as an opportunity
   constraint without making it a universal implementation requirement.
-- [ ] Riff generates at least three materially different execution candidates
+- [x] Riff generates at least three materially different execution candidates
   and includes extension/new-project alternatives when justified.
-- [ ] Two bounded riffing rounds produce traceable variants using named
+- [x] Two bounded riffing rounds produce traceable variants using named
   transformations, with rationale and comparison scores.
-- [ ] The user can inspect candidates, request another riff, compare variants,
+- [x] The user can inspect candidates, request another riff, compare variants,
   and record a chosen direction without creating an Exploration or PRD.
-- [ ] The resulting brief names a real artifact, evaluation plan, risks,
+- [x] The resulting brief names a real artifact, evaluation plan, risks,
   expected capability evidence, and the next approval boundary.
-- [ ] Offline, Postgres, and conversational tests cover extraction, omission
+- [x] Offline, Postgres, and conversational tests cover extraction, omission
   detection, candidate diversity, lineage, privacy, malformed input, restart,
   and approval behavior.
-- [ ] Human evaluation records whether the riffed direction is more distinctive
+- [x] Human evaluation records whether the riffed direction is more distinctive
   and more personally meaningful than the initial candidates.
 
 ## Handoff
@@ -128,4 +128,23 @@ directions, and choose one for a later Exploration/PRD.
 Report the opportunity-context schema, extraction and uncertainty policy,
 candidate and lineage model, transformation operators, comparison metrics,
 conversation traces, and the user's qualitative judgment. Any implementation of
-the chosen demonstrator becomes a separately scoped goal.
+the chosen demonstrator becomes a separately scoped goal. The selected direction
+is a combined Riff-use-case and comparative-architecture artifact: use one
+representative Riff workflow to evaluate event-sourced, hierarchical, and
+content-addressed memory implementations in a downstream project, then decide
+whether any result merits integration into Riff.
+
+## Cycle verification (2026-09-15)
+
+- Offline extraction, candidate diversity, two-round lineage, malformed-input,
+  and bound checks: **passed** in `tests/test_opportunities.py`.
+- MCP catalog, connector, and conversational tool-loop regressions: **passed**
+  in `tests/test_mcp_server.py`, `tests/test_connector.py`, and
+  `tests/test_chat_loop.py`.
+- Full offline suite: **passed**; Postgres-marked tests were skipped because
+  this cycle did not supply a database URL.
+- Additive migration `020_opportunity_context` applied successfully; focused
+  Postgres persistence test passed earlier in this cycle.
+- Human evaluation complete: the combined Riff-use-case/comparative-memory
+  direction is more distinctive and personally meaningful than a generic
+  durable-workflow demo, while remaining explicitly outside Riff's core scope.

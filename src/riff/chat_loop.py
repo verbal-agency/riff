@@ -115,6 +115,9 @@ MUTATING_TOOLS = {
     "generate_prd",
     "propose_extension",
     "override_recommendation",
+    "create_opportunity_context",
+    "riff_execution_candidate",
+    "select_execution_direction",
 }
 
 
