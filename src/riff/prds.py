@@ -106,6 +106,11 @@ class DeterministicPrdGenerator:
             "talk_track": [f"Why is {capability} the capability rather than merely a {technologies[0]} feature?", "What did the measurement prove and fail to prove?", "What would you change with another focused session?"],
             "kill_criteria": ["The smallest useful slice cannot fit within the remaining focused hours", "The fixture cannot distinguish the approaches or produce defensible evidence", "The work has become wrapper familiarity with no capability-level learning"],
         }
+        if exploration.target_project_id:
+            prd["target_project_id"] = exploration.target_project_id
+            prd["target_project_disposition"] = "EXTEND_EXISTING"
+            prd["scope"].append(f"Extend the approved existing project {exploration.target_project_id} at a named seam; preserve a greenfield fallback if the seam fails.")
+            prd["technical_decisions"].append("Measure whether extending the existing project produces more learning value than starting a separate project.")
         goals = (
             ProjectGoal(f"{project_id}-g1", project_id, 1, "Build the bounded capability slice", "A runnable smallest useful slice produces the planned artifact or measurement.", tuple(prd["scope"]), f"Runnable slice and focused fixture for {artifact}", (), ("Production deployment", "Unbounded feature expansion"), ("The fixture runs successfully and produces the named artifact.", "The implementation identifies the target capability separately from framework mechanics."), ("Automated fixture/test output", "A short implementation note")),
             ProjectGoal(f"{project_id}-g2", project_id, 2, "Inspect and compare the result", "The builder can explain a measured trade-off and a relevant failure mode.", (f"Goal {project_id}-g1 output",), "Comparison record with implementation inspection and failure probe", (f"{project_id}-g1",), ("New product features",), ("Two repeat runs produce comparable measurements.", "One failure mode is reproduced or bounded and its implication is recorded."), ("Comparison table or benchmark", "Failure fixture/output", "Architecture decision note")),
@@ -206,7 +211,10 @@ class ProjectRepository:
 
     def export_markdown(self, project_id: str) -> str:
         project = self.get(project_id)
-        lines = [f"# Riff Project {project.project_id}", "", f"- Source Exploration: `{project.exploration_id}`", f"- PRD approval: `{project.approval_id}`", f"- Useful focused hours: {project.useful_hours:g}", ""]
+        lines = [f"# Riff Project {project.project_id}", "", f"- Source Exploration: `{project.exploration_id}`", f"- PRD approval: `{project.approval_id}`", f"- Useful focused hours: {project.useful_hours:g}"]
+        if project.prd.get("target_project_id"):
+            lines.append(f"- Target existing project: `{project.prd['target_project_id']}`")
+        lines.append("")
         labels = {key: key.replace("_", " ").title() for key in PRD_SECTIONS}
         for section in PRD_SECTIONS:
             lines.extend([f"## {labels[section]}", ""])

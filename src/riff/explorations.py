@@ -56,6 +56,7 @@ class Exploration:
     version: int
     selected_experiment_id: str | None = None
     history: tuple[dict[str, Any], ...] = ()
+    target_project_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -147,11 +148,32 @@ class ExplorationRepository:
             raise ExplorationError("an explicit user APPROVE_EXPLORATION decision is required")
         return tuple(str(row[0]) for row in rows)
 
-    def create(self, riff_id: str, *, actor: str = "user", overlarge: bool = False) -> Exploration:
+    def create(
+        self,
+        riff_id: str,
+        *,
+        actor: str = "user",
+        overlarge: bool = False,
+        target_project_id: str | None = None,
+    ) -> Exploration:
+        if target_project_id is not None and not target_project_id.strip():
+            raise ExplorationError("target_project_id must not be blank")
         with connection(self.database_url) as conn:
             approvals = self._approval(conn, riff_id)
             existing = conn.execute("SELECT exploration_id FROM explorations WHERE riff_id = %s", (riff_id,)).fetchone()
             if existing:
+                if target_project_id:
+                    existing_target = conn.execute(
+                        "SELECT target_project_id FROM explorations WHERE exploration_id = %s",
+                        (str(existing[0]),),
+                    ).fetchone()
+                    if existing_target and existing_target[0] and str(existing_target[0]) != target_project_id:
+                        raise ExplorationError("Exploration already targets a different project")
+                    if existing_target and not existing_target[0]:
+                        conn.execute(
+                            "UPDATE explorations SET target_project_id = %s, updated_at = now() WHERE exploration_id = %s",
+                            (target_project_id, str(existing[0])),
+                        )
                 return self.get(str(existing[0]))
         exploration_id = str(uuid.uuid4())
         generated = DeterministicExplorationGenerator().generate(DecisionRepository(self.database_url).investigation(riff_id), exploration_id=exploration_id, overlarge=overlarge)
@@ -161,7 +183,7 @@ class ExplorationRepository:
             existing = conn.execute("SELECT exploration_id FROM explorations WHERE riff_id = %s", (riff_id,)).fetchone()
             if existing:
                 return self.get(str(existing[0]))
-            conn.execute("INSERT INTO explorations (exploration_id, riff_id, approval_decision_id, status, thesis, why_it_matters, what_i_want_to_understand, capability_targets, technology_targets, open_questions, estimated_effort, evidence_of_competence, version) VALUES (%s, %s, %s, 'DRAFT', %s, %s, %s, %s, %s, %s, %s, %s, 1)", (exploration_id, riff_id, approvals[-1], generated["thesis"], generated["why_it_matters"], generated["what_i_want_to_understand"], Jsonb(list(generated["capability_targets"])), Jsonb(list(generated["technology_targets"])), Jsonb(list(generated["open_questions"])), Jsonb(generated["estimated_effort"]), Jsonb(list(generated["evidence_of_competence"]))))
+            conn.execute("INSERT INTO explorations (exploration_id, riff_id, approval_decision_id, status, thesis, why_it_matters, what_i_want_to_understand, capability_targets, technology_targets, open_questions, estimated_effort, evidence_of_competence, version, target_project_id) VALUES (%s, %s, %s, 'DRAFT', %s, %s, %s, %s, %s, %s, %s, %s, 1, %s)", (exploration_id, riff_id, approvals[-1], generated["thesis"], generated["why_it_matters"], generated["what_i_want_to_understand"], Jsonb(list(generated["capability_targets"])), Jsonb(list(generated["technology_targets"])), Jsonb(list(generated["open_questions"])), Jsonb(generated["estimated_effort"]), Jsonb(list(generated["evidence_of_competence"])), target_project_id))
             for item in experiments:
                 conn.execute("INSERT INTO exploration_experiments (experiment_id, exploration_id, title, description, target_capability_id, technology_ids, learning_steps, effort_hours, effort_assumptions, artifact_or_measurement, competence_evidence, selection_rules, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'PROPOSED')", (item.experiment_id, exploration_id, item.title, item.description, item.target_capability_id, Jsonb(list(item.technology_ids)), Jsonb(list(item.learning_steps)), item.effort_hours, Jsonb(list(item.effort_assumptions)), item.artifact_or_measurement, Jsonb(list(item.competence_evidence)), Jsonb(item.selection_rules)))
             payload = self._payload(generated, experiments)
@@ -171,14 +193,14 @@ class ExplorationRepository:
 
     def get(self, exploration_id: str) -> Exploration:
         with connection(self.database_url) as conn:
-            row = conn.execute("SELECT exploration_id, riff_id, approval_decision_id, status, thesis, why_it_matters, what_i_want_to_understand, capability_targets, technology_targets, open_questions, estimated_effort, evidence_of_competence, version, selected_experiment_id FROM explorations WHERE exploration_id = %s", (exploration_id,)).fetchone()
+            row = conn.execute("SELECT exploration_id, riff_id, approval_decision_id, status, thesis, why_it_matters, what_i_want_to_understand, capability_targets, technology_targets, open_questions, estimated_effort, evidence_of_competence, version, selected_experiment_id, target_project_id FROM explorations WHERE exploration_id = %s", (exploration_id,)).fetchone()
             if row is None:
                 raise ExplorationError("Exploration not found")
             exp_rows = conn.execute("SELECT experiment_id, exploration_id, title, description, target_capability_id, technology_ids, learning_steps, effort_hours, effort_assumptions, artifact_or_measurement, competence_evidence, selection_rules, status FROM exploration_experiments WHERE exploration_id = %s ORDER BY created_at, experiment_id", (exploration_id,)).fetchall()
             events = conn.execute("SELECT event_type, actor, reason, payload, created_at FROM exploration_events WHERE exploration_id = %s ORDER BY created_at", (exploration_id,)).fetchall()
         experiments = tuple(Experiment(str(r[0]), str(r[1]), str(r[2]), str(r[3]), str(r[4]), tuple(_json(r[5])), tuple(_json(r[6])), float(r[7]), tuple(_json(r[8])), str(r[9]), tuple(_json(r[10])), dict(_json(r[11])), str(r[12])) for r in exp_rows)
         history = tuple({"event_type": str(r[0]), "actor": str(r[1]), "reason": str(r[2]), "payload": _json(r[3]), "created_at": r[4].isoformat()} for r in events)
-        return Exploration(str(row[0]), str(row[1]), str(row[2]), str(row[3]), str(row[4]), str(row[5]), str(row[6]), tuple(_json(row[7])), tuple(_json(row[8])), tuple(_json(row[9])), experiments, dict(_json(row[10])), tuple(_json(row[11])), int(row[12]), str(row[13]) if row[13] else None, history)
+        return Exploration(str(row[0]), str(row[1]), str(row[2]), str(row[3]), str(row[4]), str(row[5]), str(row[6]), tuple(_json(row[7])), tuple(_json(row[8])), tuple(_json(row[9])), experiments, dict(_json(row[10])), tuple(_json(row[11])), int(row[12]), str(row[13]) if row[13] else None, history, str(row[14]) if row[14] else None)
 
     def refine(self, exploration_id: str, experiment_id: str, reason: str, *, actor: str = "user", actor_kind: str = "USER") -> Exploration:
         if actor_kind != "USER" or not reason.strip():

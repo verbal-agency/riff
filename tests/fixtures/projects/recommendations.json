@@ -1,0 +1,43 @@
+{
+  "riff": {
+    "riff_id": "riff-project-fit",
+    "underlying_capability": "durable-agent-execution",
+    "hypothesis": "Resumable workflows are becoming a useful agent capability",
+    "recommendation": "Build a measured checkpoint and replay artifact",
+    "user_relevance": "SIGNALING_GAP",
+    "associated_technologies": ["Temporal", "LangGraph"],
+    "evidence_ids": ["signal-evidence-1", "signal-evidence-2"]
+  },
+  "projects": [
+    {
+      "project_id": "project-runtime",
+      "display_name": "Agent runtime",
+      "status": "ACTIVE",
+      "snapshot_id": "snapshot-runtime-1",
+      "source_evidence_ids": ["project-evidence-runtime"],
+      "summary": {
+        "display_name": "Agent runtime",
+        "purpose": {"value": "A durable workflow runtime"},
+        "capabilities": [{"value": "durable-agent-execution"}],
+        "technologies": [{"value": "Temporal"}, {"value": "LangGraph"}],
+        "extension_seams": [{"value": "Add checkpoint replay to the worker", "status": "OBSERVED", "evidence_ids": ["project-evidence-runtime"]}],
+        "unknowns": [{"value": "implementation_depth"}]
+      }
+    },
+    {
+      "project_id": "project-portfolio",
+      "display_name": "Portfolio site",
+      "status": "ACTIVE",
+      "snapshot_id": "snapshot-portfolio-1",
+      "source_evidence_ids": ["project-evidence-portfolio"],
+      "summary": {
+        "display_name": "Portfolio site",
+        "purpose": {"value": "A static portfolio and writing site"},
+        "capabilities": [{"value": "web publishing"}],
+        "technologies": [{"value": "Astro"}],
+        "extension_seams": [{"value": null, "status": "UNKNOWN", "evidence_ids": []}],
+        "unknowns": [{"value": "implementation_depth"}]
+      }
+    }
+  ]
+}

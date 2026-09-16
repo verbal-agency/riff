@@ -49,3 +49,17 @@ goal only when the next development slice is selected.
 - **Destination:** Test infrastructure/data-quality hardening before evaluating
   live engineer-source diversity.
 - **Priority:** High before the live provenance acceptance gate.
+
+## BL-G27-001 — Isolate project-recommendation fixture rows
+
+- **Source:** 2026-09-15 G27 local dogfood run after the full Postgres suite.
+- **Gap:** The recommendation tests intentionally create random project IDs in
+  the shared development database, so a live `list_projects` call can show
+  several synthetic projects with the same display name and affect the shape
+  of a human review.
+- **Next step:** Run project-map/recommendation integration tests in an isolated
+  database or clean only test-owned inventory, snapshot, and recommendation
+  rows before a user-facing dogfood session.
+- **Destination:** Test infrastructure/data-quality hardening; no production
+  matching change is required while provider IDs remain unique.
+- **Priority:** High before the G27 usefulness review is finalized.

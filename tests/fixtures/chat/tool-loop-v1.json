@@ -77,6 +77,31 @@
       "name": "operation_report",
       "description": "Read a durable daily pipeline run report.",
       "required": ["run_id"]
+    },
+    {
+      "name": "list_projects",
+      "description": "List bounded, approved GitHub project summaries.",
+      "required": []
+    },
+    {
+      "name": "inspect_project",
+      "description": "Read one bounded GitHub project map and snapshot history.",
+      "required": ["project_id"]
+    },
+    {
+      "name": "match_riff_to_projects",
+      "description": "Match a Riff to existing projects with explainable dispositions.",
+      "required": ["riff_id"]
+    },
+    {
+      "name": "propose_extension",
+      "description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.",
+      "required": ["recommendation_id", "confirmation_token"]
+    },
+    {
+      "name": "override_recommendation",
+      "description": "Override a project recommendation with an explicit greenfield or defer choice.",
+      "required": ["recommendation_id", "disposition", "reason", "confirmation_token"]
     }
   ],
   "scenarios": [
@@ -188,6 +213,43 @@
         "create_exploration": {
           "tool": "create_exploration",
           "result": {"exploration_id": "explore-1", "status": "DRAFT"}
+        }
+      }
+    },
+    {
+      "id": "project-match",
+      "user_message": "Could this Riff fit one of my existing projects?",
+      "turns": [
+        {
+          "tool_calls": [
+            {
+              "call_id": "project-match-1",
+              "name": "match_riff_to_projects",
+              "arguments": {"riff_id": "riff-1"}
+            }
+          ]
+        },
+        {
+          "content": "The strongest fit is an existing runtime project; I also kept a greenfield alternative."
+        }
+      ],
+      "adapter_results": {
+        "match_riff_to_projects": {
+          "tool": "match_riff_to_projects",
+          "result": {
+            "riff_id": "riff-1",
+            "recommendations": [
+              {
+                "recommendation_id": "recommendation-1",
+                "disposition": "EXTEND_EXISTING",
+                "project_id": "project-1",
+                "extension_seam": "Add checkpoint replay",
+                "evidence_ids": ["signal-1", "project-1-evidence"],
+                "uncertainty": {"unknowns": ["implementation_depth"]}
+              },
+              {"recommendation_id": "recommendation-2", "disposition": "START_NEW", "project_id": null}
+            ]
+          }
         }
       }
     }

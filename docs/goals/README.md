@@ -70,6 +70,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G32](G32-natural-language-conversational-continuity.md) | Make conversational Riff exploration natural and context-preserving | G10, G11, G12, G23, G24a |
 | [G33](G33-github-account-observation.md) | Observe the user's GitHub account with explicit scope | G03, G22, G24a, G26 |
 | [G34](G34-github-source-monitoring-and-quantitative-discovery.md) | Monitor selected repositories and run quantitative GitHub discovery | G18, G20, G25, G26, G33 |
+| [G35](G35-data-origin-ownership-and-retention.md) | Govern data origin, fixture ownership, retention, and safe cleanup | G22, G27, G30, G31 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -102,6 +103,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Opportunity constraints, candidate generation, and iterative execution riffing | G28 |
 | Provenance-aware confidence, independence, and synthetic-evidence disclosure | G29 |
 | Persisted data quality, collection health, and RCA | G30 |
+| Data origin, fixture ownership, quarantine, retention, and safe cleanup | G35 |
 | Engineer-source collection provenance and evidence quality | G31 |
 | Automated job collection and listing URL intake | G04, G21 |
 | User-authorized GitHub account observation and project selection | G33 |
@@ -149,8 +151,8 @@ is complete as a transport/lifecycle goal; its rough interaction quality is
 routed to G32. G25's offline, fixture-backed discovery and review slice and
 its promoted-scope G03/Postgres integration are complete. G26 now maintains a
 separate user-approved project inventory and versioned, evidence-backed map
-from bounded G03 artifacts; G27 is ready to build project-aware
-recommendations.
+from bounded G03 artifacts; G27's deterministic project-aware recommendation
+implementation is complete and awaits the required human usefulness review.
 G28 then adds
 opportunity-context modeling and iterative execution riffing so those
 recommendations become a search over distinctive, evidence-producing

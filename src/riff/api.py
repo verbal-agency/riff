@@ -18,6 +18,7 @@ from .prds import ProjectRepository, PrdError
 from .operations import PipelineRepository
 from .adapter import RiffToolAdapter, AdapterError
 from .project_map import ProjectMapError, ProjectMapRepository
+from .recommendations import RecommendationError, RecommendationRepository
 
 
 def get_settings() -> Settings:
@@ -213,6 +214,55 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return {"project_id": project_id, "markdown": ProjectRepository(effective_settings.database_url).export_markdown(project_id)}
         except PrdError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    @app.get("/projects", tags=["github-projects"])
+    def list_projects(
+        limit: int = 5,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return {"projects": RecommendationRepository(effective_settings.database_url).list_projects(limit=limit)}
+        except RecommendationError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @app.get("/riffs/{riff_id}/recommendations", tags=["recommendations"])
+    def match_riff_to_projects(
+        riff_id: str,
+        limit: int = 3,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return RecommendationRepository(effective_settings.database_url).match_riff(riff_id, limit=limit)
+        except (RecommendationError, DecisionError) as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.post("/recommendations/{recommendation_id}/override", tags=["recommendations"])
+    def override_recommendation(
+        recommendation_id: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        try:
+            return RecommendationRepository(effective_settings.database_url).override(
+                recommendation_id,
+                str(payload.get("disposition", "")),
+                str(payload.get("reason", "")),
+            ).to_dict()
+        except RecommendationError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    @app.post("/recommendations/{recommendation_id}/propose-extension", tags=["recommendations"])
+    def propose_extension(
+        recommendation_id: str,
+        payload: dict,
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        if str(payload.get("confirmation_token", "")) != "USER_CONFIRMED":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="explicit user confirmation token is required")
+        try:
+            return RecommendationRepository(effective_settings.database_url).accept_extension(recommendation_id)
+        except RecommendationError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     @app.post("/github/projects", tags=["github-projects"])
     def onboard_github_project(payload: dict, effective_settings: Settings = Depends(resolve_settings)) -> dict:

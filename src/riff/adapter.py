@@ -14,6 +14,8 @@ from .prds import PrdError, ProjectRepository
 from .riffs import RiffRepository
 from .profile import ProfileRepository, ProfileValidationError
 from .capabilities import CapabilityRepository, NormalizationError
+from .recommendations import RecommendationError, RecommendationRepository
+from .project_map import ProjectMapRepository
 
 
 USER_CONFIRMATION_TOKEN = "USER_CONFIRMED"
@@ -34,6 +36,11 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "get_project": {"description": "Read a generated project PRD and goals.", "required": ("project_id",)},
     "export_project": {"description": "Export a generated project as stable Markdown.", "required": ("project_id",)},
     "operation_report": {"description": "Read a durable daily pipeline run report.", "required": ("run_id",)},
+    "list_projects": {"description": "List bounded, approved GitHub project summaries.", "required": ()},
+    "inspect_project": {"description": "Read one bounded GitHub project map and snapshot history.", "required": ("project_id",)},
+    "match_riff_to_projects": {"description": "Match a Riff to existing projects with explainable dispositions.", "required": ("riff_id",)},
+    "propose_extension": {"description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.", "required": ("recommendation_id", "confirmation_token")},
+    "override_recommendation": {"description": "Override a project recommendation with an explicit greenfield or defer choice.", "required": ("recommendation_id", "disposition", "reason", "confirmation_token")},
 }
 
 
@@ -59,7 +66,7 @@ class RiffToolAdapter:
             raise AdapterError(f"missing required tool arguments: {', '.join(missing)}")
         try:
             result = getattr(self, f"_{name}")(**args)
-        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, ValueError) as exc:
+        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, ValueError) as exc:
             raise AdapterError(str(exc)) from exc
         return {"tool": name, "result": result}
 
@@ -142,3 +149,21 @@ class RiffToolAdapter:
 
     def _operation_report(self, run_id: str) -> dict[str, Any]:
         return PipelineRepository(self.database_url).report(run_id)
+
+    def _list_projects(self, **kwargs: Any) -> dict[str, Any]:
+        limit = int(kwargs.get("limit", 5))
+        return {"projects": RecommendationRepository(self.database_url).list_projects(limit=limit)}
+
+    def _inspect_project(self, project_id: str) -> dict[str, Any]:
+        return ProjectMapRepository(self.database_url).inspect(project_id)
+
+    def _match_riff_to_projects(self, riff_id: str, **kwargs: Any) -> dict[str, Any]:
+        return RecommendationRepository(self.database_url).match_riff(riff_id, limit=int(kwargs.get("limit", 3)))
+
+    def _propose_extension(self, recommendation_id: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
+        self._require_confirmation(confirmation_token)
+        return RecommendationRepository(self.database_url).accept_extension(recommendation_id)
+
+    def _override_recommendation(self, recommendation_id: str, disposition: str, reason: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
+        self._require_confirmation(confirmation_token)
+        return RecommendationRepository(self.database_url).override(recommendation_id, disposition, reason).to_dict()

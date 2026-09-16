@@ -245,3 +245,22 @@ versions, confidence, and observed/inferred/unknown status. Repeated input is
 content-addressed and returns the existing snapshot; changed input links a new
 version to its predecessor. Archive and onboarding are explicit user actions.
 No code is executed, private content is fetched, or profile state is mutated.
+
+## G27 project-aware recommendations
+
+`src/riff/recommendations.py` compares a bounded Riff/profile slice with
+user-approved G26 project snapshots using a deterministic, versioned policy.
+Capability and technology overlap, purpose/seam text, project health, effort,
+and scope risk remain inspectable fields; popularity and repository ownership
+never become proficiency evidence. Each recommendation persists its signal and
+project evidence IDs, snapshot ID, uncertainty, disposition, and input
+fingerprint in `project_recommendations`, so identical matches are idempotent
+and changed snapshots produce new recommendation inputs.
+
+The adapter and native MCP surface expose bounded project listing, inspection,
+matching, override, and extension operations. Matching is read-only. A user
+confirmation and the existing user `APPROVE_EXPLORATION` decision are both
+required before an extension attaches a stable project ID to an Exploration;
+PRD approval remains separate. Greenfield/defer overrides preserve the
+original recommendation and do not mutate GitHub, profile state, or source
+collection.

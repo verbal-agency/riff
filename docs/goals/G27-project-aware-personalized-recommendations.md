@@ -1,6 +1,6 @@
 # G27 — Recommend extensions to existing projects
 
-**Status:** Ready
+**Status:** In progress
 **Depends on:** G08, G11, G12, G23, G24, G26
 **Unlocks:** Personalized Riff-to-project dogfooding
 **PRD references:** Sections 4, 6, 9, 11–15, 18–21, 27–29, 32–33

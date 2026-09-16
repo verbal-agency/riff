@@ -28,6 +28,8 @@ _MUTATING_TOOLS = {
     "select_experiment",
     "approve_prd",
     "generate_prd",
+    "propose_extension",
+    "override_recommendation",
 }
 
 
@@ -125,6 +127,24 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
     def operation_report(run_id: str) -> dict[str, Any]:
         return dispatch("operation_report", {"run_id": run_id})
 
+    def list_projects() -> dict[str, Any]:
+        return dispatch("list_projects", {})
+
+    def inspect_project(project_id: str) -> dict[str, Any]:
+        return dispatch("inspect_project", {"project_id": project_id})
+
+    def match_riff_to_projects(riff_id: str) -> dict[str, Any]:
+        return dispatch("match_riff_to_projects", {"riff_id": riff_id})
+
+    def propose_extension(recommendation_id: str, confirmation_token: str) -> dict[str, Any]:
+        return dispatch("propose_extension", {"recommendation_id": recommendation_id, "confirmation_token": confirmation_token})
+
+    def override_recommendation(recommendation_id: str, disposition: str, reason: str, confirmation_token: str) -> dict[str, Any]:
+        return dispatch(
+            "override_recommendation",
+            {"recommendation_id": recommendation_id, "disposition": disposition, "reason": reason, "confirmation_token": confirmation_token},
+        )
+
     functions = {
         "daily_riffs": daily_riffs,
         "investigate_riff": investigate_riff,
@@ -141,6 +161,11 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "get_project": get_project,
         "export_project": export_project,
         "operation_report": operation_report,
+        "list_projects": list_projects,
+        "inspect_project": inspect_project,
+        "match_riff_to_projects": match_riff_to_projects,
+        "propose_extension": propose_extension,
+        "override_recommendation": override_recommendation,
     }
     for name, function in functions.items():
         schema = TOOL_SCHEMAS[name]

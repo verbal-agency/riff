@@ -113,6 +113,8 @@ MUTATING_TOOLS = {
     "select_experiment",
     "approve_prd",
     "generate_prd",
+    "propose_extension",
+    "override_recommendation",
 }
 
 

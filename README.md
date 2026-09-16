@@ -137,6 +137,24 @@ Refresh is idempotent for unchanged evidence and creates a new version when a
 repository artifact changes. The compact inspection report is exposed at
 `GET /github/projects/{project_id}` for later conversational tools.
 
+### Project-aware recommendations
+
+G27 compares a persisted Riff with the bounded G26 project inventory and
+returns a deterministic `EXTEND_EXISTING`, `START_NEW`, or `NOT_NOW` result.
+Recommendations cite both signal and project evidence, expose uncertainty and
+the observed extension seam, and remain idempotent for unchanged snapshots.
+Matching is read-only; accepting an extension requires the user's explicit
+confirmation plus the existing `APPROVE_EXPLORATION` decision, and PRD approval
+remains separate.
+
+Through the adapter or ChatGPT MCP surface, use `list_projects`,
+`inspect_project`, and `match_riff_to_projects`. Use
+`override_recommendation` to record a greenfield/defer choice, or
+`propose_extension` after the user confirms the selected existing-project seam.
+The resulting Exploration and generated PRD retain the target project ID while
+keeping repository contents, profile claims, and upstream GitHub mutations out
+of scope.
+
 ## Job-market import
 
 G04 uses a permitted, offline-first JSON import seam rather than scraping a job
@@ -378,7 +396,7 @@ Riff remains the system of record.
 ### Native ChatGPT MCP surface (G24a)
 
 `riff api` also mounts the official Python MCP SDK's Streamable HTTP transport
-at the exact `/mcp` path. It serves the same 15 `riff-tools-v1` operations with
+at the exact `/mcp` path. It serves the same 20 `riff-tools-v1` operations with
 structured results and read/mutation annotations; the MCP layer does not access
 Postgres directly. For a local Inspector check, start Postgres, migrate, and
 run:
