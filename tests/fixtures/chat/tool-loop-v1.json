@@ -104,6 +104,21 @@
       "required": ["riff_id", "scenario"]
     },
     {
+      "name": "github_account_status",
+      "description": "Read the bounded status and scope of the user-authorized GitHub account observation.",
+      "required": []
+    },
+    {
+      "name": "github_account_repositories",
+      "description": "List bounded repositories from the user-authorized GitHub account observation.",
+      "required": []
+    },
+    {
+      "name": "github_account_onboard",
+      "description": "Onboard one explicitly selected GitHub account repository into the G26 project inventory after user confirmation.",
+      "required": ["repository", "confirmation_token"]
+    },
+    {
       "name": "propose_extension",
       "description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.",
       "required": ["recommendation_id", "confirmation_token"]

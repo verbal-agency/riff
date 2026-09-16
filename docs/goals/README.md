@@ -184,8 +184,10 @@ G32 is complete: it adds disposable natural-language handles and bounded
 rendering so follow-up exploration no longer requires UUID/tool relaying,
 dated no-result fallback, alternate recommendations, and read-only scenario
 mapping. The user confirmed the updated flow is an improvement and that
-follow-ups feel solid. G33 is ready to add explicit, scope-limited observation of the user's GitHub
-account and natural-language repository selection. G34 follows with durable
+follow-ups feel solid. G33 is complete: it adds explicit, scope-limited
+observation of the user's GitHub account, bounded public repository candidates,
+confirmation-gated selective onboarding into G26, and auditable revoke/scope
+narrowing. G34 follows with durable
 monitoring of selected repositories and quantitative search rules that can
 auto-queue or propose disabled scopes without bypassing review.
 

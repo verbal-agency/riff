@@ -137,6 +137,34 @@ Refresh is idempotent for unchanged evidence and creates a new version when a
 repository artifact changes. The compact inspection report is exposed at
 `GET /github/projects/{project_id}` for later conversational tools.
 
+### GitHub account observation
+
+G33 adds a user-authorized, public-metadata account observation without OAuth
+UI or private-code access. Credentials remain process-only (`GITHUB_TOKEN`),
+and repository ownership, stars, languages, and commit activity are never
+treated as proof of capability. Account observations are bounded and replayable;
+private or inaccessible repositories are retained only as omitted/unknown
+candidates with reasons. Observations are retained as bounded metadata for
+audit, can be revoked or scope-narrowed, and do not refresh in the background;
+selective onboarding into the G26 project inventory requires an explicit
+confirmation.
+
+Use the recorded fixture for local verification, or pass `--live` only when a
+reviewed `GITHUB_TOKEN` is present:
+
+```sh
+uv run riff github account observe --fixture tests/fixtures/github/account/account-v1.json
+uv run riff github account status
+uv run riff github account list
+uv run riff github account select --repository riff
+uv run riff github account select --repository riff --confirm USER_CONFIRMED
+uv run riff github account revoke
+```
+
+The account status and repository list are bounded read tools in the ChatGPT
+MCP surface. Repository onboarding is confirmation-gated and can resolve the
+current observation without asking the user to copy an observation UUID.
+
 ### Project-aware recommendations
 
 G27 compares a persisted Riff with the bounded G26 project inventory and

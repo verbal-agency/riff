@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "fixture_id": "github-account-v1",
+  "user": {
+    "id": 9001,
+    "login": "seth-miller"
+  },
+  "repository_pages": [
+    [
+      {
+        "id": 4242,
+        "full_name": "verbal-agency/riff",
+        "name": "riff",
+        "html_url": "https://github.com/verbal-agency/riff",
+        "visibility": "public",
+        "private": false,
+        "fork": false,
+        "archived": false,
+        "description": "Capability intelligence runtime",
+        "language": "Python",
+        "updated_at": "2026-09-15T12:00:00Z",
+        "pushed_at": "2026-09-15T12:00:00Z"
+      },
+      {
+        "id": 4242,
+        "full_name": "verbal-agency/riff-core",
+        "name": "riff-core",
+        "html_url": "https://github.com/verbal-agency/riff-core",
+        "visibility": "public",
+        "private": false,
+        "fork": false,
+        "archived": false,
+        "aliases": ["verbal-agency/riff", "https://github.com/verbal-agency/riff"],
+        "description": "Renamed repository alias",
+        "language": "Python",
+        "updated_at": "2026-09-15T12:00:00Z",
+        "pushed_at": "2026-09-15T12:00:00Z"
+      },
+      {
+        "id": 4243,
+        "full_name": "verbal-agency/private-notes",
+        "name": "private-notes",
+        "html_url": "https://github.com/verbal-agency/private-notes",
+        "visibility": "private",
+        "private": true,
+        "accessible": false,
+        "fork": false,
+        "archived": false
+      },
+      {
+        "id": 4244,
+        "full_name": "verbal-agency/inaccessible",
+        "name": "inaccessible",
+        "html_url": "https://github.com/verbal-agency/inaccessible",
+        "visibility": "unknown",
+        "accessible": false,
+        "fork": false,
+        "archived": false
+      }
+    ],
+    []
+  ]
+}

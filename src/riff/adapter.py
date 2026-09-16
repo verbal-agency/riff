@@ -17,6 +17,7 @@ from .profile import ProfileRepository, ProfileValidationError
 from .capabilities import CapabilityRepository, NormalizationError
 from .recommendations import RecommendationError, RecommendationRepository
 from .project_map import ProjectMapRepository
+from .github_account import GitHubAccountError, GitHubAccountRepository
 from .opportunities import OpportunityError, OpportunityRepository, build_execution_candidates, compare_candidates, extract_context, riff_candidate
 
 
@@ -43,6 +44,9 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "inspect_project": {"description": "Read one bounded GitHub project map and snapshot history.", "required": ("project_id",)},
     "match_riff_to_projects": {"description": "Match a Riff to existing projects with explainable dispositions.", "required": ("riff_id",)},
     "map_riff_to_scenario": {"description": "Map a Riff to one concrete user workflow or scenario without creating durable state.", "required": ("riff_id", "scenario")},
+    "github_account_status": {"description": "Read the bounded status and scope of the user-authorized GitHub account observation.", "required": ()},
+    "github_account_repositories": {"description": "List bounded repositories from the user-authorized GitHub account observation.", "required": ()},
+    "github_account_onboard": {"description": "Onboard one explicitly selected GitHub account repository into the G26 project inventory after user confirmation.", "required": ("repository", "confirmation_token")},
     "propose_extension": {"description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.", "required": ("recommendation_id", "confirmation_token")},
     "override_recommendation": {"description": "Override a project recommendation with an explicit greenfield or defer choice.", "required": ("recommendation_id", "disposition", "reason", "confirmation_token")},
     "create_opportunity_context": {"description": "Extract and persist a bounded opportunity context plus execution candidates from structured input.", "required": ("source_url", "payload")},
@@ -76,7 +80,7 @@ class RiffToolAdapter:
             raise AdapterError(f"missing required tool arguments: {', '.join(missing)}")
         try:
             result = getattr(self, f"_{name}")(**args)
-        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, ValueError) as exc:
+        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, GitHubAccountError, ValueError) as exc:
             raise AdapterError(str(exc)) from exc
         return {"tool": name, "result": result}
 
@@ -191,6 +195,19 @@ class RiffToolAdapter:
             "uncertainty": investigation.provenance_quality.get("limitations", []),
             "next_action": "Use this mapping to refine the execution candidate; it does not create an Exploration or PRD.",
         }
+
+    def _github_account_status(self, **kwargs: Any) -> dict[str, Any]:
+        return GitHubAccountRepository(self.database_url).status()
+
+    def _github_account_repositories(self, **kwargs: Any) -> dict[str, Any]:
+        observation_id = kwargs.get("observation_id")
+        limit = int(kwargs.get("limit", 50))
+        observation = GitHubAccountRepository(self.database_url).get(observation_id) if observation_id else GitHubAccountRepository(self.database_url).current()
+        return {"observation_id": observation.observation_id, "scope": observation.scope, "status": observation.status, "repositories": GitHubAccountRepository(self.database_url).repositories(observation.observation_id, limit=limit)}
+
+    def _github_account_onboard(self, repository: str, confirmation_token: str, observation_id: str | None = None, **kwargs: Any) -> dict[str, Any]:
+        self._require_confirmation(confirmation_token)
+        return GitHubAccountRepository(self.database_url).onboard_selection(observation_id, repository, selected_by=str(kwargs.get("selected_by", "user")), reason=kwargs.get("reason"))
 
     def _investigate_riff(self, riff_id: str) -> dict[str, Any]:
         investigation = DecisionRepository(self.database_url).investigation(self._resolve_riff_reference(riff_id))

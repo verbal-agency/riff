@@ -1,6 +1,6 @@
 # G33 — Observe the user's GitHub account with explicit scope
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G03, G22, G24a, G26
 **Unlocks:** Account-aware project selection and source monitoring
 **PRD references:** Sections 4, 7.2, 8, 21–22, 27, 33
@@ -66,22 +66,22 @@ and revoke or narrow the scope.
 
 ## Acceptance criteria
 
-- [ ] A user-authorized account observation persists stable account identity,
+- [x] A user-authorized account observation persists stable account identity,
   scope, consent, status, and last-success metadata without storing a token.
-- [ ] A bounded fixture lists owned public repositories with stable provider IDs,
+- [x] A bounded fixture lists owned public repositories with stable provider IDs,
   visibility, rename aliases, and explicit omitted/unknown cases.
-- [ ] The user can explicitly select one repository for G26 onboarding; an
+- [x] The user can explicitly select one repository for G26 onboarding; an
   unselected repository is not added to the project inventory.
-- [ ] Revocation or scope narrowing prevents subsequent collection and retains
+- [x] Revocation or scope narrowing prevents subsequent collection and retains
   an auditable prior observation without deleting historical evidence.
-- [ ] Account observations and repository selections remain distinct from user
+- [x] Account observations and repository selections remain distinct from user
   capability/profile claims and generated Riff projects.
-- [ ] ChatGPT and terminal surfaces expose bounded account/repository results,
+- [x] ChatGPT and terminal surfaces expose bounded account/repository results,
   require confirmation for onboarding, and resolve ambiguous names safely.
-- [ ] Offline, Postgres, and scripted conversational tests cover consent,
+- [x] Offline, Postgres, and scripted conversational tests cover consent,
   token redaction, pagination/replay, duplicate/rename handling, private and
   inaccessible repositories, revocation, restart, and privacy boundaries.
-- [ ] Operator documentation explains minimum scopes, retention, disablement,
+- [x] Operator documentation explains minimum scopes, retention, disablement,
   refresh bounds, and the no-private-code/no-proficiency-inference boundary.
 
 ## Execution contract
@@ -125,3 +125,24 @@ and revoke or narrow the scope.
 
 Tests must map each row to named assertions in `tests/test_github_account.py`
 and the scripted ChatGPT fixture; Postgres tests must verify restart-safe state.
+
+## Implementation verification (2026-09-15)
+
+- `src/riff/github_account.py` implements fixture/live read-only observation,
+  bounded pagination/retry, stable fingerprints, duplicate/rename aliases,
+  explicit omitted/unknown candidates, append-only status events, and
+  confirmation-gated G26 selection.
+- Migration `021_github_account_observation.sql` adds account observations,
+  candidate projections, status events, selection decisions, and audit links on
+  G26 inventory without storing credentials or raw account responses.
+- The adapter and native MCP surface expose bounded status/list reads and a
+  confirmation-gated onboarding tool that defaults to the current observation;
+  terminal commands expose observe/status/list/select/decline/revoke/
+  narrow-scope with the same boundaries.
+- `tests/test_github_account.py` covers fixture pagination, idempotent replay,
+  token redaction, private/inaccessible omissions, alias normalization,
+  confirmation and selective onboarding, ambiguous references, revocation,
+  scope narrowing, and post-transition collection/selection denial.
+- Offline suite and focused MCP tests pass; all four G33 Postgres tests pass
+  against the local database. The user-authorized live path remains an explicit
+  operator action and was not invoked.

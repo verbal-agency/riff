@@ -35,6 +35,8 @@ class ProjectInventory:
     review_status: str
     reviewed_by: str
     reviewed_at: datetime
+    account_observation_id: str | None = None
+    account_selection_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -188,14 +190,14 @@ class ProjectMapRepository:
         with connection(self.database_url) as conn:
             row = conn.execute(
                 "SELECT project_id, provider_repository_id, display_name, purpose, status, visibility, "
-                "review_status, reviewed_by, reviewed_at FROM github_project_inventory WHERE project_id = %s",
+                "review_status, reviewed_by, reviewed_at, account_observation_id, account_selection_id FROM github_project_inventory WHERE project_id = %s",
                 (project_id,),
             ).fetchone()
         if row is None:
             raise ProjectMapError("project not found")
         return ProjectInventory(
             _text(row[0]), _text(row[1]), _text(row[2]), _text(row[3]) or None,
-            _text(row[4]), _text(row[5]), _text(row[6]), _text(row[7]), row[8],
+            _text(row[4]), _text(row[5]), _text(row[6]), _text(row[7]), row[8], _text(row[9]) or None, _text(row[10]) or None,
         )
 
     def refresh(

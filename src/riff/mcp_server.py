@@ -33,6 +33,7 @@ _MUTATING_TOOLS = {
     "create_opportunity_context",
     "riff_execution_candidate",
     "select_execution_direction",
+    "github_account_onboard",
 }
 
 
@@ -145,6 +146,21 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
     def map_riff_to_scenario(riff_id: str, scenario: str) -> dict[str, Any]:
         return dispatch("map_riff_to_scenario", {"riff_id": riff_id, "scenario": scenario})
 
+    def github_account_status() -> dict[str, Any]:
+        return dispatch("github_account_status", {})
+
+    def github_account_repositories(observation_id: str = "", limit: int = 50) -> dict[str, Any]:
+        arguments: dict[str, Any] = {"limit": limit}
+        if observation_id:
+            arguments["observation_id"] = observation_id
+        return dispatch("github_account_repositories", arguments)
+
+    def github_account_onboard(repository: str, confirmation_token: str, observation_id: str = "") -> dict[str, Any]:
+        arguments: dict[str, Any] = {"repository": repository, "confirmation_token": confirmation_token}
+        if observation_id:
+            arguments["observation_id"] = observation_id
+        return dispatch("github_account_onboard", arguments)
+
     def propose_extension(recommendation_id: str, confirmation_token: str) -> dict[str, Any]:
         return dispatch("propose_extension", {"recommendation_id": recommendation_id, "confirmation_token": confirmation_token})
 
@@ -193,6 +209,9 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "inspect_project": inspect_project,
         "match_riff_to_projects": match_riff_to_projects,
         "map_riff_to_scenario": map_riff_to_scenario,
+        "github_account_status": github_account_status,
+        "github_account_repositories": github_account_repositories,
+        "github_account_onboard": github_account_onboard,
         "propose_extension": propose_extension,
         "override_recommendation": override_recommendation,
         "create_opportunity_context": create_opportunity_context,

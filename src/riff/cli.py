@@ -36,6 +36,7 @@ from .engineer_rss import (
 from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
 from .project_map import ProjectMapError, ProjectMapRepository
+from .github_account import AccountScope, FixtureAccountFetcher, GitHubAccountError, GitHubAccountRepository
 from .github_discovery import (
     DiscoveryPolicyError,
     FixtureDiscoveryFetcher,
@@ -163,6 +164,34 @@ def build_parser() -> argparse.ArgumentParser:
     project_archive = project_subparsers.add_parser("archive", help="archive a project from future refreshes")
     project_archive.add_argument("--project-id", required=True)
     project_archive.add_argument("--reviewed-by", default="user")
+    account = github_subparsers.add_parser("account", help="observe and explicitly select repositories from a GitHub account")
+    account_subparsers = account.add_subparsers(dest="account_command", required=True)
+    account_observe = account_subparsers.add_parser("observe", help="record a bounded user-authorized account observation")
+    account_observe.add_argument("--fixture", help="recorded account response fixture")
+    account_observe.add_argument("--live", action="store_true", help="explicitly permit the bounded live GitHub API client")
+    account_observe.add_argument("--provider-account-id")
+    account_observe.add_argument("--username")
+    account_observe.add_argument("--scope", choices=[AccountScope.PUBLIC_METADATA, AccountScope.PUBLIC_METADATA_AND_ACTIVITY], default=AccountScope.PUBLIC_METADATA)
+    account_observe.add_argument("--max-pages", type=int, default=10)
+    account_status = account_subparsers.add_parser("status", help="show the latest account observation and audit events")
+    account_list = account_subparsers.add_parser("list", help="list bounded repository candidates")
+    account_list.add_argument("--observation-id")
+    account_list.add_argument("--limit", type=int, default=50)
+    account_select = account_subparsers.add_parser("select", help="propose or confirm one repository for G26 onboarding")
+    account_select.add_argument("--observation-id")
+    account_select.add_argument("--repository", required=True)
+    account_select.add_argument("--reason")
+    account_select.add_argument("--confirm", help="type USER_CONFIRMED to onboard")
+    account_decline = account_subparsers.add_parser("decline", help="decline one proposed repository selection")
+    account_decline.add_argument("--observation-id")
+    account_decline.add_argument("--repository", required=True)
+    account_decline.add_argument("--reason")
+    account_revoke = account_subparsers.add_parser("revoke", help="revoke account observation")
+    account_revoke.add_argument("--observation-id")
+    account_revoke.add_argument("--reason", default="user revoked GitHub account observation")
+    account_narrow = account_subparsers.add_parser("narrow-scope", help="narrow activity scope to public metadata")
+    account_narrow.add_argument("--observation-id")
+    account_narrow.add_argument("--reason", default="user narrowed GitHub account observation scope")
     ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
@@ -335,6 +364,39 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError) as exc:
             raise SystemExit(f"GitHub discovery fixture error: {exc}") from exc
         return 0
+    if args.command == "github" and args.github_command == "account":
+        try:
+            repository = GitHubAccountRepository(Settings.from_env().database_url)
+            if args.account_command == "observe":
+                if args.fixture:
+                    payload = json.loads(Path(args.fixture).read_text(encoding="utf-8"))
+                    fetcher = FixtureAccountFetcher(payload)
+                elif args.live:
+                    fetcher = HttpGitHubFetcher(token=os.environ.get("GITHUB_TOKEN"))
+                else:
+                    raise GitHubAccountError("account observation requires --fixture for offline use or --live for GitHub API access")
+                result = repository.observe(fetcher, scope=args.scope, provider_account_id=args.provider_account_id, username=args.username, max_pages=args.max_pages).to_dict()
+            elif args.account_command == "status":
+                result = repository.status()
+            elif args.account_command == "list":
+                result = {"repositories": repository.repositories(args.observation_id, limit=args.limit)}
+            elif args.account_command == "select":
+                if args.confirm:
+                    if args.confirm != "USER_CONFIRMED":
+                        raise GitHubAccountError("type USER_CONFIRMED to onboard the selected repository")
+                    result = repository.onboard_selection(args.observation_id, args.repository, reason=args.reason)
+                else:
+                    result = repository.propose_selection(args.observation_id, args.repository, reason=args.reason)
+            elif args.account_command == "decline":
+                result = repository.decline_selection(args.observation_id, args.repository, reason=args.reason)
+            elif args.account_command == "revoke":
+                result = repository.revoke(args.observation_id, reason=args.reason).to_dict()
+            else:
+                result = repository.narrow_scope(args.observation_id, reason=args.reason).to_dict()
+            print(json.dumps(result, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError, GitHubAccountError) as exc:
+            raise SystemExit(f"GitHub account error: {exc}") from exc
     if args.command == "github" and args.github_command == "project":
         try:
             repository = ProjectMapRepository(Settings.from_env().database_url)

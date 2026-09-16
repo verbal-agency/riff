@@ -68,6 +68,9 @@ def test_mcp_initialize_and_list_tools_expose_complete_catalog():
             "inspect_project",
             "match_riff_to_projects",
             "map_riff_to_scenario",
+            "github_account_status",
+            "github_account_repositories",
+            "github_account_onboard",
             "propose_extension",
             "override_recommendation",
             "create_opportunity_context",
@@ -81,6 +84,8 @@ def test_mcp_initialize_and_list_tools_expose_complete_catalog():
         assert by_name["daily_riffs"]["annotations"]["readOnlyHint"] is True
         assert by_name["create_exploration"]["annotations"]["readOnlyHint"] is False
         assert "confirmation_token" in by_name["create_exploration"]["inputSchema"]["required"]
+        assert by_name["github_account_status"]["annotations"]["readOnlyHint"] is True
+        assert by_name["github_account_onboard"]["annotations"]["readOnlyHint"] is False
 
 
 def test_mcp_calls_reuse_adapter_and_missing_confirmation_is_non_mutating(monkeypatch):

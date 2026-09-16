@@ -258,6 +258,27 @@ content-addressed and returns the existing snapshot; changed input links a new
 version to its predecessor. Archive and onboarding are explicit user actions.
 No code is executed, private content is fetched, or profile state is mutated.
 
+## G33 GitHub account observation
+
+`src/riff/github_account.py` provides an injected, read-only account observer
+with a fixture replay seam and the existing bounded `HttpGitHubFetcher`. A
+public-metadata observation stores stable provider account identity, scope,
+consent, status, timestamps, and an input fingerprint; repository candidates
+store only bounded identity/visibility fields, aliases, omission reasons, and
+uncertainty. Raw account responses, authorization headers, tokens, and private
+code never enter Postgres, logs, fixtures, or adapter results.
+
+The `github_account_observations`, candidate, event, and selection tables keep
+observation history separate from G03 evidence and the G26 project inventory.
+Repeated observations with the same scope and fingerprint are idempotent.
+Revocation and scope narrowing append an event and block later selection; a
+confirmed selection links exactly one repository to G26 while preserving the
+observation and selection IDs as audit-only provenance. The adapter/MCP expose
+bounded status/list reads and a confirmation-gated onboarding operation; the
+terminal exposes the same observe/status/list/select/decline/revoke/narrow
+operations. Account observation does not replace G03 collection or infer user
+proficiency from ownership.
+
 ## G27 project-aware recommendations
 
 `src/riff/recommendations.py` compares a bounded Riff/profile slice with
