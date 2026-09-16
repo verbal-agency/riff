@@ -18,6 +18,7 @@ from .capabilities import CapabilityRepository, NormalizationError
 from .recommendations import RecommendationError, RecommendationRepository
 from .project_map import ProjectMapRepository
 from .github_account import GitHubAccountError, GitHubAccountRepository
+from .github_monitoring import GitHubMonitoringError, GitHubMonitoringRepository
 from .opportunities import OpportunityError, OpportunityRepository, build_execution_candidates, compare_candidates, extract_context, riff_candidate
 
 
@@ -47,6 +48,11 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "github_account_status": {"description": "Read the bounded status and scope of the user-authorized GitHub account observation.", "required": ()},
     "github_account_repositories": {"description": "List bounded repositories from the user-authorized GitHub account observation.", "required": ()},
     "github_account_onboard": {"description": "Onboard one explicitly selected GitHub account repository into the G26 project inventory after user confirmation.", "required": ("repository", "confirmation_token")},
+    "github_monitor_status": {"description": "Read explicit GitHub repository watches and their latest health.", "required": ()},
+    "github_monitor_watch": {"description": "Create or reactivate a watch for an already-ingested repository after confirmation.", "required": ("repository", "confirmation_token")},
+    "github_monitor_disable": {"description": "Disable a repository watch without deleting its evidence or cursor history.", "required": ("watch_id", "confirmation_token")},
+    "github_search": {"description": "Read persisted bounded GitHub discovery candidates matching a natural query.", "required": ("query",)},
+    "github_search_review": {"description": "Approve or reject a bounded GitHub discovery candidate after confirmation.", "required": ("candidate_id", "disposition", "confirmation_token")},
     "propose_extension": {"description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.", "required": ("recommendation_id", "confirmation_token")},
     "override_recommendation": {"description": "Override a project recommendation with an explicit greenfield or defer choice.", "required": ("recommendation_id", "disposition", "reason", "confirmation_token")},
     "create_opportunity_context": {"description": "Extract and persist a bounded opportunity context plus execution candidates from structured input.", "required": ("source_url", "payload")},
@@ -80,7 +86,7 @@ class RiffToolAdapter:
             raise AdapterError(f"missing required tool arguments: {', '.join(missing)}")
         try:
             result = getattr(self, f"_{name}")(**args)
-        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, GitHubAccountError, ValueError) as exc:
+        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, GitHubAccountError, GitHubMonitoringError, ValueError) as exc:
             raise AdapterError(str(exc)) from exc
         return {"tool": name, "result": result}
 
@@ -242,6 +248,32 @@ class RiffToolAdapter:
         if isinstance(raw, str) and len(raw) > 4000:
             result["raw_content_truncated"] = True
         return result
+
+    def _github_monitor_status(self, **kwargs: Any) -> dict[str, Any]:
+        return {"status": "OK", "watches": GitHubMonitoringRepository(self.database_url).list_watches()}
+
+    def _github_monitor_watch(self, repository: str, confirmation_token: str, cadence_seconds: int = 86400, **kwargs: Any) -> dict[str, Any]:
+        if confirmation_token != "WATCH":
+            raise GitHubMonitoringError("type WATCH to confirm repository monitoring")
+        return GitHubMonitoringRepository(self.database_url).create_watch(repository, cadence_seconds=int(cadence_seconds)).to_dict()
+
+    def _github_monitor_disable(self, watch_id: str, confirmation_token: str, reason: str = "user disabled GitHub watch", **kwargs: Any) -> dict[str, Any]:
+        if confirmation_token != "DISABLE":
+            raise GitHubMonitoringError("type DISABLE to confirm watch disablement")
+        return GitHubMonitoringRepository(self.database_url).set_status(watch_id, "DISABLED", reason=reason).to_dict()
+
+    def _github_search(self, query: str, limit: int = 20, **kwargs: Any) -> dict[str, Any]:
+        value = str(query).strip()
+        if not value or len(value) > 200:
+            raise AdapterError("query must be a non-empty string under 200 characters")
+        with connection(self.database_url) as conn:
+            rows = conn.execute("SELECT candidate_id,full_name,canonical_url,disposition,rule_id,policy_version,threshold_evaluation,uncertainty FROM github_discovery_candidates WHERE full_name ILIKE %s OR canonical_url ILIKE %s ORDER BY updated_at DESC LIMIT %s", (f"%{value}%", f"%{value}%", min(max(int(limit), 1), 100))).fetchall()
+        return {"query": value, "candidates": [{"candidate_id": str(row[0]), "full_name": str(row[1]), "canonical_url": str(row[2]), "disposition": str(row[3]), "rule_id": str(row[4]), "policy_version": str(row[5]), "threshold_evaluation": row[6], "uncertainty": row[7]} for row in rows]}
+
+    def _github_search_review(self, candidate_id: str, disposition: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
+        if confirmation_token != USER_CONFIRMATION_TOKEN:
+            raise GitHubMonitoringError("review requires USER_CONFIRMED")
+        return GitHubMonitoringRepository(self.database_url).review_candidate(candidate_id, disposition)
 
     def _record_decision(self, riff_id: str, decision: str, reason: str, **kwargs: Any) -> dict[str, Any]:
         result = DecisionRepository(self.database_url).record_decision(self._resolve_riff_reference(riff_id), decision, reason, actor=str(kwargs.get("actor", "user")), actor_kind=str(kwargs.get("actor_kind", "USER")), structured_reason=kwargs.get("structured_reason"))

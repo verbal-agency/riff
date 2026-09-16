@@ -9,6 +9,7 @@ import os
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+from typing import Mapping
 
 from .capability_evaluation import evaluate_fixture
 from .capabilities import CapabilityRepository, DeterministicNormalizer, NormalizationService
@@ -37,6 +38,7 @@ from .evidence_repository import EvidenceRepository
 from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
 from .project_map import ProjectMapError, ProjectMapRepository
 from .github_account import AccountScope, FixtureAccountFetcher, GitHubAccountError, GitHubAccountRepository
+from .github_monitoring import GitHubMonitoringError, GitHubMonitoringRepository, QuantitativeRule, evaluate_quantitative_search
 from .github_discovery import (
     DiscoveryPolicyError,
     FixtureDiscoveryFetcher,
@@ -192,6 +194,32 @@ def build_parser() -> argparse.ArgumentParser:
     account_narrow = account_subparsers.add_parser("narrow-scope", help="narrow activity scope to public metadata")
     account_narrow.add_argument("--observation-id")
     account_narrow.add_argument("--reason", default="user narrowed GitHub account observation scope")
+    monitor = github_subparsers.add_parser("monitor", help="manage explicit repository watches")
+    monitor_subparsers = monitor.add_subparsers(dest="monitor_command", required=True)
+    monitor_watch = monitor_subparsers.add_parser("watch", help="create or reactivate one reviewed repository watch")
+    monitor_watch.add_argument("--repository", required=True)
+    monitor_watch.add_argument("--cadence-seconds", type=int, default=86400)
+    monitor_watch.add_argument("--policy-version", default="github-monitor-v1")
+    monitor_watch.add_argument("--confirm", required=True, help="type WATCH to confirm collection")
+    monitor_subparsers.add_parser("status", help="show repository watch status")
+    monitor_run = monitor_subparsers.add_parser("run", help="run one active watch")
+    monitor_run.add_argument("--watch-id", required=True)
+    monitor_run.add_argument("--max-pages", type=int, default=10)
+    monitor_run.add_argument("--live", action="store_true", help="explicitly permit the bounded GitHub API client")
+    monitor_disable = monitor_subparsers.add_parser("disable", help="disable one watch")
+    monitor_disable.add_argument("--watch-id", required=True)
+    monitor_disable.add_argument("--confirm", required=True, help="type DISABLE to confirm")
+    search = github_subparsers.add_parser("search", help="run a bounded quantitative discovery rule")
+    search.add_argument("--query", required=True)
+    search.add_argument("--file", required=True, help="JSON file containing a candidates list")
+    search.add_argument("--rule-id", default="github-search-v1")
+    search.add_argument("--policy-version", default="github-search-policy-v1")
+    search.add_argument("--min-independent-roots", type=int, default=2)
+    search.add_argument("--min-relevant-sources", type=int, default=1)
+    search.add_argument("--max-candidates", type=int, default=20)
+    search.add_argument("--max-requests", type=int, default=10)
+    search.add_argument("--action", choices=["QUEUE", "PROPOSE_DISABLED_SCOPE"], default="QUEUE")
+    search.add_argument("--persist", action="store_true")
     ingest = subparsers.add_parser("ingest", help="collect configured sources once")
     ingest.add_argument("--source-id", action="append")
     ingest.add_argument("--source-type", choices=[item.value for item in SourceType])
@@ -417,6 +445,41 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except (OSError, ValueError, ProjectMapError) as exc:
             raise SystemExit(f"GitHub project error: {exc}") from exc
+    if args.command == "github" and args.github_command == "monitor":
+        try:
+            repository = GitHubMonitoringRepository(Settings.from_env().database_url)
+            if args.monitor_command == "watch":
+                if args.confirm != "WATCH":
+                    raise GitHubMonitoringError("type WATCH to confirm collection")
+                result = repository.create_watch(args.repository, cadence_seconds=args.cadence_seconds, policy_version=args.policy_version).to_dict()
+            elif args.monitor_command == "status":
+                result = {"watches": repository.list_watches()}
+            elif args.monitor_command == "disable":
+                if args.confirm != "DISABLE":
+                    raise GitHubMonitoringError("type DISABLE to confirm")
+                result = repository.set_status(args.watch_id, "DISABLED", reason="operator disabled watch").to_dict()
+            else:
+                if not args.live:
+                    raise GitHubMonitoringError("monitor runs require --live; use the Python repository with an injected fixture fetcher for offline tests")
+                result = repository.run_watch(args.watch_id, fetcher=HttpGitHubFetcher(token=os.environ.get("GITHUB_TOKEN")), max_pages=args.max_pages)
+            print(json.dumps(result, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError, GitHubMonitoringError) as exc:
+            raise SystemExit(f"GitHub monitoring error: {exc}") from exc
+    if args.command == "github" and args.github_command == "search":
+        try:
+            payload = json.loads(Path(args.file).read_text(encoding="utf-8"))
+            candidates = payload.get("candidates", payload) if isinstance(payload, Mapping) else payload
+            if not isinstance(candidates, list):
+                raise GitHubMonitoringError("search file must contain a candidates list")
+            rule = QuantitativeRule(args.rule_id, args.policy_version, args.min_independent_roots, args.min_relevant_sources, args.max_candidates, args.max_requests, action=args.action)
+            result = evaluate_quantitative_search(candidates, query=args.query, rule=rule, request_count=1, page_count=1)
+            if args.persist:
+                result["persistence"] = GitHubMonitoringRepository(Settings.from_env().database_url).persist_search(result)
+            print(json.dumps(result, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError, GitHubMonitoringError) as exc:
+            raise SystemExit(f"GitHub search error: {exc}") from exc
     if args.command == "github" and args.github_command in {"discover", "queue", "review", "promote"}:
         try:
             if args.github_command == "discover":

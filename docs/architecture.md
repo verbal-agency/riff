@@ -279,6 +279,24 @@ terminal exposes the same observe/status/list/select/decline/revoke/narrow
 operations. Account observation does not replace G03 collection or infer user
 proficiency from ownership.
 
+## G34 GitHub monitoring and quantitative discovery
+
+`src/riff/github_monitoring.py` adds explicit repository watches and a durable
+monitor-run ledger on top of G03. A watch references an existing configured
+source, records cadence/scope/policy, and reuses `GitHubIngestionRunner`, so
+terminal and cron invocations share retry, duplicate, evidence, and cursor
+behavior. Disabled or revoked watches cannot call GitHub or advance a cursor;
+prior evidence remains available for G26 snapshots.
+
+Bounded quantitative search evaluates injected or live rows against a reviewed
+`QuantitativeRule`, persisting query/policy fingerprints, independence and
+threshold evaluations, correlation metadata, and uncertainty. Forks, mirrors,
+aliases, archived repositories, popularity-only hits, and insufficiently
+independent evidence are labeled deterministically. Accepted rows are
+`AUTO_QUEUED` or `DISABLED_SCOPE_PROPOSED`; review is required before
+promotion, and promotion never enables collection. CLI and MCP share these
+boundaries with confirmation-gated state changes.
+
 ## G27 project-aware recommendations
 
 `src/riff/recommendations.py` compares a bounded Riff/profile slice with

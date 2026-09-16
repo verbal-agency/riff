@@ -1,6 +1,6 @@
 # G35 — Govern data origin, fixture ownership, and retention
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G22, G27, G30, G31
 **Unlocks:** Trusted live-data evaluation, safe fixture cleanup, and future quarantine/garbage-collection policy
 **PRD references:** Sections 7–9, 22, 29, 33

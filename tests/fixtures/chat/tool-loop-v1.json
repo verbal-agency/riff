@@ -119,6 +119,31 @@
       "required": ["repository", "confirmation_token"]
     },
     {
+      "name": "github_monitor_status",
+      "description": "Read explicit GitHub repository watches and their latest health.",
+      "required": []
+    },
+    {
+      "name": "github_monitor_watch",
+      "description": "Create or reactivate a watch for an already-ingested repository after confirmation.",
+      "required": ["repository", "confirmation_token"]
+    },
+    {
+      "name": "github_monitor_disable",
+      "description": "Disable a repository watch without deleting its evidence or cursor history.",
+      "required": ["watch_id", "confirmation_token"]
+    },
+    {
+      "name": "github_search",
+      "description": "Read persisted bounded GitHub discovery candidates matching a natural query.",
+      "required": ["query"]
+    },
+    {
+      "name": "github_search_review",
+      "description": "Approve or reject a bounded GitHub discovery candidate after confirmation.",
+      "required": ["candidate_id", "disposition", "confirmation_token"]
+    },
+    {
       "name": "propose_extension",
       "description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.",
       "required": ["recommendation_id", "confirmation_token"]

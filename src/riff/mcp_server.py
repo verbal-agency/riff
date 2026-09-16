@@ -34,6 +34,9 @@ _MUTATING_TOOLS = {
     "riff_execution_candidate",
     "select_execution_direction",
     "github_account_onboard",
+    "github_monitor_watch",
+    "github_monitor_disable",
+    "github_search_review",
 }
 
 
@@ -161,6 +164,21 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
             arguments["observation_id"] = observation_id
         return dispatch("github_account_onboard", arguments)
 
+    def github_monitor_status() -> dict[str, Any]:
+        return dispatch("github_monitor_status", {})
+
+    def github_monitor_watch(repository: str, confirmation_token: str, cadence_seconds: int = 86400) -> dict[str, Any]:
+        return dispatch("github_monitor_watch", {"repository": repository, "confirmation_token": confirmation_token, "cadence_seconds": cadence_seconds})
+
+    def github_monitor_disable(watch_id: str, confirmation_token: str) -> dict[str, Any]:
+        return dispatch("github_monitor_disable", {"watch_id": watch_id, "confirmation_token": confirmation_token})
+
+    def github_search(query: str, limit: int = 20) -> dict[str, Any]:
+        return dispatch("github_search", {"query": query, "limit": limit})
+
+    def github_search_review(candidate_id: str, disposition: str, confirmation_token: str) -> dict[str, Any]:
+        return dispatch("github_search_review", {"candidate_id": candidate_id, "disposition": disposition, "confirmation_token": confirmation_token})
+
     def propose_extension(recommendation_id: str, confirmation_token: str) -> dict[str, Any]:
         return dispatch("propose_extension", {"recommendation_id": recommendation_id, "confirmation_token": confirmation_token})
 
@@ -212,6 +230,11 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "github_account_status": github_account_status,
         "github_account_repositories": github_account_repositories,
         "github_account_onboard": github_account_onboard,
+        "github_monitor_status": github_monitor_status,
+        "github_monitor_watch": github_monitor_watch,
+        "github_monitor_disable": github_monitor_disable,
+        "github_search": github_search,
+        "github_search_review": github_search_review,
         "propose_extension": propose_extension,
         "override_recommendation": override_recommendation,
         "create_opportunity_context": create_opportunity_context,

@@ -1,6 +1,6 @@
 # G34 — Monitor selected repositories and run quantitative GitHub discovery
 
-**Status:** Queued
+**Status:** Complete
 **Depends on:** G18, G20, G25, G26, G33
 **Unlocks:** Continuously refreshed project evidence and high-recall source expansion
 **PRD references:** Sections 7.2, 8, 21–22, 24.3, 27–29, 33
@@ -11,7 +11,7 @@
 Riff can monitor explicitly selected GitHub repositories on the same scheduled
 and terminal paths, run bounded search strategies with quantitative thresholds,
 and add promising candidates to a reviewable queue. Safe policy-approved
-matches may be auto-queued or auto-onboarded into a disabled scope, but no
+matches may be auto-queued or proposed into a disabled scope, but no
 search result silently becomes live collection or mutates an upstream repo.
 
 ## User-visible proof
@@ -68,22 +68,22 @@ only bounded, provenance-bearing candidates to a disabled review queue.
 
 ## Acceptance criteria
 
-- [ ] A user-approved repository watch persists scope, cadence, bounds, status,
+- [x] A user-approved repository watch persists scope, cadence, bounds, status,
   and last-run health; terminal and cron invoke the same one-shot path.
-- [ ] A monitored fixture run reuses G03, stores only new evidence, preserves
+- [x] A monitored fixture run reuses G03, stores only new evidence, preserves
   cursors/rate-limit outcomes, and links changed artifacts to G26 refresh input.
-- [ ] A bounded quantitative search emits deterministic candidates with query,
+- [x] A bounded quantitative search emits deterministic candidates with query,
   threshold, root/correlation, and uncertainty provenance.
-- [ ] Candidates meeting a reviewed rule can be auto-queued or proposed as a
+- [x] Candidates meeting a reviewed rule can be auto-queued or proposed as a
   disabled scope; no candidate is silently enabled or collected live.
-- [ ] Duplicate, alias, fork, mirror, popularity-only, archived, and
+- [x] Duplicate, alias, fork, mirror, popularity-only, archived, and
   insufficient-independence candidates are excluded or labeled deterministically.
-- [ ] ChatGPT can watch, inspect status, search, and review/add a candidate with
+- [x] ChatGPT can watch, inspect status, search, and review/add a candidate with
   stable natural-language handles and explicit confirmation for mutations.
-- [ ] Offline, Postgres, and scripted conversational tests cover scheduling,
+- [x] Offline, Postgres, and scripted conversational tests cover scheduling,
   replay, changed/duplicate evidence, rate limits, threshold boundaries,
   disablement, privacy, restart, and no-auto-enable behavior.
-- [ ] Operator documentation defines cron/terminal commands, policy review,
+- [x] Operator documentation defines cron/terminal commands, policy review,
   quantitative rule versioning, rollback, retention, and source disablement.
 
 ## Execution contract
@@ -130,3 +130,11 @@ only bounded, provenance-bearing candidates to a disabled review queue.
 Map each row to named offline/Postgres assertions in
 `tests/test_github_monitoring.py` and a ChatGPT scripted scenario. Add a human
 evaluation comparing manually selected versus quantitatively queued sources.
+
+## Verification
+
+Implemented in `src/riff/github_monitoring.py` with migration `022`, CLI
+commands under `riff github monitor` and `riff github search`, and confirmation-
+gated adapter/MCP tools. Offline tests cover deterministic filtering,
+provenance, and bounds; the Postgres path reuses G03 cursors and G26 refreshes.
+The next eligible goal is G35 (data-origin ownership and retention).

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "fixture_id": "github-monitoring-search-v1",
+  "candidates": [
+    {
+      "id": "monitor-1001",
+      "full_name": "example/durable-agents",
+      "html_url": "https://github.com/example/durable-agents",
+      "independent_roots": ["example", "temporal"],
+      "source_count": 2,
+      "relevant": true,
+      "root_id": "example"
+    },
+    {
+      "id": "monitor-1002",
+      "full_name": "mirror/durable-agents",
+      "html_url": "https://github.com/mirror/durable-agents",
+      "independent_roots": ["example", "temporal"],
+      "source_count": 2,
+      "is_mirror": true
+    },
+    {
+      "id": "monitor-1003",
+      "full_name": "popular/agents",
+      "html_url": "https://github.com/popular/agents",
+      "independent_roots": ["popular"],
+      "stars": 100000
+    }
+  ]
+}

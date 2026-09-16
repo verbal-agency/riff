@@ -115,6 +115,27 @@ the existing bounded read-only GitHub REST client. Tests use recorded responses
 only and filter forks, mirrors, bots, duplicate aliases, and popularity-only
 matches.
 
+### GitHub monitoring and quantitative search
+
+G34 adds explicit watches for repositories already ingested through G03. A
+watch reuses the same cursor/evidence collector and can be disabled without
+deleting history. The terminal one-shot is suitable for cron:
+
+```sh
+uv run riff github monitor watch --repository owner/repository --confirm WATCH
+uv run riff github monitor status
+uv run riff github monitor run --watch-id github-watch-... --live
+uv run riff github monitor disable --watch-id github-watch-... --confirm DISABLE
+```
+
+Quantitative discovery is offline-first and reviewable; rules retain query,
+threshold, independence, correlation, and uncertainty provenance and never
+auto-enable collection.
+
+```sh
+uv run riff github search --query "durable agents" --file tests/fixtures/github/monitoring/search-v1.json
+```
+
 ### GitHub project understanding
 
 G26 keeps a separate, user-approved inventory for repositories already

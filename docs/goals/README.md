@@ -190,9 +190,11 @@ mapping. The user confirmed the updated flow is an improvement and that
 follow-ups feel solid. G33 is complete: it adds explicit, scope-limited
 observation of the user's GitHub account, bounded public repository candidates,
 confirmation-gated selective onboarding into G26, and auditable revoke/scope
-narrowing. G34 follows with durable
-monitoring of selected repositories and quantitative search rules that can
-auto-queue or propose disabled scopes without bypassing review.
+narrowing. G34 is complete: it adds durable monitoring of selected repositories
+and quantitative search rules that can auto-queue or propose disabled scopes
+without bypassing review.
+G35 is ready for data-origin, fixture-ownership, retention, and safe-cleanup
+hardening; G36 remains queued behind G34 and G35.
 G36 then turns those monitored deltas into personalized, evidence-backed
 guidance through separate evidence, project, decision, guidance, and
 disposable-conversation memory layers; it must not infer proficiency or persist
