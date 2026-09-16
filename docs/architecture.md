@@ -312,6 +312,30 @@ operational history are never selected. Malformed payloads are preserved in an
 append-only quarantine ledger. Retention remains dry-runnable and records an
 immutable archival decision without deleting evidence history.
 
+## G36 personalized GitHub guidance and memory
+
+`src/riff/github_guidance.py` projects the latest bounded G26 snapshots into a
+content-addressed delta with `NEW`, `CHANGED`, `UNCHANGED`, `DUPLICATE`, and
+`UNAVAILABLE` states. Each delta retains snapshot IDs, source evidence IDs,
+retrieval time, uncertainty, and parser/policy versions. A deterministic ranker
+then returns at most three typed actions—`EXTEND_PROJECT`, `BUILD_GREENFIELD`,
+`INVESTIGATE_GAP`, or `WAIT_FOR_EVIDENCE`—without inferring proficiency from
+ownership or repository activity.
+
+Migration 024 keeps guidance projections and feedback separate from immutable
+evidence and project snapshots. `github_guidance_versions` links changed
+inputs to a predecessor by version and fingerprint; `github_guidance_feedback`
+is append-only and records acceptance, rejection, deferral, or correction with
+the active policy version. The audit read names the five memory layers
+explicitly: evidence ledger, project understanding, user decision memory,
+guidance memory, and disposable conversation context. No raw repository body
+or unrestricted conversation history is persisted by this feature.
+
+The adapter, MCP, and terminal surfaces share the same repository boundary.
+Guidance and audits are read-only; feedback requires the existing
+`USER_CONFIRMED` token. Ambiguous project references fail closed and no action
+creates an Exploration or mutates profile state.
+
 ## G27 project-aware recommendations
 
 `src/riff/recommendations.py` compares a bounded Riff/profile slice with

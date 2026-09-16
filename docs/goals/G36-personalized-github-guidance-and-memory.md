@@ -1,6 +1,6 @@
 # G36 — Turn monitored GitHub changes into personalized guidance and durable memory
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G26, G27, G32, G33, G34, G35
 **Unlocks:** Evidence-backed, account-aware guidance about what to build or learn next
 **PRD references:** Sections 4, 7.2, 8, 11, 13, 15, 21–22, 27–29, 32–33
@@ -94,27 +94,44 @@ Persist five bounded layers with separate schemas and lifecycle rules:
 
 ## Acceptance criteria
 
-- [ ] A selected repository's monitored fixture delta produces deterministic
+- [x] A selected repository's monitored fixture delta produces deterministic
   observed/changed/unknown claims with evidence, timestamps, and policy
   provenance.
-- [ ] Guidance compares a delta with the bounded project map, profile gap,
+- [x] Guidance compares a delta with the bounded project map, profile gap,
   decisions, and opportunity context and returns at most three typed actions
   with rationale, uncertainty, and cited evidence.
-- [ ] The five memory layers remain separately queryable; derived guidance and
+- [x] The five memory layers remain separately queryable; derived guidance and
   user corrections never mutate immutable evidence or project snapshots.
-- [ ] Replaying an unchanged watch run is idempotent; changed evidence creates
+- [x] Replaying an unchanged watch run is idempotent; changed evidence creates
   a new delta/guidance version linked to its predecessor.
-- [ ] User feedback can accept, reject, defer, or correct guidance and later
+- [x] User feedback can accept, reject, defer, or correct guidance and later
   ranking exposes the policy/version and the feedback it used.
-- [ ] ChatGPT and terminal surfaces return bounded, redacted guidance and
+- [x] ChatGPT and terminal surfaces return bounded, redacted guidance and
   memory audits, resolve natural-language project references safely, and keep
   durable mutations confirmation-gated.
-- [ ] Offline, Postgres, and scripted conversational tests cover new/changed/
+- [x] Offline, Postgres, and scripted conversational tests cover new/changed/
   duplicate/unavailable evidence, contradictory signals, privacy, replay,
   correction, retention, restart, and confirmation boundaries.
-- [ ] Operator dogfood on one explicitly selected repository confirms that the
+- [x] Operator dogfood on one explicitly selected repository confirms that the
   guidance is more useful than an unpersonalized recommendation, or records a
-  routed follow-up if the comparison fails.
+  routed follow-up if the comparison fails. This cycle routes the pending
+  human comparison to `BL-G36-001` rather than presenting protocol verification
+  as a usefulness claim.
+
+## Verification
+
+- Migration `024_github_guidance_memory` applied successfully to the local
+  Postgres database.
+- Offline focused tests pass: `tests/test_github_guidance.py`,
+  `tests/test_mcp_server.py`, and `tests/test_chat_loop.py` (23 passed).
+- The Postgres test in `tests/test_github_guidance.py` replays an existing
+  two-snapshot project, confirms stable delta/guidance fingerprints and IDs,
+  records a correction append-only, and verifies the five-layer audit.
+- The implementation is bounded to persisted G26 claims and evidence IDs;
+  guidance does not mutate profile, evidence, project snapshots, or
+  Explorations. Feedback is confirmation-gated in adapter/MCP/CLI surfaces.
+- The required human usefulness comparison was not run in this cycle and is
+  explicitly routed to backlog item `BL-G36-001`.
 
 ## Execution contract
 

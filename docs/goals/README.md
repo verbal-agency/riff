@@ -194,12 +194,12 @@ narrowing. G34 is complete: it adds durable monitoring of selected repositories
 and quantitative search rules that can auto-queue or propose disabled scopes
 without bypassing review.
 G35 is complete: it adds origin/owner policy, safe fixture cleanup, quarantine,
-and reviewable retention without deleting live provenance. G36 is now ready to
-turn monitored deltas into personalized, evidence-backed guidance.
-G36 then turns those monitored deltas into personalized, evidence-backed
-guidance through separate evidence, project, decision, guidance, and
-disposable-conversation memory layers; it must not infer proficiency or persist
-unbounded conversation history.
+and reviewable retention without deleting live provenance. G36 is complete: it
+turns monitored deltas into personalized, evidence-backed guidance through
+separate evidence, project, decision, guidance, and disposable-conversation
+memory layers; it does not infer proficiency or persist unbounded conversation
+history. The remaining human usefulness comparison is routed to
+`BL-G36-001`.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots

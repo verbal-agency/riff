@@ -222,6 +222,30 @@ The resulting Exploration and generated PRD retain the target project ID while
 keeping repository contents, profile claims, and upstream GitHub mutations out
 of scope.
 
+### Personalized GitHub guidance and memory
+
+G36 compares the latest two bounded G26 snapshots for a selected project and
+stores a deterministic, provenance-cited delta plus versioned guidance. It
+offers at most three typed actions: `EXTEND_PROJECT`, `BUILD_GREENFIELD`,
+`INVESTIGATE_GAP`, or `WAIT_FOR_EVIDENCE`. Repository ownership, activity, and
+language metadata are never treated as proficiency proof, and raw repository
+bodies are not copied into guidance context.
+
+Inspect guidance and its five separately queryable memory layers from the
+terminal:
+
+```sh
+uv run riff github guidance inspect --project "Riff runtime"
+uv run riff github guidance audit --project "Riff runtime"
+uv run riff github guidance feedback --guidance-id <guidance-id> --decision CORRECTED --reason "Keep the evidence gap explicit." --confirm USER_CONFIRMED
+```
+
+Guidance reads are bounded and natural-language project references are resolved
+only when unambiguous. Feedback is append-only and confirmation-gated; it does
+not rewrite evidence or project snapshots. The ChatGPT MCP surface exposes the
+same `github_guidance`, `github_memory_audit`, and
+`github_guidance_feedback` operations.
+
 ### Opportunity context and execution riffing
 
 G28 keeps an opportunity's actors, workflow, platforms, connectors, permissions,

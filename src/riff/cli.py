@@ -39,6 +39,7 @@ from .github_ingestion import GitHubIngestionRunner, HttpGitHubFetcher
 from .project_map import ProjectMapError, ProjectMapRepository
 from .github_account import AccountScope, FixtureAccountFetcher, GitHubAccountError, GitHubAccountRepository
 from .github_monitoring import GitHubMonitoringError, GitHubMonitoringRepository, QuantitativeRule, evaluate_quantitative_search
+from .github_guidance import GuidanceError, GitHubGuidanceRepository
 from .github_discovery import (
     DiscoveryPolicyError,
     FixtureDiscoveryFetcher,
@@ -210,6 +211,19 @@ def build_parser() -> argparse.ArgumentParser:
     monitor_disable = monitor_subparsers.add_parser("disable", help="disable one watch")
     monitor_disable.add_argument("--watch-id", required=True)
     monitor_disable.add_argument("--confirm", required=True, help="type DISABLE to confirm")
+    guidance = github_subparsers.add_parser("guidance", help="explain monitored project changes and bounded next actions")
+    guidance_subparsers = guidance.add_subparsers(dest="guidance_command", required=True)
+    guidance_inspect = guidance_subparsers.add_parser("inspect", help="generate or read current project guidance")
+    guidance_inspect.add_argument("--project", required=True)
+    guidance_feedback = guidance_subparsers.add_parser("feedback", help="record explicit guidance feedback")
+    guidance_feedback.add_argument("--guidance-id", required=True)
+    guidance_feedback.add_argument("--decision", choices=["ACCEPTED", "REJECTED", "DEFERRED", "CORRECTED"], required=True)
+    guidance_feedback.add_argument("--reason", required=True)
+    guidance_feedback.add_argument("--correction", help="JSON correction payload")
+    guidance_feedback.add_argument("--confirm", required=True, help="type USER_CONFIRMED to record feedback")
+    guidance_audit = guidance_subparsers.add_parser("audit", help="export redacted project memory audit")
+    guidance_audit.add_argument("--project", required=True)
+    guidance_audit.add_argument("--limit", type=int, default=10)
     search = github_subparsers.add_parser("search", help="run a bounded quantitative discovery rule")
     search.add_argument("--query", required=True)
     search.add_argument("--file", required=True, help="JSON file containing a candidates list")
@@ -483,6 +497,22 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except (OSError, ValueError, GitHubMonitoringError) as exc:
             raise SystemExit(f"GitHub monitoring error: {exc}") from exc
+    if args.command == "github" and args.github_command == "guidance":
+        try:
+            repository = GitHubGuidanceRepository(Settings.from_env().database_url)
+            if args.guidance_command == "inspect":
+                result = repository.analyze(args.project)
+            elif args.guidance_command == "audit":
+                result = repository.audit(args.project, limit=args.limit)
+            else:
+                correction = json.loads(args.correction) if args.correction else {}
+                if args.confirm != "USER_CONFIRMED":
+                    raise GuidanceError("type USER_CONFIRMED to record feedback")
+                result = repository.feedback(args.guidance_id, args.decision, args.reason, correction=correction)
+            print(json.dumps(result, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError, GuidanceError) as exc:
+            raise SystemExit(f"GitHub guidance error: {exc}") from exc
     if args.command == "github" and args.github_command == "search":
         try:
             payload = json.loads(Path(args.file).read_text(encoding="utf-8"))

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "fixture_id": "github-guidance-project-delta-v1",
+  "project": {"project_id": "project-demo", "display_name": "Riff runtime", "purpose": "durable agent execution"},
+  "previous_summary": {
+    "claims": [
+      {"kind": "capability", "value": "durable execution", "status": "INFERRED", "confidence": 0.5, "evidence_ids": ["evidence-old"]},
+      {"kind": "unknown", "value": "implementation_depth", "status": "UNKNOWN", "confidence": 0.0, "evidence_ids": ["evidence-old"]}
+    ]
+  },
+  "current_summary": {
+    "claims": [
+      {"kind": "capability", "value": "durable execution", "status": "INFERRED", "confidence": 0.5, "evidence_ids": ["evidence-new"]},
+      {"kind": "open_issue", "value": "Replay after worker restart", "status": "OBSERVED", "confidence": 0.9, "evidence_ids": ["evidence-new"]},
+      {"kind": "unknown", "value": "implementation_depth", "status": "UNKNOWN", "confidence": 0.0, "evidence_ids": ["evidence-new"]}
+    ]
+  }
+}

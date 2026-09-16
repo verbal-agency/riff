@@ -144,6 +144,21 @@
       "required": ["candidate_id", "disposition", "confirmation_token"]
     },
     {
+      "name": "github_guidance",
+      "description": "Explain recent changes in a selected GitHub project and rank bounded next actions.",
+      "required": ["project"]
+    },
+    {
+      "name": "github_memory_audit",
+      "description": "Inspect redacted project guidance versions and feedback memory.",
+      "required": ["project"]
+    },
+    {
+      "name": "github_guidance_feedback",
+      "description": "Record explicit acceptance, rejection, deferral, or correction of guidance.",
+      "required": ["guidance_id", "decision", "reason", "confirmation_token"]
+    },
+    {
       "name": "propose_extension",
       "description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.",
       "required": ["recommendation_id", "confirmation_token"]

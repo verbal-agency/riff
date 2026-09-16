@@ -37,6 +37,7 @@ _MUTATING_TOOLS = {
     "github_monitor_watch",
     "github_monitor_disable",
     "github_search_review",
+    "github_guidance_feedback",
 }
 
 
@@ -179,6 +180,15 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
     def github_search_review(candidate_id: str, disposition: str, confirmation_token: str) -> dict[str, Any]:
         return dispatch("github_search_review", {"candidate_id": candidate_id, "disposition": disposition, "confirmation_token": confirmation_token})
 
+    def github_guidance(project: str, profile: dict[str, Any] | None = None, decisions: list[dict[str, Any]] | None = None, opportunity: dict[str, Any] | None = None) -> dict[str, Any]:
+        return dispatch("github_guidance", {"project": project, "profile": profile, "decisions": decisions or [], "opportunity": opportunity})
+
+    def github_memory_audit(project: str, limit: int = 10) -> dict[str, Any]:
+        return dispatch("github_memory_audit", {"project": project, "limit": limit})
+
+    def github_guidance_feedback(guidance_id: str, decision: str, reason: str, confirmation_token: str, correction: dict[str, Any] | None = None) -> dict[str, Any]:
+        return dispatch("github_guidance_feedback", {"guidance_id": guidance_id, "decision": decision, "reason": reason, "confirmation_token": confirmation_token, "correction": correction or {}})
+
     def propose_extension(recommendation_id: str, confirmation_token: str) -> dict[str, Any]:
         return dispatch("propose_extension", {"recommendation_id": recommendation_id, "confirmation_token": confirmation_token})
 
@@ -235,6 +245,9 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "github_monitor_disable": github_monitor_disable,
         "github_search": github_search,
         "github_search_review": github_search_review,
+        "github_guidance": github_guidance,
+        "github_memory_audit": github_memory_audit,
+        "github_guidance_feedback": github_guidance_feedback,
         "propose_extension": propose_extension,
         "override_recommendation": override_recommendation,
         "create_opportunity_context": create_opportunity_context,
