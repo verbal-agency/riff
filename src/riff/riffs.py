@@ -200,6 +200,33 @@ class RiffRepository:
             ).fetchall()
         return _daily_result(row, riffs)
 
+    def latest_result(self, *, through: date | None = None) -> DailyResult | None:
+        """Return the newest persisted result at or before a requested date."""
+        with connection(self.database_url) as conn:
+            if through is None:
+                row = conn.execute(
+                    "SELECT daily_run_id, run_date, generation_policy_version, input_fingerprint, status, empty_reason FROM daily_riff_runs ORDER BY run_date DESC, created_at DESC LIMIT 1"
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT daily_run_id, run_date, generation_policy_version, input_fingerprint, status, empty_reason FROM daily_riff_runs WHERE run_date <= %s ORDER BY run_date DESC, created_at DESC LIMIT 1",
+                    (through,),
+                ).fetchone()
+            if row is None:
+                return None
+            riffs = conn.execute(
+                """SELECT riff_id, daily_run_id, rank, status, observation, hypothesis, why_now,
+                          why_it_matters, user_relevance, underlying_capability, recommendation,
+                          confidence, strongest_counterargument, alternative_explanation,
+                          falsification_conditions, associated_technologies,
+                          supporting_receipt_ids, counter_receipt_ids,
+                          candidate_score, evidence_quality, epistemic_confidence,
+                          confidence_policy_version, provenance_summary
+                   FROM riffs WHERE daily_run_id = %s AND status = 'PUBLISHED' ORDER BY rank""",
+                (row[0],),
+            ).fetchall()
+        return _daily_result(row, riffs)
+
     def save_run(self, result: DailyResult, contexts: Sequence[RiffContext], drafts: Sequence[tuple[int, RiffDraft, str]], *, rejected: int = 0) -> DailyResult:
         with connection(self.database_url) as conn:
             conn.execute(

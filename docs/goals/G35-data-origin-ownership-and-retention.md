@@ -29,6 +29,9 @@ quarantined records instead of being silently discarded.
   `origin_run_id`/owner, and `policy_version`.
 - Require new fixture/test writers to set origin metadata explicitly; retain
   stable raw payloads and evidence hashes.
+- Ensure integration-test fixtures cannot truncate or overwrite the shared
+  operator dogfood database; tests must use an isolated database or
+  origin/owner-scoped cleanup.
 - Backfill only confidently identified existing fixtures (including known
   `g26-*`/`g27-*` project rows); leave ambiguous rows `UNCLASSIFIED` and report
   them for review.
@@ -81,7 +84,7 @@ quarantined records instead of being silently discarded.
   would remove; no garbage collection occurs without explicit operator apply.
 - [ ] Offline and Postgres tests cover backfill, ownership scoping, foreign-key
   cleanup, idempotence, filtering, quarantine, retention preview, rollback,
-  and provenance preservation.
+  provenance preservation, and protection of operator-owned daily results.
 - [ ] Operator documentation gives one-line preview/apply/rollback/report
   commands and explains when an isolated test database remains preferable.
 

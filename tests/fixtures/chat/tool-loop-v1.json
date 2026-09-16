@@ -9,6 +9,11 @@
       "required": ["run_date"]
     },
     {
+      "name": "alternate_riffs",
+      "description": "Read other published Riffs related to the current result without repeating the rejected one.",
+      "required": ["riff_id"]
+    },
+    {
       "name": "investigate_riff",
       "description": "Inspect one Riff's evidence, counterevidence, gap, and provenance.",
       "required": ["riff_id"]
@@ -92,6 +97,11 @@
       "name": "match_riff_to_projects",
       "description": "Match a Riff to existing projects with explainable dispositions.",
       "required": ["riff_id"]
+    },
+    {
+      "name": "map_riff_to_scenario",
+      "description": "Map a Riff to one concrete user workflow or scenario without creating durable state.",
+      "required": ["riff_id", "scenario"]
     },
     {
       "name": "propose_extension",

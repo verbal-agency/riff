@@ -180,12 +180,14 @@ shared scheduled and terminal path for compliant job collection plus
 one-listing URL intake. The earlier
 durable-execution/observability mini-project and workflow-reconciliation
 investigation remain in `docs/backlog.md`.
-G33 is ready to add explicit, scope-limited observation of the user's GitHub
+G32 is complete: it adds disposable natural-language handles and bounded
+rendering so follow-up exploration no longer requires UUID/tool relaying,
+dated no-result fallback, alternate recommendations, and read-only scenario
+mapping. The user confirmed the updated flow is an improvement and that
+follow-ups feel solid. G33 is ready to add explicit, scope-limited observation of the user's GitHub
 account and natural-language repository selection. G34 follows with durable
 monitoring of selected repositories and quantitative search rules that can
 auto-queue or propose disabled scopes without bypassing review.
-G32 removes UUID/tool relaying from the user experience while preserving
-bounded context, citations, uncertainty, and explicit mutation approvals.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots

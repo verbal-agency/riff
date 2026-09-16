@@ -7,6 +7,8 @@ from riff.adapter import TOOL_SCHEMAS
 from riff.chat_loop import (
     ChatLoopError,
     ChatToolLoop,
+    ConversationContext,
+    ConversationSession,
     FixtureToolAdapter,
     ModelToolCall,
     ModelResponse,
@@ -180,3 +182,56 @@ def test_chat_replay_cli_is_offline_and_prints_trace(capsys):
     assert output["fixture_id"] == "chat-tool-loop-v1"
     assert output["scenario"] == "daily"
     assert output["trace"][0]["name"] == "daily_riffs"
+
+
+def test_conversation_session_resolves_natural_handles_across_turns_without_exposing_ids():
+    fixture = load_chat_fixture(str(FIXTURE))
+    model = ScriptedModelClient([
+        {"tool_calls": [{"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}}]},
+        {"content": "Today's top concept is durable execution."},
+        {"tool_calls": [{"name": "investigate_riff", "arguments": {"riff_id": "the top Riff"}}]},
+        {"content": "The evidence is promising but still needs independent support."},
+    ])
+    adapter = FixtureToolAdapter(fixture["tools"], fixture["scenarios"][0]["adapter_results"] | fixture["scenarios"][1]["adapter_results"])
+    session = ConversationSession(model, adapter, system_prompt="Answer naturally and keep Riff handles internal.")
+    first = session.turn("What is today's top concept?")
+    second = session.turn("Tell me more about the top Riff.")
+    assert first.status == second.status == "SUCCEEDED"
+    assert adapter.calls[1]["arguments"] == {"riff_id": "riff-1"}
+    rendered_messages = json.dumps(model.calls[2]["messages"])
+    assert "riff-1" not in rendered_messages and "receipt-1" not in rendered_messages
+    assert "top Riff" in rendered_messages
+
+
+def test_ambiguous_handle_is_bounded_and_does_not_mutate():
+    context = ConversationContext()
+    context.bind("project", "project-a", "the project")
+    context.bind("project", "project-b", "the project")
+    with pytest.raises(ChatLoopError) as error:
+        context.resolve("project", "the project")
+    assert error.value.code == "AMBIGUOUS_REFERENCE"
+
+
+def test_restart_recovery_rebinds_explicit_id_without_a_write():
+    context = ConversationContext()
+    context.recover("riff", "riff-1", "the durable execution Riff")
+    assert context.resolve("riff", "the durable execution Riff") == "riff-1"
+
+
+def test_confirmation_still_requires_outer_user_boundary_with_natural_handle():
+    tools = [
+        {"name": "daily_riffs", "description": "Read daily Riffs.", "required": ["run_date"]},
+        {"name": "create_exploration", "description": "Create an Exploration.", "required": ["riff_id", "confirmation_token"]},
+    ]
+    adapter = FixtureToolAdapter(tools, {
+        "daily_riffs": {"tool": "daily_riffs", "result": {"riffs": [{"riff_id": "riff-1"}]}},
+        "create_exploration": {"tool": "create_exploration", "result": {"exploration_id": "explore-1"}},
+    })
+    model = ScriptedModelClient([
+        {"tool_calls": [{"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}}]},
+        {"tool_calls": [{"name": "create_exploration", "arguments": {"riff_id": "the top Riff", "confirmation_token": "model-token"}}]},
+        {"content": "I need your confirmation before creating an Exploration."},
+    ])
+    result = ChatToolLoop(model, adapter).run("Investigate the top Riff and create an Exploration.")
+    assert result.trace[1].result["error"]["code"] == "CONFIRMATION_REQUIRED"
+    assert adapter.calls == [{"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}}]

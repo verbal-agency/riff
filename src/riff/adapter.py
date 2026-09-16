@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import date
+import re
 from typing import Any, Mapping
 
 from .decisions import DecisionError, DecisionRepository
@@ -23,6 +24,7 @@ USER_CONFIRMATION_TOKEN = "USER_CONFIRMED"
 
 TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "daily_riffs": {"description": "Read the persisted daily zero-to-three Riff result.", "required": ("run_date",)},
+    "alternate_riffs": {"description": "Read other published Riffs related to the current result without repeating the rejected one.", "required": ("riff_id",)},
     "investigate_riff": {"description": "Inspect one Riff's score, calibrated provenance, evidence, counterevidence, gap, and provenance.", "required": ("riff_id",)},
     "search_riffs": {"description": "Search persisted Riffs by capability or text.", "required": ("query",)},
     "profile_lookup": {"description": "Read the public profile slice and gap classification for one capability.", "required": ("capability_id",)},
@@ -40,6 +42,7 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "list_projects": {"description": "List bounded, approved GitHub project summaries.", "required": ()},
     "inspect_project": {"description": "Read one bounded GitHub project map and snapshot history.", "required": ("project_id",)},
     "match_riff_to_projects": {"description": "Match a Riff to existing projects with explainable dispositions.", "required": ("riff_id",)},
+    "map_riff_to_scenario": {"description": "Map a Riff to one concrete user workflow or scenario without creating durable state.", "required": ("riff_id", "scenario")},
     "propose_extension": {"description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.", "required": ("recommendation_id", "confirmation_token")},
     "override_recommendation": {"description": "Override a project recommendation with an explicit greenfield or defer choice.", "required": ("recommendation_id", "disposition", "reason", "confirmation_token")},
     "create_opportunity_context": {"description": "Extract and persist a bounded opportunity context plus execution candidates from structured input.", "required": ("source_url", "payload")},
@@ -78,13 +81,119 @@ class RiffToolAdapter:
         return {"tool": name, "result": result}
 
     def _daily_riffs(self, run_date: str) -> dict[str, Any]:
-        result = RiffRepository(self.database_url).daily_result(date.fromisoformat(run_date))
+        requested = date.fromisoformat(run_date)
+        repository = RiffRepository(self.database_url)
+        result = repository.daily_result(requested)
         if result is None:
-            raise AdapterError("daily Riff result not found")
+            latest = repository.latest_result(through=requested)
+            latest_summary = None
+            if latest is not None:
+                latest_summary = {
+                    "run_date": latest.to_dict()["run_date"],
+                    "status": latest.to_dict()["status"],
+                    "riffs": [
+                        {
+                            "reference": "the top Riff" if item.rank == 1 else f"Riff {item.rank}",
+                            "rank": item.rank,
+                            "underlying_capability": item.underlying_capability,
+                            "hypothesis": item.hypothesis,
+                            "recommendation": item.recommendation,
+                            "associated_technologies": list(item.associated_technologies),
+                            "evidence_quality": item.evidence_quality,
+                            "epistemic_confidence": item.epistemic_confidence,
+                        }
+                        for item in latest.riffs
+                    ],
+                }
+            return {
+                "status": "NOT_FOUND",
+                "requested_date": requested.isoformat(),
+                "message": "No daily Riff was published for the requested date.",
+                "latest_available": latest_summary,
+                "next_action": "Run the daily pipeline for the requested date, or inspect the latest available result.",
+            }
         return result.to_dict()
 
+    def _resolve_riff_reference(self, reference: str) -> str:
+        """Resolve a bounded natural Riff reference for MCP follow-ups."""
+        value = str(reference).strip()
+        if not value or (" " in value and value.lower() not in {"the top riff", "top riff", "the latest riff", "latest riff", "the current riff", "current riff"}):
+            raise AdapterError("Riff reference is ambiguous or stale; use a named result from this conversation")
+        with connection(self.database_url) as conn:
+            exact = conn.execute("SELECT riff_id FROM riffs WHERE riff_id = %s", (value,)).fetchone()
+            if exact is not None:
+                return str(exact[0])
+            if value.lower() in {"the top riff", "top riff", "the latest riff", "latest riff", "the current riff", "current riff"}:
+                rows = conn.execute(
+                    "SELECT r.riff_id FROM riffs r JOIN daily_riff_runs d ON d.daily_run_id = r.daily_run_id WHERE r.status = 'PUBLISHED' ORDER BY d.run_date DESC, d.created_at DESC, r.rank LIMIT 1"
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT riff_id FROM riffs WHERE status = 'PUBLISHED' AND (underlying_capability ILIKE %s OR observation ILIKE %s) ORDER BY created_at DESC LIMIT 2",
+                    (f"%{value}%", f"%{value}%"),
+                ).fetchall()
+        if not rows:
+            raise AdapterError(f"no Riff matches '{value}'")
+        if len(rows) > 1:
+            raise AdapterError(f"Riff reference '{value}' matches multiple results; please disambiguate")
+        return str(rows[0][0])
+
+    def _alternate_riffs(self, riff_id: str, **kwargs: Any) -> dict[str, Any]:
+        current_id = self._resolve_riff_reference(riff_id)
+        with connection(self.database_url) as conn:
+            rows = conn.execute(
+                """SELECT r.rank, r.underlying_capability, r.hypothesis, r.recommendation,
+                          r.confidence, r.evidence_quality, r.epistemic_confidence,
+                          d.run_date
+                   FROM riffs r JOIN daily_riff_runs d ON d.daily_run_id = r.daily_run_id
+                   WHERE r.status = 'PUBLISHED' AND r.daily_run_id = (SELECT daily_run_id FROM riffs WHERE riff_id = %s)
+                     AND r.riff_id <> %s ORDER BY r.rank LIMIT 5""",
+                (current_id, current_id),
+            ).fetchall()
+        return {
+            "status": "ALTERNATIVES",
+            "excluded_reference": "the current Riff",
+            "results": [
+                {
+                    "reference": f"Riff {row[0]}",
+                    "rank": row[0],
+                    "run_date": row[7].isoformat() if hasattr(row[7], "isoformat") else str(row[7]),
+                    "underlying_capability": row[1],
+                    "hypothesis": row[2],
+                    "recommendation": row[3],
+                    "confidence": float(row[4]),
+                    "evidence_quality": float(row[5] or 0),
+                    "epistemic_confidence": float(row[6] or 0),
+                }
+                for row in rows
+            ],
+            "next_action": "Choose an alternative by its capability or reference, then ask for evidence or scenario mapping.",
+        }
+
+    def _map_riff_to_scenario(self, riff_id: str, scenario: str, **kwargs: Any) -> dict[str, Any]:
+        scenario_text = str(scenario).strip()
+        if not scenario_text or len(scenario_text) > 1000:
+            raise AdapterError("scenario must be a non-empty description under 1000 characters")
+        investigation = DecisionRepository(self.database_url).investigation(self._resolve_riff_reference(riff_id))
+        riff = dict(investigation.riff)
+        capability = str(riff.get("underlying_capability", ""))
+        corpus = " ".join(str(riff.get(key, "")) for key in ("observation", "hypothesis", "recommendation", "why_it_matters"))
+        terms = {term for term in re.findall(r"[a-z0-9][a-z0-9-]{2,}", scenario_text.lower()) if term not in {"the", "and", "with", "for", "that", "from"}}
+        matched = sorted(term for term in terms if term in corpus.lower() or term in capability.lower())
+        fit = "DIRECT" if capability.lower() in scenario_text.lower() or len(matched) >= 2 else ("PARTIAL" if matched else "WEAK")
+        return {
+            "riff_reference": capability or "the current Riff",
+            "scenario": scenario_text,
+            "fit": fit,
+            "matched_terms": matched[:10],
+            "rationale": f"The scenario shares {len(matched)} bounded terms with the Riff's evidence-backed claim." if matched else "The scenario is not directly supported by the Riff wording; treat this as a hypothesis.",
+            "evidence_quality": float(investigation.provenance_quality.get("evidence_quality", 0)),
+            "uncertainty": investigation.provenance_quality.get("limitations", []),
+            "next_action": "Use this mapping to refine the execution candidate; it does not create an Exploration or PRD.",
+        }
+
     def _investigate_riff(self, riff_id: str) -> dict[str, Any]:
-        investigation = DecisionRepository(self.database_url).investigation(riff_id)
+        investigation = DecisionRepository(self.database_url).investigation(self._resolve_riff_reference(riff_id))
         riff = dict(investigation.riff)
         evidence = [self._evidence_item(item) for item in investigation.supporting_evidence]
         counter = [self._evidence_item(item) for item in investigation.counterevidence]
@@ -118,7 +227,7 @@ class RiffToolAdapter:
         return result
 
     def _record_decision(self, riff_id: str, decision: str, reason: str, **kwargs: Any) -> dict[str, Any]:
-        result = DecisionRepository(self.database_url).record_decision(riff_id, decision, reason, actor=str(kwargs.get("actor", "user")), actor_kind=str(kwargs.get("actor_kind", "USER")), structured_reason=kwargs.get("structured_reason"))
+        result = DecisionRepository(self.database_url).record_decision(self._resolve_riff_reference(riff_id), decision, reason, actor=str(kwargs.get("actor", "user")), actor_kind=str(kwargs.get("actor_kind", "USER")), structured_reason=kwargs.get("structured_reason"))
         return asdict(result)
 
     def _require_confirmation(self, token: str) -> None:
@@ -127,7 +236,7 @@ class RiffToolAdapter:
 
     def _create_exploration(self, riff_id: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
         self._require_confirmation(confirmation_token)
-        return ExplorationRepository(self.database_url).create(riff_id, actor="user").to_dict()
+        return ExplorationRepository(self.database_url).create(self._resolve_riff_reference(riff_id), actor="user").to_dict()
 
     def _get_exploration(self, exploration_id: str) -> dict[str, Any]:
         return ExplorationRepository(self.database_url).get(exploration_id).to_dict()
@@ -165,7 +274,7 @@ class RiffToolAdapter:
         return ProjectMapRepository(self.database_url).inspect(project_id)
 
     def _match_riff_to_projects(self, riff_id: str, **kwargs: Any) -> dict[str, Any]:
-        return RecommendationRepository(self.database_url).match_riff(riff_id, limit=int(kwargs.get("limit", 3)))
+        return RecommendationRepository(self.database_url).match_riff(self._resolve_riff_reference(riff_id), limit=int(kwargs.get("limit", 3)))
 
     def _propose_extension(self, recommendation_id: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
         self._require_confirmation(confirmation_token)

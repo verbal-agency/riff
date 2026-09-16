@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import date
 
 import pytest
@@ -6,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from riff.adapter import AdapterError, RiffToolAdapter, USER_CONFIRMATION_TOKEN
 from riff.api import create_app
-from riff.chat_loop import ChatToolLoop, ScriptedModelClient, load_chat_fixture
+from riff.chat_loop import ChatToolLoop, ConversationSession, ScriptedModelClient, load_chat_fixture
 from riff.config import Settings
 from riff.daily import load_fixture, run_fixture
 from riff.db import connection, migrate
@@ -107,3 +108,44 @@ def test_chat_tool_loop_uses_persisted_adapter_state(graph):
     assert result.trace[0].name == "daily_riffs"
     assert result.trace[0].result["tool"] == "daily_riffs"
     assert len(result.trace[0].result["result"]["riffs"]) == 3
+
+
+@pytest.mark.postgres
+def test_missing_daily_date_returns_latest_context_without_fabricating_today(graph):
+    database_url, _ = graph
+    result = RiffToolAdapter(database_url).call("daily_riffs", {"run_date": "2026-09-15"})["result"]
+    assert result["status"] == "NOT_FOUND"
+    assert result["requested_date"] == "2026-09-15"
+    assert result["latest_available"]["run_date"] == "2026-09-14"
+    assert result["latest_available"]["riffs"]
+    assert "riff_id" not in json.dumps(result)
+    investigated = RiffToolAdapter(database_url).call("investigate_riff", {"riff_id": "the top Riff"})["result"]
+    assert investigated["riff"]["underlying_capability"] == "durable-agent-execution"
+    alternatives = RiffToolAdapter(database_url).call("alternate_riffs", {"riff_id": "the top Riff"})["result"]
+    assert alternatives["status"] == "ALTERNATIVES"
+    assert all(item["underlying_capability"] != "durable-agent-execution" for item in alternatives["results"])
+    mapping = RiffToolAdapter(database_url).call(
+        "map_riff_to_scenario",
+        {"riff_id": "the top Riff", "scenario": "recover a durable agent workflow after interruption"},
+    )["result"]
+    assert mapping["fit"] in {"DIRECT", "PARTIAL"}
+
+
+@pytest.mark.postgres
+def test_natural_session_resolves_handles_against_persisted_state(graph):
+    database_url, riffs = graph
+    model = ScriptedModelClient([
+        {"tool_calls": [{"name": "daily_riffs", "arguments": {"run_date": "2026-09-14"}}]},
+        {"content": "The top Riff is durable execution."},
+        {"tool_calls": [{"name": "investigate_riff", "arguments": {"riff_id": "the top Riff"}}]},
+        {"content": "The evidence is fixture-only and should not be promoted."},
+    ])
+    session = ConversationSession(model, RiffToolAdapter(database_url))
+    assert session.turn("What is today's top concept?").status == "SUCCEEDED"
+    result = session.turn("Investigate the top Riff.")
+    assert result.status == "SUCCEEDED"
+    assert model.calls[3]["messages"][-1]["role"] == "tool"
+    assert "top Riff" in model.calls[3]["messages"][-1]["content"]
+    assert riffs[0] not in model.calls[3]["messages"][-1]["content"]
+    with connection(database_url) as conn:
+        assert conn.execute("SELECT count(*) FROM riff_decisions").fetchone()[0] == 0

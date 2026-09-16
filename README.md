@@ -418,6 +418,18 @@ bounded network timeouts, and rotation without logging the token. The connector
 does not retry calls, so mutation disconnects cannot be silently duplicated;
 Riff remains the system of record.
 
+For multi-turn local dogfooding, use the conversation session in the provider-
+neutral loop. It keeps labels such as “the top Riff” within a bounded session,
+so follow-up questions do not require users to copy UUIDs. Ambiguous or stale
+references produce a clarification error; canonical IDs remain available in
+the trace for audit and restart recovery. The same natural-language policy is
+included in the native MCP server instructions.
+
+If a Riff is not useful, ask for another recommendation; the `alternate_riffs`
+operation excludes the current result. To test fit before creating anything,
+describe a concrete workflow and ask Riff to map the selected recommendation to
+that scenario. The mapping is read-only and reports fit plus uncertainty.
+
 ### Native ChatGPT MCP surface (G24a)
 
 `riff api` also mounts the official Python MCP SDK's Streamable HTTP transport

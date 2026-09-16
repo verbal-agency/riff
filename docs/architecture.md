@@ -221,6 +221,18 @@ Loopback HTTP is limited to local dogfooding, while deployment requires HTTPS,
 restricted network origin, and secret-managed token rotation. A future MCP or
 provider SDK can replace the transport without changing Riff's invariants.
 
+## G32 natural-language continuity
+
+`ConversationContext` and `ConversationSession` add a disposable, bounded alias
+layer around the provider-neutral loop. Tool results bind labels such as
+“the top Riff” or “candidate 1” to canonical IDs for the current session; a
+single match resolves silently, while ambiguous or stale labels return typed
+clarification errors. `NaturalLanguageRenderer` sends the model compact
+summaries with citations and uncertainty while retaining raw IDs only in the
+audit trace. Session context is not persisted and can be reconstructed by
+rebinding an explicit persisted ID after restart. Confirmation tokens still
+come only from the outer user boundary.
+
 ## G24a native MCP transport
 
 `src/riff/mcp_server.py` uses the official Python MCP SDK's stateless

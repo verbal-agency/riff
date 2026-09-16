@@ -49,6 +49,7 @@ def test_mcp_initialize_and_list_tools_expose_complete_catalog():
         tools = listed.json()["result"]["tools"]
         assert {item["name"] for item in tools} == {
             "daily_riffs",
+            "alternate_riffs",
             "investigate_riff",
             "search_riffs",
             "profile_lookup",
@@ -66,6 +67,7 @@ def test_mcp_initialize_and_list_tools_expose_complete_catalog():
             "list_projects",
             "inspect_project",
             "match_riff_to_projects",
+            "map_riff_to_scenario",
             "propose_extension",
             "override_recommendation",
             "create_opportunity_context",

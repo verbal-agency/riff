@@ -79,6 +79,9 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
     def daily_riffs(run_date: str) -> dict[str, Any]:
         return dispatch("daily_riffs", {"run_date": run_date})
 
+    def alternate_riffs(riff_id: str) -> dict[str, Any]:
+        return dispatch("alternate_riffs", {"riff_id": riff_id})
+
     def investigate_riff(riff_id: str) -> dict[str, Any]:
         return dispatch("investigate_riff", {"riff_id": riff_id})
 
@@ -139,6 +142,9 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
     def match_riff_to_projects(riff_id: str) -> dict[str, Any]:
         return dispatch("match_riff_to_projects", {"riff_id": riff_id})
 
+    def map_riff_to_scenario(riff_id: str, scenario: str) -> dict[str, Any]:
+        return dispatch("map_riff_to_scenario", {"riff_id": riff_id, "scenario": scenario})
+
     def propose_extension(recommendation_id: str, confirmation_token: str) -> dict[str, Any]:
         return dispatch("propose_extension", {"recommendation_id": recommendation_id, "confirmation_token": confirmation_token})
 
@@ -168,6 +174,7 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
 
     functions = {
         "daily_riffs": daily_riffs,
+        "alternate_riffs": alternate_riffs,
         "investigate_riff": investigate_riff,
         "search_riffs": search_riffs,
         "profile_lookup": profile_lookup,
@@ -185,6 +192,7 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "list_projects": list_projects,
         "inspect_project": inspect_project,
         "match_riff_to_projects": match_riff_to_projects,
+        "map_riff_to_scenario": map_riff_to_scenario,
         "propose_extension": propose_extension,
         "override_recommendation": override_recommendation,
         "create_opportunity_context": create_opportunity_context,
@@ -212,7 +220,9 @@ def create_mcp_server(settings: Settings) -> FastMCP:
         "Riff",
         instructions=(
             "Riff is a bounded capability-intelligence system. Read tools are safe to repeat. "
-            "Promotion tools require explicit user confirmation and durable Riff state; never invent IDs."
+            "Promotion tools require explicit user confirmation and durable Riff state; never invent IDs. "
+            "Keep stable IDs and tool names internal to the conversation, use prior results to resolve follow-up "
+            "references, and ask for clarification rather than guessing an ambiguous or stale reference."
         ),
         streamable_http_path="/mcp",
         json_response=True,
