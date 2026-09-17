@@ -72,6 +72,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G34](G34-github-source-monitoring-and-quantitative-discovery.md) | Monitor selected repositories and run quantitative GitHub discovery | G18, G20, G25, G26, G33 |
 | [G35](G35-data-origin-ownership-and-retention.md) | Govern data origin, fixture ownership, retention, and safe cleanup | G22, G27, G30, G31 |
 | [G36](G36-personalized-github-guidance-and-memory.md) | Turn monitored GitHub changes into personalized guidance and durable memory | G26, G27, G32, G33, G34, G35 |
+| [G37](G37-goal-aware-project-guidance.md) | Make project goals first-class and guide goal advancement naturally | G26, G27, G28, G32, G36 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -110,6 +111,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | User-authorized GitHub account observation and project selection | G33 |
 | Selected-repository monitoring and quantitative discovery | G34 |
 | Personalized repository guidance and bounded memory | G36 |
+| Goal-aware project guidance and natural goal advancement | G37 |
 
 ## Canonical project scenarios
 
@@ -142,6 +144,7 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-GITHUB-ACCOUNT-001` — Riff observes a user-authorized GitHub account, presents bounded repository candidates, and onboards only explicitly selected projects.
 - `SC-GITHUB-MONITOR-001` — Riff monitors selected repositories and queues bounded, quantitatively qualified discovery candidates without silently enabling collection.
 - `SC-PERSONALIZED-GITHUB-001` — Riff explains meaningful changes in a selected repository, connects them to the user's bounded project/profile context, and records inspectable guidance feedback without treating ownership as proficiency.
+- `SC-GOAL-GUIDANCE-001` — Riff connects an explicitly selected project goal to relevant Riff evidence and offers natural, bounded paths to advance it without confusing repositories with files.
 
 ## Current handoff
 
@@ -198,8 +201,12 @@ and reviewable retention without deleting live provenance. G36 is complete: it
 turns monitored deltas into personalized, evidence-backed guidance through
 separate evidence, project, decision, guidance, and disposable-conversation
 memory layers; it does not infer proficiency or persist unbounded conversation
-history. The remaining human usefulness comparison is routed to
-`BL-G36-001`.
+history. The remaining human usefulness comparison is carried into G37's
+comparison criterion.
+
+G37 is ready: make explicit project goals first-class, keep repositories
+distinct from their files, and let a natural “help me make progress” request
+combine a selected goal with the relevant Riff evidence and bounded guidance.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots

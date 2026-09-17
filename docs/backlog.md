@@ -63,16 +63,3 @@ goal only when the next development slice is selected.
 - **Destination:** Test infrastructure/data-quality hardening; no production
   matching change is required while provider IDs remain unique.
 - **Priority:** High before the G27 usefulness review is finalized.
-
-## BL-G36-001 — Human-evaluate personalized guidance
-
-- **Source:** G36 completion; protocol and replay checks are automated, but
-  comparing usefulness with an unpersonalized recommendation requires the
-  operator's judgment on one explicitly selected repository.
-- **Gap:** No live dogfood comparison was performed in this cycle.
-- **Next step:** Run `riff github guidance inspect` and the equivalent generic
-  recommendation for one selected project, then record whether bounded project
-  context produced a more useful next action.
-- **Destination:** Follow-up dogfood evaluation; do not change the guidance
-  contract unless the comparison identifies a concrete failure.
-- **Priority:** Medium.
