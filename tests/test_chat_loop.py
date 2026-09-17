@@ -32,6 +32,8 @@ def test_tool_definitions_are_typed_and_annotate_mutations():
     assert daily["parameters"]["required"] == ["run_date"]
     assert daily["annotations"] == {"mutating": False, "requires_explicit_confirmation": False}
     assert create["annotations"] == {"mutating": True, "requires_explicit_confirmation": True}
+    goal_decision = next(item for item in definitions if item["name"] == "github_project_goal_decision")
+    assert goal_decision["annotations"] == {"mutating": True, "requires_explicit_confirmation": True}
 
 
 def test_daily_tool_loop_returns_final_model_text_and_trace():

@@ -20,6 +20,7 @@ from .project_map import ProjectMapRepository
 from .github_account import GitHubAccountError, GitHubAccountRepository
 from .github_monitoring import GitHubMonitoringError, GitHubMonitoringRepository
 from .github_guidance import GuidanceError, GitHubGuidanceRepository
+from .project_goals import ProjectGoalError, ProjectGoalRepository
 from .opportunities import OpportunityError, OpportunityRepository, build_execution_candidates, compare_candidates, extract_context, riff_candidate
 
 
@@ -57,6 +58,9 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "github_guidance": {"description": "Explain recent changes in a selected GitHub project and rank bounded next actions.", "required": ("project",)},
     "github_memory_audit": {"description": "Inspect redacted project guidance versions and feedback memory.", "required": ("project",)},
     "github_guidance_feedback": {"description": "Record explicit acceptance, rejection, deferral, or correction of guidance.", "required": ("guidance_id", "decision", "reason", "confirmation_token")},
+    "github_project_goals": {"description": "Read the bounded explicit goals for a selected GitHub project; repository identity and files remain distinct.", "required": ("project",)},
+    "github_goal_guidance": {"description": "Compare bounded ways to advance one named project goal using relevant Riff and project evidence.", "required": ("project", "goal")},
+    "github_project_goal_decision": {"description": "Record an explicit append-only project-goal decision after confirmation.", "required": ("goal_version_id", "event_type", "reason", "confirmation_token")},
     "propose_extension": {"description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.", "required": ("recommendation_id", "confirmation_token")},
     "override_recommendation": {"description": "Override a project recommendation with an explicit greenfield or defer choice.", "required": ("recommendation_id", "disposition", "reason", "confirmation_token")},
     "create_opportunity_context": {"description": "Extract and persist a bounded opportunity context plus execution candidates from structured input.", "required": ("source_url", "payload")},
@@ -90,7 +94,7 @@ class RiffToolAdapter:
             raise AdapterError(f"missing required tool arguments: {', '.join(missing)}")
         try:
             result = getattr(self, f"_{name}")(**args)
-        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, GitHubAccountError, GitHubMonitoringError, GuidanceError, ValueError) as exc:
+        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, GitHubAccountError, GitHubMonitoringError, GuidanceError, ProjectGoalError, ValueError) as exc:
             raise AdapterError(str(exc)) from exc
         return {"tool": name, "result": result}
 
@@ -294,6 +298,19 @@ class RiffToolAdapter:
         if confirmation_token != USER_CONFIRMATION_TOKEN:
             raise GuidanceError("guidance feedback requires USER_CONFIRMED")
         return GitHubGuidanceRepository(self.database_url).feedback(guidance_id, decision, reason, correction=kwargs.get("correction"), actor=str(kwargs.get("actor", "user")))
+
+    def _github_project_goals(self, project: str, **kwargs: Any) -> dict[str, Any]:
+        return ProjectGoalRepository(self.database_url).refresh(project)
+
+    def _github_goal_guidance(self, project: str, goal: str, **kwargs: Any) -> dict[str, Any]:
+        goals = ProjectGoalRepository(self.database_url)
+        selected = goals.get_goal(project, goal)
+        guidance = GitHubGuidanceRepository(self.database_url).analyze(project, profile=kwargs.get("profile"), decisions=kwargs.get("decisions", ()), opportunity=kwargs.get("opportunity"))
+        from .project_goals import rank_goal_guidance
+        return {"project": guidance["project"], "goal": selected, "delta": guidance["delta"], "guidance": rank_goal_guidance(selected, delta=guidance["delta"], project=guidance["project"], profile=kwargs.get("profile"), decisions=kwargs.get("decisions", ()), opportunity=kwargs.get("opportunity"))}
+
+    def _github_project_goal_decision(self, goal_version_id: str, event_type: str, reason: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
+        return ProjectGoalRepository(self.database_url).record_decision(goal_version_id, event_type, reason, confirmation_token=confirmation_token, actor=str(kwargs.get("actor", "user")))
 
     def _record_decision(self, riff_id: str, decision: str, reason: str, **kwargs: Any) -> dict[str, Any]:
         result = DecisionRepository(self.database_url).record_decision(self._resolve_riff_reference(riff_id), decision, reason, actor=str(kwargs.get("actor", "user")), actor_kind=str(kwargs.get("actor_kind", "USER")), structured_reason=kwargs.get("structured_reason"))

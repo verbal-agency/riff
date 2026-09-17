@@ -1,0 +1,30 @@
+{
+  "project": {
+    "project_id": "project-caduceus",
+    "repository": "verbal-agency/caduceus",
+    "purpose": "governed institutional transactions"
+  },
+  "artifacts": [
+    {
+      "evidence_id": "evidence-roadmap",
+      "artifact_type": "README_CHANGE",
+      "title": "Roadmap",
+      "canonical_url": "https://github.com/verbal-agency/caduceus/blob/main/README.md",
+      "content": "## Goal 10 — Finish the narrow single-agent vertical slice (active)\n## MA-0 — Define institutional identity and trust boundaries (planned)\nThis paragraph is context, not a goal."
+    },
+    {
+      "evidence_id": "evidence-issue",
+      "artifact_type": "ISSUE",
+      "title": "Implement deterministic authority boundary",
+      "canonical_url": "https://github.com/verbal-agency/caduceus/issues/10",
+      "content": "Next step: make undeclared actions fail closed."
+    },
+    {
+      "evidence_id": "evidence-file",
+      "artifact_type": "FILE",
+      "title": "README.md",
+      "canonical_url": "https://github.com/verbal-agency/caduceus/blob/main/README.md",
+      "content": "Caduceus is a governed healthcare workflow."
+    }
+  ]
+}

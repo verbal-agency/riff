@@ -336,6 +336,22 @@ Guidance and audits are read-only; feedback requires the existing
 `USER_CONFIRMED` token. Ambiguous project references fail closed and no action
 creates an Exploration or mutates profile state.
 
+## G37 goal-aware project guidance
+
+`src/riff/project_goals.py` extracts only explicit goal, milestone, roadmap, and
+next-step statements from bounded G26 artifacts. A goal projection carries its
+source evidence, observed timestamp, parser/policy versions, and fingerprint;
+changed wording creates a linked version in `github_project_goal_versions`.
+`github_project_goal_events` stores user prioritization, completion, archival,
+and correction decisions append-only and requires `USER_CONFIRMED` at the
+adapter boundary. Repository identity is resolved separately from artifact
+filenames and accepts `owner/name` or canonical URL references.
+
+Goal guidance composes one selected projection with the G36 delta and optional
+profile, decision, and opportunity slices. It returns at most three typed paths
+and explicitly surfaces synthetic, stale, contradictory, or missing evidence
+as uncertainty rather than proficiency claims.
+
 ## G27 project-aware recommendations
 
 `src/riff/recommendations.py` compares a bounded Riff/profile slice with

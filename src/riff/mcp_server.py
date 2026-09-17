@@ -38,6 +38,7 @@ _MUTATING_TOOLS = {
     "github_monitor_disable",
     "github_search_review",
     "github_guidance_feedback",
+    "github_project_goal_decision",
 }
 
 
@@ -189,6 +190,15 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
     def github_guidance_feedback(guidance_id: str, decision: str, reason: str, confirmation_token: str, correction: dict[str, Any] | None = None) -> dict[str, Any]:
         return dispatch("github_guidance_feedback", {"guidance_id": guidance_id, "decision": decision, "reason": reason, "confirmation_token": confirmation_token, "correction": correction or {}})
 
+    def github_project_goals(project: str) -> dict[str, Any]:
+        return dispatch("github_project_goals", {"project": project})
+
+    def github_goal_guidance(project: str, goal: str, profile: dict[str, Any] | None = None, decisions: list[dict[str, Any]] | None = None, opportunity: dict[str, Any] | None = None) -> dict[str, Any]:
+        return dispatch("github_goal_guidance", {"project": project, "goal": goal, "profile": profile, "decisions": decisions or [], "opportunity": opportunity})
+
+    def github_project_goal_decision(goal_version_id: str, event_type: str, reason: str, confirmation_token: str) -> dict[str, Any]:
+        return dispatch("github_project_goal_decision", {"goal_version_id": goal_version_id, "event_type": event_type, "reason": reason, "confirmation_token": confirmation_token})
+
     def propose_extension(recommendation_id: str, confirmation_token: str) -> dict[str, Any]:
         return dispatch("propose_extension", {"recommendation_id": recommendation_id, "confirmation_token": confirmation_token})
 
@@ -248,6 +258,9 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "github_guidance": github_guidance,
         "github_memory_audit": github_memory_audit,
         "github_guidance_feedback": github_guidance_feedback,
+        "github_project_goals": github_project_goals,
+        "github_goal_guidance": github_goal_guidance,
+        "github_project_goal_decision": github_project_goal_decision,
         "propose_extension": propose_extension,
         "override_recommendation": override_recommendation,
         "create_opportunity_context": create_opportunity_context,

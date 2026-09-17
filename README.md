@@ -246,6 +246,23 @@ not rewrite evidence or project snapshots. The ChatGPT MCP surface exposes the
 same `github_guidance`, `github_memory_audit`, and
 `github_guidance_feedback` operations.
 
+### Goal-aware project guidance
+
+G37 keeps explicit project goals separate from repositories and their files,
+then compares bounded ways to advance one goal using the latest Riff evidence.
+Project references accept a display name, `owner/repository`, or canonical URL.
+
+```sh
+uv run riff github goals refresh --project Caduceus
+uv run riff github goals list --project Caduceus
+uv run riff github goals guidance --project Caduceus --goal "Goal 10"
+uv run riff github goals decision --goal-version-id <goal-version-id> --event-type PRIORITIZED --reason "This is the next slice." --confirm USER_CONFIRMED
+```
+
+The MCP surface exposes `github_project_goals`, `github_goal_guidance`, and
+`github_project_goal_decision`. Extraction is bounded to explicit roadmap/goal
+language; corrections and priority changes are append-only.
+
 ### Opportunity context and execution riffing
 
 G28 keeps an opportunity's actors, workflow, platforms, connectors, permissions,

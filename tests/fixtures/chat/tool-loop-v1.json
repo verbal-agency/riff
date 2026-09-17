@@ -159,6 +159,21 @@
       "required": ["guidance_id", "decision", "reason", "confirmation_token"]
     },
     {
+      "name": "github_project_goals",
+      "description": "Read the bounded explicit goals for a selected GitHub project.",
+      "required": ["project"]
+    },
+    {
+      "name": "github_goal_guidance",
+      "description": "Compare bounded ways to advance one named project goal.",
+      "required": ["project", "goal"]
+    },
+    {
+      "name": "github_project_goal_decision",
+      "description": "Record an explicit append-only project-goal decision after confirmation.",
+      "required": ["goal_version_id", "event_type", "reason", "confirmation_token"]
+    },
+    {
       "name": "propose_extension",
       "description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.",
       "required": ["recommendation_id", "confirmation_token"]

@@ -124,7 +124,7 @@ class ConversationContext:
         "riff_id": "riff", "evidence_id": "evidence", "exploration_id": "exploration",
         "experiment_id": "experiment", "project_id": "project", "run_id": "run",
         "recommendation_id": "recommendation", "opportunity_id": "opportunity",
-        "candidate_id": "candidate", "source_id": "source",
+        "candidate_id": "candidate", "source_id": "source", "goal_version_id": "goal",
     }
 
     def __init__(self, *, max_bindings: int = 64):
@@ -210,6 +210,8 @@ class ConversationContext:
                 self._observe_items("experiment", value, "experiment")
             elif field in {"projects", "recommendations"}:
                 self._observe_items(field.rstrip("s"), value, field.rstrip("s"))
+            elif field == "goals":
+                self._observe_items("goal", value, "goal")
             elif field in {"strongest_evidence", "counterevidence", "evidence"}:
                 self._observe_items("evidence", value, field.replace("_", " "))
             elif field.endswith("_ids"):
@@ -226,7 +228,7 @@ class ConversationContext:
         for index, item in enumerate(items, 1):
             if not isinstance(item, Mapping):
                 continue
-            field = f"{kind}_id"
+            field = "goal_version_id" if kind == "goal" else f"{kind}_id"
             identifier = item.get(field)
             if not isinstance(identifier, str):
                 continue
@@ -290,6 +292,7 @@ MUTATING_TOOLS = {
     "create_opportunity_context",
     "riff_execution_candidate",
     "select_execution_direction",
+    "github_project_goal_decision",
 }
 
 

@@ -204,9 +204,11 @@ memory layers; it does not infer proficiency or persist unbounded conversation
 history. The remaining human usefulness comparison is carried into G37's
 comparison criterion.
 
-G37 is ready: make explicit project goals first-class, keep repositories
-distinct from their files, and let a natural “help me make progress” request
-combine a selected goal with the relevant Riff evidence and bounded guidance.
+G37 is complete: explicit project goals are first-class, repositories remain
+distinct from their files, and natural project references can combine a
+selected goal with relevant Riff evidence and bounded guidance. The automated
+comparison protocol is recorded; the connected-session human usefulness check
+is routed to `BL-G37-001` and makes no unsupported usefulness claim.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots

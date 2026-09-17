@@ -130,12 +130,16 @@ class GitHubGuidanceRepository:
         if not value:
             raise GuidanceError("project reference is required")
         with connection(self.database_url) as conn:
-            rows = conn.execute("SELECT project_id,provider_repository_id,display_name,purpose,status FROM github_project_inventory WHERE project_id=%s OR lower(display_name)=lower(%s) OR provider_repository_id=%s", (value, value, value)).fetchall()
+            rows = conn.execute("""SELECT i.project_id,i.provider_repository_id,i.display_name,i.purpose,i.status,r.owner_login,r.name,r.canonical_url
+                FROM github_project_inventory i JOIN github_repositories r USING (provider_repository_id)
+                WHERE i.project_id=%s OR lower(i.display_name)=lower(%s) OR i.provider_repository_id=%s
+                   OR lower(r.owner_login||'/'||r.name)=lower(%s) OR lower(r.canonical_url)=lower(%s)""", (value, value, value, value, value)).fetchall()
         if not rows:
             raise GuidanceError("project not found")
         if len(rows) > 1:
-            raise GuidanceError("project reference is ambiguous; use the displayed project name with more context")
-        return {"project_id": _text(rows[0][0]), "provider_repository_id": _text(rows[0][1]), "display_name": _text(rows[0][2]), "purpose": _text(rows[0][3]) or None, "status": _text(rows[0][4])}
+            choices = sorted({_text(row[5]) + "/" + _text(row[6]) for row in rows})[:5]
+            raise GuidanceError("project reference is ambiguous; choose one of: " + ", ".join(choices))
+        return {"project_id": _text(rows[0][0]), "provider_repository_id": _text(rows[0][1]), "display_name": _text(rows[0][2]), "purpose": _text(rows[0][3]) or None, "status": _text(rows[0][4]), "repository": _text(rows[0][5]) + "/" + _text(rows[0][6]), "canonical_url": _text(rows[0][7])}
 
     def _snapshots(self, project_id: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         with connection(self.database_url) as conn:

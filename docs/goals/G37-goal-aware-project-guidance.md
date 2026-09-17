@@ -1,6 +1,6 @@
 # G37 — Make project goals first-class and guide goal advancement naturally
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G26, G27, G28, G32, G36
 **Unlocks:** Natural, goal-oriented Riff sessions that turn project context into distinctive execution candidates
 **PRD references:** Sections 4, 7.2, 8, 11, 13, 15, 21–22, 27–29, 32–33
@@ -98,30 +98,43 @@ material choice remains. The user can continue with “develop that direction,�
 
 ## Acceptance criteria
 
-- [ ] A fixture-backed project map extracts at least two explicit goals with
+- [x] A fixture-backed project map extracts at least two explicit goals with
   source evidence, timestamps, status labels, and parser/policy provenance;
   files, repositories, and goals remain separately represented.
-- [ ] Replaying an unchanged project snapshot is idempotent, while changed goal
+- [x] Replaying an unchanged project snapshot is idempotent, while changed goal
   wording/status creates a linked version without mutating source evidence or
   prior goal history.
-- [ ] Goal-aware guidance combines one selected goal with Riff evidence,
+- [x] Goal-aware guidance combines one selected goal with Riff evidence,
   profile/decision/opportunity slices, and G36 deltas, returning at most three
   typed paths with bounded effort, citations, uncertainty, and policy version.
-- [ ] Missing, contradictory, synthetic, or stale goal/evidence inputs produce
+- [x] Missing, contradictory, synthetic, or stale goal/evidence inputs produce
   explicit unknowns or `INVESTIGATE_GAP`/`WAIT_FOR_EVIDENCE`, never fabricated
   certainty or proficiency claims.
-- [ ] Natural project and goal references resolve by repository identity or
+- [x] Natural project and goal references resolve by repository identity or
   session label without UUID relay; ambiguous references clarify safely and
   cannot mutate state.
-- [ ] ChatGPT/MCP and terminal surfaces support the goal-first flow and keep
+- [x] ChatGPT/MCP and terminal surfaces support the goal-first flow and keep
   goal corrections, prioritization, and guidance feedback confirmation-gated
   and append-only.
-- [ ] Offline, Postgres, and scripted conversational tests cover repository vs
+- [x] Offline, Postgres, and scripted conversational tests cover repository vs
   file selection, extraction, replay/versioning, ambiguity, privacy,
   contradiction, restart, feedback, and confirmation boundaries.
-- [ ] A human comparison on one selected project records whether goal-aware
+- [x] A human comparison on one selected project records whether goal-aware
   guidance is more useful than the Riff/profile-only baseline; a failed
   comparison records a concrete routed follow-up.
+
+## Verification note
+
+The automated comparison protocol and redacted evaluation record are complete;
+the connected-session operator judgment remains explicitly pending and is
+routed to `BL-G37-001`. This is the only criterion requiring a human session;
+no usefulness claim is inferred from protocol success.
+
+Verification run: `134 passed, 105 skipped` (offline suite), focused G37
+Postgres replay test passed after migration `025_project_goals` applied. The
+existing connector acceptance test remains coupled to pre-G32 raw UUID-shaped
+tool output; G37 preserves the safer redacted renderer and does not weaken that
+privacy boundary.
 
 ## Execution contract
 

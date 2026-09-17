@@ -63,3 +63,13 @@ goal only when the next development slice is selected.
 - **Destination:** Test infrastructure/data-quality hardening; no production
   matching change is required while provider IDs remain unique.
 - **Priority:** High before the G27 usefulness review is finalized.
+
+## BL-G37-001 — Human comparison of goal-aware guidance
+
+- **Source:** G37 automated implementation; operator comparison remains
+  intentionally pending.
+- **Next step:** Compare one selected project goal against the G36
+  profile-only baseline and record relevance, actionability, distinctiveness,
+  and uncertainty honesty. Route any failed dimension to a concrete follow-up.
+- **Destination:** Next connected dogfood session.
+- **Priority:** Medium.

@@ -40,6 +40,7 @@ from .project_map import ProjectMapError, ProjectMapRepository
 from .github_account import AccountScope, FixtureAccountFetcher, GitHubAccountError, GitHubAccountRepository
 from .github_monitoring import GitHubMonitoringError, GitHubMonitoringRepository, QuantitativeRule, evaluate_quantitative_search
 from .github_guidance import GuidanceError, GitHubGuidanceRepository
+from .project_goals import ProjectGoalError, ProjectGoalRepository
 from .github_discovery import (
     DiscoveryPolicyError,
     FixtureDiscoveryFetcher,
@@ -224,6 +225,20 @@ def build_parser() -> argparse.ArgumentParser:
     guidance_audit = guidance_subparsers.add_parser("audit", help="export redacted project memory audit")
     guidance_audit.add_argument("--project", required=True)
     guidance_audit.add_argument("--limit", type=int, default=10)
+    goals = github_subparsers.add_parser("goals", help="extract and guide explicit goals for a GitHub project")
+    goals_subparsers = goals.add_subparsers(dest="goals_command", required=True)
+    goals_refresh = goals_subparsers.add_parser("refresh", help="extract versioned goals from the latest project surfaces")
+    goals_refresh.add_argument("--project", required=True)
+    goals_list = goals_subparsers.add_parser("list", help="list the latest explicit goals")
+    goals_list.add_argument("--project", required=True)
+    goals_guidance = goals_subparsers.add_parser("guidance", help="compare paths for one goal")
+    goals_guidance.add_argument("--project", required=True)
+    goals_guidance.add_argument("--goal", required=True)
+    goals_decision = goals_subparsers.add_parser("decision", help="record an explicit goal decision")
+    goals_decision.add_argument("--goal-version-id", required=True)
+    goals_decision.add_argument("--event-type", choices=["PRIORITIZED", "COMPLETED", "ARCHIVED", "CORRECTED", "REACTIVATED"], required=True)
+    goals_decision.add_argument("--reason", required=True)
+    goals_decision.add_argument("--confirm", required=True, help="type USER_CONFIRMED")
     search = github_subparsers.add_parser("search", help="run a bounded quantitative discovery rule")
     search.add_argument("--query", required=True)
     search.add_argument("--file", required=True, help="JSON file containing a candidates list")
@@ -513,6 +528,24 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except (OSError, ValueError, GuidanceError) as exc:
             raise SystemExit(f"GitHub guidance error: {exc}") from exc
+    if args.command == "github" and args.github_command == "goals":
+        try:
+            repository = ProjectGoalRepository(Settings.from_env().database_url)
+            if args.goals_command == "refresh":
+                result = repository.refresh(args.project)
+            elif args.goals_command == "list":
+                result = repository.list(args.project)
+            elif args.goals_command == "guidance":
+                selected = repository.get_goal(args.project, args.goal)
+                guidance_result = GitHubGuidanceRepository(Settings.from_env().database_url).analyze(args.project)
+                from .project_goals import rank_goal_guidance
+                result = {"project": guidance_result["project"], "goal": selected, "delta": guidance_result["delta"], "guidance": rank_goal_guidance(selected, delta=guidance_result["delta"], project=guidance_result["project"])}
+            else:
+                result = repository.record_decision(args.goal_version_id, args.event_type, args.reason, confirmation_token=args.confirm)
+            print(json.dumps(result, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError, ProjectGoalError, GuidanceError) as exc:
+            raise SystemExit(f"GitHub goals error: {exc}") from exc
     if args.command == "github" and args.github_command == "search":
         try:
             payload = json.loads(Path(args.file).read_text(encoding="utf-8"))
