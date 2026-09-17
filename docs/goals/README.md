@@ -73,6 +73,8 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G35](G35-data-origin-ownership-and-retention.md) | Govern data origin, fixture ownership, retention, and safe cleanup | G22, G27, G30, G31 |
 | [G36](G36-personalized-github-guidance-and-memory.md) | Turn monitored GitHub changes into personalized guidance and durable memory | G26, G27, G32, G33, G34, G35 |
 | [G37](G37-goal-aware-project-guidance.md) | Make project goals first-class and guide goal advancement naturally | G26, G27, G28, G32, G36 |
+| [G38](G38-raw-signal-ingestion-expansion.md) | Expand the raw-signal ingestion base for operational AI and executable science | G02, G03, G05, G16, G17, G19, G20, G21, G25, G31, G34 |
+| [G39](G39-riffing-context-optimization.md) | Optimize conversational riffing context and measure token/usefulness trade-offs | G23, G24a, G32, G36, G37, G38 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -112,6 +114,8 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Selected-repository monitoring and quantitative discovery | G34 |
 | Personalized repository guidance and bounded memory | G36 |
 | Goal-aware project guidance and natural goal advancement | G37 |
+| Raw signals for operational AI reliability and executable scientific methods | G38 |
+| Bounded, measurable conversational context and retrieval efficiency | G39 |
 
 ## Canonical project scenarios
 
@@ -145,6 +149,8 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-GITHUB-MONITOR-001` — Riff monitors selected repositories and queues bounded, quantitatively qualified discovery candidates without silently enabling collection.
 - `SC-PERSONALIZED-GITHUB-001` — Riff explains meaningful changes in a selected repository, connects them to the user's bounded project/profile context, and records inspectable guidance feedback without treating ownership as proficiency.
 - `SC-GOAL-GUIDANCE-001` — Riff connects an explicitly selected project goal to relevant Riff evidence and offers natural, bounded paths to advance it without confusing repositories with files.
+- `SC-RAW-SIGNAL-001` — Riff ingests incident/postmortem, paper/code/data, benchmark, changelog, and GitHub discussion signals with provenance and correlation controls, without synthesizing a recommendation.
+- `SC-RIFF-CONTEXT-001` — Riff retrieves a compact, diverse evidence/project/goal packet for conversational riffing, supports natural expansion, and reports token/usefulness trade-offs.
 
 ## Current handoff
 
@@ -209,6 +215,11 @@ distinct from their files, and natural project references can combine a
 selected goal with relevant Riff evidence and bounded guidance. The automated
 comparison protocol is recorded; the connected-session human usefulness check
 is routed to `BL-G37-001` and makes no unsupported usefulness claim.
+
+G38 is next: expand the raw-signal base for operational AI reliability and
+executable scientific methods while keeping ingestion separate from
+conversation-driven synthesis. G39 follows: optimize which bounded slices
+reach the model and measure token cost against usefulness.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots
