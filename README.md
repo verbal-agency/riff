@@ -279,6 +279,19 @@ uv run riff raw-signals ingest --file tests/fixtures/raw_signals/g38-v1.json
 User-supplied and secondary material is retained as a lead with explicit
 uncertainty; it cannot count as an independent evidence root until validated.
 
+### Bounded riffing context
+
+G39 retrieves compact, diverse evidence packets instead of placing raw source
+documents in model context:
+
+```sh
+uv run riff context packet --query "agent incident recovery"
+```
+
+Packets expose omitted evidence, uncertainty, source diversity, and estimated
+usage. A follow-up can request another page without repeating already-seen
+receipts or bypassing conversation limits.
+
 ### Opportunity context and execution riffing
 
 G28 keeps an opportunity's actors, workflow, platforms, connectors, permissions,

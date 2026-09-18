@@ -21,6 +21,7 @@ from .github_account import GitHubAccountError, GitHubAccountRepository
 from .github_monitoring import GitHubMonitoringError, GitHubMonitoringRepository
 from .github_guidance import GuidanceError, GitHubGuidanceRepository
 from .project_goals import ProjectGoalError, ProjectGoalRepository
+from .context_packet import ContextPacketError, ContextPacketRepository
 from .opportunities import OpportunityError, OpportunityRepository, build_execution_candidates, compare_candidates, extract_context, riff_candidate
 
 
@@ -61,6 +62,7 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "github_project_goals": {"description": "Read the bounded explicit goals for a selected GitHub project; repository identity and files remain distinct.", "required": ("project",)},
     "github_goal_guidance": {"description": "Compare bounded ways to advance one named project goal using relevant Riff and project evidence.", "required": ("project", "goal")},
     "github_project_goal_decision": {"description": "Record an explicit append-only project-goal decision after confirmation.", "required": ("goal_version_id", "event_type", "reason", "confirmation_token")},
+    "riff_context_packet": {"description": "Retrieve a compact, diverse evidence packet for conversational riffing with bounded usage estimates.", "required": ("query",)},
     "propose_extension": {"description": "Accept an extension recommendation and create a targeted Exploration after explicit user confirmation.", "required": ("recommendation_id", "confirmation_token")},
     "override_recommendation": {"description": "Override a project recommendation with an explicit greenfield or defer choice.", "required": ("recommendation_id", "disposition", "reason", "confirmation_token")},
     "create_opportunity_context": {"description": "Extract and persist a bounded opportunity context plus execution candidates from structured input.", "required": ("source_url", "payload")},
@@ -94,7 +96,7 @@ class RiffToolAdapter:
             raise AdapterError(f"missing required tool arguments: {', '.join(missing)}")
         try:
             result = getattr(self, f"_{name}")(**args)
-        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, GitHubAccountError, GitHubMonitoringError, GuidanceError, ProjectGoalError, ValueError) as exc:
+        except (AdapterError, DecisionError, ExplorationError, PrdError, PipelineError, ProfileValidationError, NormalizationError, RecommendationError, OpportunityError, GitHubAccountError, GitHubMonitoringError, GuidanceError, ProjectGoalError, ContextPacketError, ValueError) as exc:
             raise AdapterError(str(exc)) from exc
         return {"tool": name, "result": result}
 
@@ -311,6 +313,23 @@ class RiffToolAdapter:
 
     def _github_project_goal_decision(self, goal_version_id: str, event_type: str, reason: str, confirmation_token: str, **kwargs: Any) -> dict[str, Any]:
         return ProjectGoalRepository(self.database_url).record_decision(goal_version_id, event_type, reason, confirmation_token=confirmation_token, actor=str(kwargs.get("actor", "user")))
+
+    def _riff_context_packet(self, query: str, **kwargs: Any) -> dict[str, Any]:
+        project = kwargs.get("project")
+        goal = kwargs.get("goal")
+        if isinstance(project, str) and project.strip():
+            project = {"repository": project.strip()}
+        if isinstance(goal, str) and goal.strip():
+            goal = {"title": goal.strip()}
+        return ContextPacketRepository(self.database_url).build(
+            query,
+            project=project if isinstance(project, Mapping) else None,
+            goal=goal if isinstance(goal, Mapping) else None,
+            limit=int(kwargs.get("limit", 5)),
+            char_budget=int(kwargs.get("char_budget", 8000)),
+            page=int(kwargs.get("page", 0)),
+            seen_evidence_ids=kwargs.get("seen_evidence_ids", ()),
+        )
 
     def _record_decision(self, riff_id: str, decision: str, reason: str, **kwargs: Any) -> dict[str, Any]:
         result = DecisionRepository(self.database_url).record_decision(self._resolve_riff_reference(riff_id), decision, reason, actor=str(kwargs.get("actor", "user")), actor_kind=str(kwargs.get("actor_kind", "USER")), structured_reason=kwargs.get("structured_reason"))

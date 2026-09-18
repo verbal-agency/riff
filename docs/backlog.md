@@ -73,3 +73,14 @@ goal only when the next development slice is selected.
   and uncertainty honesty. Route any failed dimension to a concrete follow-up.
 - **Destination:** Next connected dogfood session.
 - **Priority:** Medium.
+
+## BL-G39-001 — Human comparison of bounded riffing context
+
+- **Source:** G39 automated implementation; operator comparison remains
+  intentionally pending.
+- **Next step:** In one connected session, compare the bounded goal-aware
+  packet with the prior broad/profile-only context on relevance, actionability,
+  distinctiveness, uncertainty honesty, and provider/fallback token usage.
+- **Destination:** Next connected dogfood session; route any failed dimension
+  to a concrete ranking, rendering, or budget follow-up.
+- **Priority:** Medium.

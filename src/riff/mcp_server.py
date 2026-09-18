@@ -199,6 +199,9 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
     def github_project_goal_decision(goal_version_id: str, event_type: str, reason: str, confirmation_token: str) -> dict[str, Any]:
         return dispatch("github_project_goal_decision", {"goal_version_id": goal_version_id, "event_type": event_type, "reason": reason, "confirmation_token": confirmation_token})
 
+    def riff_context_packet(query: str, limit: int = 5, char_budget: int = 8000, page: int = 0, project: str | dict[str, Any] = "", goal: str | dict[str, Any] = "", seen_evidence_ids: list[str] | None = None) -> dict[str, Any]:
+        return dispatch("riff_context_packet", {"query": query, "limit": limit, "char_budget": char_budget, "page": page, "project": project, "goal": goal, "seen_evidence_ids": seen_evidence_ids or []})
+
     def propose_extension(recommendation_id: str, confirmation_token: str) -> dict[str, Any]:
         return dispatch("propose_extension", {"recommendation_id": recommendation_id, "confirmation_token": confirmation_token})
 
@@ -261,6 +264,7 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "github_project_goals": github_project_goals,
         "github_goal_guidance": github_goal_guidance,
         "github_project_goal_decision": github_project_goal_decision,
+        "riff_context_packet": riff_context_packet,
         "propose_extension": propose_extension,
         "override_recommendation": override_recommendation,
         "create_opportunity_context": create_opportunity_context,

@@ -1,0 +1,10 @@
+{
+  "query": "agent incident recovery and executable scientific methods",
+  "project": {"repository": "verbal-agency/caduceus", "purpose": "governed agent workflows"},
+  "goal": {"title": "Build a measured recovery artifact", "status": "ACTIVE", "source_evidence_ids": ["goal-evidence-1"]},
+  "candidates": [
+    {"evidence_id": "incident-1", "title": "Agent incident postmortem", "summary": "Trajectory capture and containment after an authority failure.", "raw_content": "full incident body with token=secret-value", "canonical_url": "https://incident.example/postmortem", "source_type": "TECHNICAL_WRITING", "source_name": "Incident Lab", "canonical_root": "incident.example", "evidence_role": "PRIMARY_EVIDENCE", "correlation_group": "incident:lab"},
+    {"evidence_id": "paper-1", "title": "Executable scientific methods", "summary": "A paper turns code and data into typed tools.", "raw_content": "full paper body", "canonical_url": "https://doi.org/example", "source_type": "TECHNICAL_WRITING", "source_name": "Research Institute", "canonical_root": "doi.org", "evidence_role": "PRIMARY_EVIDENCE", "correlation_group": "paper:methods"},
+    {"evidence_id": "mirror-1", "title": "Mirrored incident postmortem", "summary": "Trajectory capture and containment after an authority failure.", "raw_content": "mirror body", "canonical_url": "https://mirror.example/postmortem", "source_type": "TECHNICAL_WRITING", "source_name": "Mirror", "canonical_root": "mirror.example", "evidence_role": "SECONDARY_SYNTHESIS", "correlation_group": "incident:lab"}
+  ]
+}

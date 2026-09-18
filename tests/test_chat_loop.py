@@ -49,6 +49,19 @@ def test_daily_tool_loop_returns_final_model_text_and_trace():
     assert model.calls[1]["messages"][-1]["role"] == "tool"
 
 
+def test_chat_loop_reports_provider_usage_and_fallback_estimates_without_prompt_storage():
+    model = ScriptedModelClient([
+        {"content": "Done.", "usage": {"input_tokens": 11, "output_tokens": 3}},
+    ])
+    result = ChatToolLoop(model, FixtureToolAdapter([], {})).run("Summarize the bounded packet.")
+    assert result.usage["model_turns"] == 1
+    assert result.usage["provider_input_tokens"] == 11
+    assert result.usage["provider_output_tokens"] == 3
+    assert result.usage["estimated_input_tokens"] > 0
+    assert result.usage["estimated_output_tokens"] == 2
+    assert "Summarize the bounded packet." not in json.dumps(result.to_dict())
+
+
 def test_investigation_follow_up_returns_only_fixture_provenance_slice():
     fixture = load_chat_fixture(str(FIXTURE))
     scenario = next(item for item in fixture["scenarios"] if item["id"] == "investigate")

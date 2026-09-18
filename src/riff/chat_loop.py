@@ -68,6 +68,7 @@ class ModelResponse:
     content: str | None = None
     tool_calls: tuple[ModelToolCall, ...] = ()
     finish_reason: str = "stop"
+    usage: Mapping[str, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +103,7 @@ class ChatLoopResult:
     tool_calls: int
     turns: int
     trace: tuple[ToolTrace, ...] = ()
+    usage: dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -110,6 +112,7 @@ class ChatLoopResult:
             "tool_calls": self.tool_calls,
             "turns": self.turns,
             "trace": [asdict(item) for item in self.trace],
+            "usage": dict(self.usage),
         }
 
 
@@ -368,6 +371,7 @@ class ChatToolLoop:
         by_name = {item["name"]: item for item in tools}
         trace: list[ToolTrace] = []
         total_calls = 0
+        usage = {"model_turns": 0, "estimated_input_tokens": 0, "estimated_output_tokens": 0, "provider_input_tokens": 0, "provider_output_tokens": 0}
         deadline = self.clock() + self.policy.max_seconds
 
         for turn in range(1, self.policy.max_turns + 1):
@@ -382,6 +386,12 @@ class ChatToolLoop:
             self._check_deadline(deadline)
             if not isinstance(response, ModelResponse):
                 raise ChatLoopError("model client returned an invalid response", code="INVALID_MODEL_RESPONSE")
+            usage["model_turns"] += 1
+            usage["estimated_input_tokens"] += _estimate_tokens(_encoded_chars(messages))
+            usage["estimated_output_tokens"] += _estimate_tokens(len(response.content or ""))
+            if isinstance(response.usage, Mapping):
+                usage["provider_input_tokens"] += int(response.usage.get("input_tokens", response.usage.get("prompt_tokens", 0)) or 0)
+                usage["provider_output_tokens"] += int(response.usage.get("output_tokens", response.usage.get("completion_tokens", 0)) or 0)
             if response.finish_reason.lower() in {"refusal", "error"}:
                 raise ChatLoopError(
                     (response.content or "model declined the request").strip(),
@@ -404,7 +414,7 @@ class ChatToolLoop:
                 final_text = (response.content or "").strip()
                 if not final_text:
                     raise ChatLoopError("model stopped without a final response")
-                return ChatLoopResult("SUCCEEDED", final_text, total_calls, turn, tuple(trace)), messages
+                return ChatLoopResult("SUCCEEDED", final_text, total_calls, turn, tuple(trace), usage), messages
 
             for call in calls:
                 total_calls += 1
@@ -513,6 +523,11 @@ def _encoded_chars(messages: Sequence[Mapping[str, Any]]) -> int:
     return len(json.dumps(list(messages), sort_keys=True, default=str))
 
 
+def _estimate_tokens(chars: int) -> int:
+    """Deterministic fallback for providers that omit token usage."""
+    return max(1, (int(chars) + 3) // 4)
+
+
 def _compact_context(messages: list[dict[str, Any]], limit: int) -> None:
     """Compact old tool payloads while preserving the conversation protocol.
 
@@ -573,6 +588,7 @@ class ScriptedModelClient:
             content=str(turn["content"]) if turn.get("content") is not None else None,
             tool_calls=calls,
             finish_reason=str(turn.get("finish_reason", "tool_calls" if calls else "stop")),
+            usage=turn.get("usage") if isinstance(turn.get("usage"), Mapping) else None,
         )
 
 

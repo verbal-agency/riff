@@ -82,6 +82,7 @@ from .receipts import KeywordExtractor, ReceiptProcessor, ReceiptRepository
 from .worker import run_worker
 from .writing_ingestion import WritingIngestionRunner
 from .raw_signal_ingestion import RawSignalError, RawSignalIngestionRunner, load_fixture as load_raw_signal_fixture, load_source_manifest as load_raw_signal_manifest
+from .context_packet import ContextPacketError, ContextPacketRepository
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -144,6 +145,16 @@ def build_parser() -> argparse.ArgumentParser:
     raw_signal_ingest = raw_signal_subparsers.add_parser("ingest", help="ingest a reviewed raw-signal fixture")
     raw_signal_ingest.add_argument("--file", required=True)
     raw_signal_ingest.add_argument("--live", action="store_true", help="mark as live only when the source was independently fetched")
+    context = subparsers.add_parser("context", help="build bounded conversational evidence context")
+    context_subparsers = context.add_subparsers(dest="context_command", required=True)
+    context_packet = context_subparsers.add_parser("packet", help="retrieve a compact evidence packet")
+    context_packet.add_argument("--query", required=True)
+    context_packet.add_argument("--limit", type=int, default=5)
+    context_packet.add_argument("--char-budget", type=int, default=8000)
+    context_packet.add_argument("--page", type=int, default=0)
+    context_packet.add_argument("--project")
+    context_packet.add_argument("--goal")
+    context_packet.add_argument("--seen-evidence-id", action="append", default=[])
     github = subparsers.add_parser("github", help="evaluate bounded GitHub discovery")
     github_subparsers = github.add_subparsers(dest="github_command", required=True)
     github_discovery = github_subparsers.add_parser("evaluate-discovery", help="evaluate a recorded discovery benchmark")
@@ -463,6 +474,15 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         except (OSError, ValueError, RawSignalError) as exc:
             raise SystemExit(f"raw signal error: {exc}") from exc
+    if args.command == "context" and args.context_command == "packet":
+        try:
+            project = {"repository": args.project} if args.project else None
+            goal = {"title": args.goal} if args.goal else None
+            result = ContextPacketRepository(Settings.from_env().database_url).build(args.query, project=project, goal=goal, limit=args.limit, char_budget=args.char_budget, page=args.page, seen_evidence_ids=args.seen_evidence_id)
+            print(json.dumps(result, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError, ContextPacketError) as exc:
+            raise SystemExit(f"context packet error: {exc}") from exc
     if args.command == "github" and args.github_command == "account":
         try:
             repository = GitHubAccountRepository(Settings.from_env().database_url)

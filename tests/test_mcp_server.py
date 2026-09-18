@@ -82,6 +82,7 @@ def test_mcp_initialize_and_list_tools_expose_complete_catalog():
             "github_project_goals",
             "github_goal_guidance",
             "github_project_goal_decision",
+            "riff_context_packet",
             "propose_extension",
             "override_recommendation",
             "create_opportunity_context",

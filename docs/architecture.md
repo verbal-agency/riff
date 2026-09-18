@@ -368,6 +368,22 @@ sent to the model by ingestion. The terminal fixture runner shares the same
 idempotent `EvidenceRepository` path used by scheduled collection, while all
 manifest sources remain disabled until separately reviewed.
 
+## G39 bounded riffing context
+
+`src/riff/context_packet.py` ranks compact Evidence Receipt projections by query
+overlap, source role, citation quality, and correlation group. It selects a
+bounded diverse set, omits correlated or over-budget receipts with reasons,
+redacts credentials, and reports deterministic character/token estimates. Raw
+source bodies never enter the packet. `riff_context_packet` and
+`riff context packet` expose the same read-only contract; `page` and
+`seen_evidence_ids` support a natural “more evidence” follow-up without
+duplicating receipts.
+
+The chat loop records provider token usage when supplied and deterministic
+input/output estimates otherwise. It retains G32 turn, call, result, and
+context ceilings; usage is part of the bounded result, not durable prompt
+memory.
+
 ## G27 project-aware recommendations
 
 `src/riff/recommendations.py` compares a bounded Riff/profile slice with

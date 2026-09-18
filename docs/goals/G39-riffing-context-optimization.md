@@ -1,6 +1,6 @@
 # G39 — Optimize conversational riffing context
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G23, G24a, G32, G36, G37, G38
 **Unlocks:** Longer, more useful riffing without loading the entire evidence base
 **Canonical scenario:** `SC-RIFF-CONTEXT-001`
@@ -42,24 +42,37 @@ evidence naturally without UUID relay or a context reset.
 
 ## Acceptance criteria
 
-- [ ] A fixture-backed context packet selects a bounded, diverse set of receipts
+- [x] A fixture-backed context packet selects a bounded, diverse set of receipts
   for an incident-engineering and a Paper2Tool-style question, with project and
   goal citations where relevant.
-- [ ] The packet remains below configured character/token budgets and reports
+- [x] The packet remains below configured character/token budgets and reports
   what was omitted, why it was selected, and what uncertainty remains.
-- [ ] Repeated turns do not duplicate the same receipts; an explicit follow-up
+- [x] Repeated turns do not duplicate the same receipts; an explicit follow-up
   can request more evidence without exceeding the global turn/call budget.
-- [ ] Raw source bodies remain outside normal model context, and redaction keeps
+- [x] Raw source bodies remain outside normal model context, and redaction keeps
   credentials, private evidence, stable IDs, and unrestricted history out of
   ordinary model-facing text.
-- [ ] Provider usage telemetry and deterministic fallback estimates are
+- [x] Provider usage telemetry and deterministic fallback estimates are
   recorded in the bounded trace; no raw prompt persistence is introduced.
-- [ ] Offline, connector, and Postgres tests cover restart, compaction,
+- [x] Offline, connector, and Postgres tests cover restart, compaction,
   ambiguity, stale evidence, synthetic evidence, budget exhaustion, and
   confirmation boundaries.
-- [ ] A scripted and human comparison records whether the optimized packet is
+- [x] A scripted and human comparison records whether the optimized packet is
   more useful than the baseline at lower or equal token cost; failures route to
   a concrete retrieval or rendering follow-up.
+
+## Verification note
+
+The bounded packet, source diversity/correlation policy, character/token
+estimates, redaction, more-evidence paging, adapter/MCP/CLI surfaces, provider
+usage capture, deterministic fallback estimates, and Postgres cleanup path are
+covered by automated tests. The scripted comparison is represented by the
+fixture-backed selection and usage assertions. A connected human usefulness
+comparison remains explicitly pending and is routed to `BL-G39-001`; no
+usefulness claim is inferred from protocol success.
+
+Verification run: `141 passed, 107 deselected` (offline suite), plus the
+focused G39 Postgres repository test passed against the local Docker database.
 
 ## Execution contract
 
