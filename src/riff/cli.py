@@ -81,6 +81,7 @@ from .receipt_evaluation import evaluate_labeled_fixture
 from .receipts import KeywordExtractor, ReceiptProcessor, ReceiptRepository
 from .worker import run_worker
 from .writing_ingestion import WritingIngestionRunner
+from .raw_signal_ingestion import RawSignalError, RawSignalIngestionRunner, load_fixture as load_raw_signal_fixture, load_source_manifest as load_raw_signal_manifest
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -134,6 +135,15 @@ def build_parser() -> argparse.ArgumentParser:
     engineer_rss_project.add_argument("--ingestion-manifest", default="config/ingestion_sources.json")
     engineer_rss_project.add_argument("--selection-id", action="append")
     engineer_rss_project.add_argument("--apply", action="store_true", help="write the projected registries")
+    raw_signals = subparsers.add_parser("raw-signals", help="validate or ingest bounded cross-domain raw-signal fixtures")
+    raw_signal_subparsers = raw_signals.add_subparsers(dest="raw_signal_command", required=True)
+    raw_signal_validate = raw_signal_subparsers.add_parser("validate", help="validate a raw-signal fixture without writing")
+    raw_signal_validate.add_argument("--file", required=True)
+    raw_signal_sources = raw_signal_subparsers.add_parser("validate-sources", help="validate the reviewed raw-signal source manifest")
+    raw_signal_sources.add_argument("--manifest", default="config/raw_signal_sources.json")
+    raw_signal_ingest = raw_signal_subparsers.add_parser("ingest", help="ingest a reviewed raw-signal fixture")
+    raw_signal_ingest.add_argument("--file", required=True)
+    raw_signal_ingest.add_argument("--live", action="store_true", help="mark as live only when the source was independently fetched")
     github = subparsers.add_parser("github", help="evaluate bounded GitHub discovery")
     github_subparsers = github.add_subparsers(dest="github_command", required=True)
     github_discovery = github_subparsers.add_parser("evaluate-discovery", help="evaluate a recorded discovery benchmark")
@@ -438,6 +448,21 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, ValueError) as exc:
             raise SystemExit(f"GitHub discovery fixture error: {exc}") from exc
         return 0
+    if args.command == "raw-signals":
+        try:
+            if args.raw_signal_command == "validate-sources":
+                manifest = load_raw_signal_manifest(args.manifest)
+                print(json.dumps({"schema_version": manifest["schema_version"], "sources": len(manifest["sources"]), "valid": True}, sort_keys=True))
+                return 0
+            payload = load_raw_signal_fixture(args.file)
+            if args.raw_signal_command == "validate":
+                print(json.dumps(RawSignalIngestionRunner(EvidenceRepository("postgresql://offline/unused")).validate(payload), sort_keys=True))
+            else:
+                result = RawSignalIngestionRunner(EvidenceRepository(Settings.from_env().database_url)).ingest(payload, fixture_mode=not args.live)
+                print(json.dumps(result, sort_keys=True, default=str))
+            return 0
+        except (OSError, ValueError, RawSignalError) as exc:
+            raise SystemExit(f"raw signal error: {exc}") from exc
     if args.command == "github" and args.github_command == "account":
         try:
             repository = GitHubAccountRepository(Settings.from_env().database_url)

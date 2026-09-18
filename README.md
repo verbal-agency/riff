@@ -263,6 +263,22 @@ The MCP surface exposes `github_project_goals`, `github_goal_guidance`, and
 `github_project_goal_decision`. Extraction is bounded to explicit roadmap/goal
 language; corrections and priority changes are append-only.
 
+### Raw-signal ingestion
+
+G38 extends the evidence ledger with reviewed signal classes for incident
+reports, agent reliability, scientific papers and linked code/data, benchmarks,
+changelogs, and GitHub discussions. Validate the disabled-by-default source
+manifest or replay a fixture without making a model call:
+
+```sh
+uv run riff raw-signals validate-sources
+uv run riff raw-signals validate --file tests/fixtures/raw_signals/g38-v1.json
+uv run riff raw-signals ingest --file tests/fixtures/raw_signals/g38-v1.json
+```
+
+User-supplied and secondary material is retained as a lead with explicit
+uncertainty; it cannot count as an independent evidence root until validated.
+
 ### Opportunity context and execution riffing
 
 G28 keeps an opportunity's actors, workflow, platforms, connectors, permissions,

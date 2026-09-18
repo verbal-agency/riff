@@ -216,10 +216,10 @@ selected goal with relevant Riff evidence and bounded guidance. The automated
 comparison protocol is recorded; the connected-session human usefulness check
 is routed to `BL-G37-001` and makes no unsupported usefulness claim.
 
-G38 is next: expand the raw-signal base for operational AI reliability and
-executable scientific methods while keeping ingestion separate from
-conversation-driven synthesis. G39 follows: optimize which bounded slices
-reach the model and measure token cost against usefulness.
+G38 is complete: the evidence ledger now accepts reviewed cross-domain raw
+signals with provenance, correlation, and lead uncertainty controls. G39 is
+ready: optimize which bounded slices reach the model and measure token cost
+against usefulness.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots

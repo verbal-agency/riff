@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "policy_version": "raw-signal-ingestion-policy-v1",
+  "sources": [
+    {"source_id": "incident-reports", "name": "AI incident reports", "endpoint": "https://example.invalid/ai-incidents", "source_type": "TECHNICAL_WRITING", "signal_class": "INCIDENT_REPORT", "permission_status": "PENDING_REVIEW", "enabled": false},
+    {"source_id": "scientific-papers", "name": "Primary scientific papers", "endpoint": "https://example.invalid/papers", "source_type": "TECHNICAL_WRITING", "signal_class": "SCIENTIFIC_PAPER", "permission_status": "PENDING_REVIEW", "enabled": false},
+    {"source_id": "paper-code-data", "name": "Paper-linked code and datasets", "endpoint": "https://example.invalid/paper-artifacts", "source_type": "GITHUB", "signal_class": "PAPER_CODE", "permission_status": "PENDING_REVIEW", "enabled": false},
+    {"source_id": "agent-benchmarks", "name": "Agent recovery benchmarks", "endpoint": "https://example.invalid/benchmarks", "source_type": "TECHNICAL_WRITING", "signal_class": "BENCHMARK", "permission_status": "PENDING_REVIEW", "enabled": false},
+    {"source_id": "github-agent-discussions", "name": "GitHub agent discussions", "endpoint": "https://example.invalid/github", "source_type": "GITHUB", "signal_class": "GITHUB_DISCUSSION", "permission_status": "PENDING_REVIEW", "enabled": false}
+  ]
+}

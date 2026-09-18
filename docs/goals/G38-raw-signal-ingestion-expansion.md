@@ -1,6 +1,6 @@
 # G38 — Expand the raw-signal ingestion base
 
-**Status:** Ready
+**Status:** Complete
 **Depends on:** G02, G03, G05, G16, G17, G19, G20, G21, G25, G31, G34
 **Unlocks:** Broader, better-grounded inputs for conversational riffing
 **Canonical scenario:** `SC-RAW-SIGNAL-001`
@@ -41,22 +41,22 @@ generate a curriculum or project automatically.
 
 ## Acceptance criteria
 
-- [ ] Fixture-backed ingestion covers at least one incident/postmortem source,
+- [x] Fixture-backed ingestion covers at least one incident/postmortem source,
   one primary paper with linked code/data, one benchmark or changelog, and one
   GitHub discussion/issue surface.
-- [ ] Every stored item preserves source type, author/organization (when
+- [x] Every stored item preserves source type, author/organization (when
   available), canonical root, publication/observed time, linked artifact
   identity, version/commit (when applicable), and provenance policy metadata.
-- [ ] User-supplied or secondary summaries are stored as leads with bounded
+- [x] User-supplied or secondary summaries are stored as leads with bounded
   uncertainty and cannot count as independent roots without source validation.
-- [ ] Reposts, mirrors, paper/code duplicates, and correlated sources remain
+- [x] Reposts, mirrors, paper/code duplicates, and correlated sources remain
   linked and do not inflate confidence or priority.
-- [ ] Cron and terminal paths share idempotent behavior, bounded requests,
+- [x] Cron and terminal paths share idempotent behavior, bounded requests,
   fixture replay, failure classification, and origin/retention policy.
-- [ ] Offline and Postgres tests cover malformed metadata, duplicate/correlated
+- [x] Offline and Postgres tests cover malformed metadata, duplicate/correlated
   inputs, provenance disclosure, fixture ownership, retry/permanent failures,
   and restart safety.
-- [ ] A source-coverage report shows the new classes separately from existing
+- [x] A source-coverage report shows the new classes separately from existing
   RSS/GitHub/job sources and exposes remaining gaps without synthesizing a
   recommendation.
 
@@ -66,3 +66,14 @@ Additive source manifests/adapters and migrations only; reuse the existing
 Evidence Receipt and provenance contracts. Keep full raw bodies out of the
 model-facing context by default. The next goal, G39, owns retrieval and token
 budgets; G38 owns getting trustworthy raw signals into the ledger.
+
+## Verification
+
+- `riff raw-signals validate-sources` passed for the five-entry disabled source
+  manifest.
+- `riff raw-signals validate --file tests/fixtures/raw_signals/g38-v1.json`
+  reported incident, scientific-paper, benchmark, GitHub-discussion, and
+  operator-lead classes with explicit evidence roles.
+- Offline suite passed: `137 passed, 106 skipped`.
+- Focused Postgres replay test passed: duplicate ingestion created no new
+  evidence and retained lead uncertainty metadata.

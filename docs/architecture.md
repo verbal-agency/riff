@@ -352,6 +352,22 @@ profile, decision, and opportunity slices. It returns at most three typed paths
 and explicitly surfaces synthetic, stale, contradictory, or missing evidence
 as uncertainty rather than proficiency claims.
 
+## G38 raw-signal ingestion
+
+`src/riff/raw_signal_ingestion.py` validates and replays a reviewed manifest of
+cross-domain sources while reusing the G01 Evidence Receipt ledger. Signal
+classes cover incident reports/postmortems, trajectory and reliability writing,
+primary scientific papers, linked code/data, benchmarks, changelogs, and GitHub
+discussion surfaces. Each item retains author/organization, canonical root,
+publication time, linked artifact, version/commit, correlation group, and an
+evidence role (`PRIMARY_EVIDENCE`, `SECONDARY_SYNTHESIS`, or `USER_LEAD`).
+
+Fixture and secondary leads are explicitly marked and cannot inflate independent
+roots or confidence. Full raw bodies remain persisted for provenance but are not
+sent to the model by ingestion. The terminal fixture runner shares the same
+idempotent `EvidenceRepository` path used by scheduled collection, while all
+manifest sources remain disabled until separately reviewed.
+
 ## G27 project-aware recommendations
 
 `src/riff/recommendations.py` compares a bounded Riff/profile slice with

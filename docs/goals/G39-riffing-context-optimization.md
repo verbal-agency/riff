@@ -1,6 +1,6 @@
 # G39 — Optimize conversational riffing context
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G23, G24a, G32, G36, G37, G38
 **Unlocks:** Longer, more useful riffing without loading the entire evidence base
 **Canonical scenario:** `SC-RIFF-CONTEXT-001`
