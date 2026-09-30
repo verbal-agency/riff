@@ -75,6 +75,9 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G37](G37-goal-aware-project-guidance.md) | Make project goals first-class and guide goal advancement naturally | G26, G27, G28, G32, G36 |
 | [G38](G38-raw-signal-ingestion-expansion.md) | Expand the raw-signal ingestion base for operational AI and executable science | G02, G03, G05, G16, G17, G19, G20, G21, G25, G31, G34 |
 | [G39](G39-riffing-context-optimization.md) | Optimize conversational riffing context and measure token/usefulness trade-offs | G23, G24a, G32, G36, G37, G38 |
+| [G40](G40-live-daily-worker-composition.md) | Compose approved live ingestion into an honest daily worker | G13, G21, G31, G34, G35, G38 |
+| [G41](G41-worker-readiness-observability-and-recovery.md) | Make daily worker runs observable, ready-checkable, and recoverable | G40, G30, G35 |
+| [G42](G42-production-reasoning-and-live-daily-publication.md) | Wire a replaceable reasoning provider into live daily publication | G40, G41, G39, G29, G23, G24a |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -116,6 +119,9 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Goal-aware project guidance and natural goal advancement | G37 |
 | Raw signals for operational AI reliability and executable scientific methods | G38 |
 | Bounded, measurable conversational context and retrieval efficiency | G39 |
+| Honest live ingestion and daily worker composition | G40 |
+| Worker readiness, observability, stale-run recovery, and exit semantics | G41 |
+| Provider-backed, provenance-grounded live daily publication | G42 |
 
 ## Canonical project scenarios
 
@@ -151,6 +157,9 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-GOAL-GUIDANCE-001` — Riff connects an explicitly selected project goal to relevant Riff evidence and offers natural, bounded paths to advance it without confusing repositories with files.
 - `SC-RAW-SIGNAL-001` — Riff ingests incident/postmortem, paper/code/data, benchmark, changelog, and GitHub discussion signals with provenance and correlation controls, without synthesizing a recommendation.
 - `SC-RIFF-CONTEXT-001` — Riff retrieves a compact, diverse evidence/project/goal packet for conversational riffing, supports natural expansion, and reports token/usefulness trade-offs.
+- `SC-LIVE-DAILY-001` — An explicit live worker run collects approved sources, advances durable cursors, and publishes a provenance-qualified daily result or an honest empty result.
+- `SC-WORKER-OPERATIONS-001` — An operator can inspect source readiness, recover a stale run, and distinguish success, empty, failure, and no-op outcomes.
+- `SC-LIVE-RIFF-001` — A bounded replaceable provider turns live-qualified receipts into a grounded daily Riff without exposing unrestricted raw context or repeating completed paid calls.
 
 ## Current handoff
 
@@ -218,8 +227,15 @@ is routed to `BL-G37-001` and makes no unsupported usefulness claim.
 
 G38 is complete: the evidence ledger now accepts reviewed cross-domain raw
 signals with provenance, correlation, and lead uncertainty controls. G39 is
-ready: optimize which bounded slices reach the model and measure token cost
-against usefulness.
+complete: it optimizes which bounded slices reach the model and records token
+cost/usefulness measurement, with the connected human comparison still routed
+to `BL-G39-001`.
+
+G40 is the next implementation slice: compose the existing approved source
+ runners into the daily worker and make live versus fixture execution explicit.
+G41 then hardens the worker's reports, readiness checks, stale-run recovery, and
+ exit semantics. G42 connects a replaceable reasoning provider only after the
+ live evidence and operational boundaries are trustworthy.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots
