@@ -1,6 +1,6 @@
 # G41 — Make daily worker runs observable, ready-checkable, and recoverable
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G40, G30, G35
 **Unlocks:** Reliable unattended scheduling and operator iteration
 **Canonical scenario:** `SC-WORKER-OPERATIONS-001`

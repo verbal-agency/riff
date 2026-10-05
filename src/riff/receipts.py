@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -191,6 +192,56 @@ class KeywordExtractor:
             "signal_strength": {},
             "source_metadata": {"evidence_id": evidence.evidence_id, "source_id": evidence.source_id, "source_type": evidence.source_type.value},
             "uncertainty": {},
+        }
+
+
+class LiveHeuristicExtractor:
+    """Bounded, provider-free extractor used by live dogfooding.
+
+    ``KeywordExtractor`` is intentionally a receipt smoke test and emits no
+    candidates.  Live operation needs a conservative candidate-producing
+    implementation even when no paid model is configured.  This extractor
+    only emits concepts from a reviewed vocabulary and grounds every claim in
+    the stored raw span; richer provider-backed extraction remains replaceable
+    at the same interface.
+    """
+
+    version = "live-heuristic-v1"
+
+    CAPABILITY_PATTERNS = (
+        ("durable execution", re.compile(r"\b(?:durable|resumable)\s+(?:agent\s+)?(?:execution|workflow)|workflow\s+(?:replay|recovery)|checkpoint(?:ing|ed)?\b", re.I)),
+        ("incident engineering", re.compile(r"\b(?:incident response|incident engineering|postmortem|failure taxonomy|causal analysis)\b", re.I)),
+        ("agent observability", re.compile(r"\b(?:agent observability|trajectory capture|trace(?:s|d)?|observability)\b", re.I)),
+        ("evaluation", re.compile(r"\b(?:evaluation|evals?|regression tests?|benchmark(?:ing)?)\b", re.I)),
+        ("authority boundaries", re.compile(r"\b(?:authority boundary|capability grants?|authorization|policy enforcement)\b", re.I)),
+        ("scientific method execution", re.compile(r"\b(?:paper2agent|paper-to-agent|executable scientific|scientific method(?:s)? as tools)\b", re.I)),
+    )
+    TECHNOLOGY_PATTERNS = (
+        ("Temporal", re.compile(r"\btemporal\b", re.I)),
+        ("LangGraph", re.compile(r"\blanggraph\b", re.I)),
+        ("Postgres", re.compile(r"\b(?:postgres|postgresql)\b", re.I)),
+        ("Python", re.compile(r"\bpython\b", re.I)),
+        ("GitHub Actions", re.compile(r"\bgithub\s+actions?\b", re.I)),
+        ("Kubernetes", re.compile(r"\bkubernetes|\bk8s\b", re.I)),
+    )
+
+    def extract(self, evidence: EvidenceRecord) -> Mapping[str, Any]:
+        raw = evidence.raw_content or ""
+        if not raw:
+            raise ReceiptValidationError("raw evidence body is unavailable")
+        searchable = " ".join(part for part in (evidence.title or "", raw) if part)
+        capabilities = [name for name, pattern in self.CAPABILITY_PATTERNS if pattern.search(searchable)]
+        technologies = [name for name, pattern in self.TECHNOLOGY_PATTERNS if pattern.search(searchable)]
+        excerpt = raw[: min(len(raw), 480)]
+        return {
+            "summary": excerpt[:240],
+            "relevant_spans": [{"span_id": "summary", "start": 0, "end": len(excerpt), "excerpt": excerpt}],
+            "capability_candidates": capabilities,
+            "technology_candidates": technologies,
+            "claims": [{"text": excerpt[:240], "span_ids": ["summary"], "claim_type": "OBSERVATION", "uncertainty": {"extractor": "heuristic"}}],
+            "signal_strength": {"extraction": "reviewed-vocabulary"},
+            "source_metadata": {"evidence_id": evidence.evidence_id, "source_id": evidence.source_id, "source_type": evidence.source_type.value},
+            "uncertainty": {"candidate_generation": "heuristic; verify before promotion"},
         }
 
 

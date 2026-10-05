@@ -84,3 +84,17 @@ goal only when the next development slice is selected.
 - **Destination:** Next connected dogfood session; route any failed dimension
   to a concrete ranking, rendering, or budget follow-up.
 - **Priority:** Medium.
+
+## BL-G40-001 — Investigate connector promotion regression
+
+- **Source:** G40 complete verification; the full Postgres suite currently
+  fails in `tests/test_connector.py::test_http_connector_runs_read_promote_export_against_persisted_postgres`.
+- **Gap:** The connector's deterministic model receives a tool response without
+  the expected `result` field during `create_exploration`; the focused failure
+  reproduces independently of G40's live-worker test and no connector code was
+  changed in this cycle.
+- **Next step:** Reproduce against a clean isolated Postgres database, inspect
+  the returned adapter/API error payload, and repair or update the connector
+  contract without changing G40's worker scope.
+- **Destination:** Backlog; this is not required for live source composition.
+- **Priority:** Medium.

@@ -9,6 +9,7 @@ from riff.evidence import EvidenceRecord, EvidenceSubmission, SourceType
 from riff.evidence_repository import EvidenceRepository
 from riff.receipt_evaluation import evaluate_labeled_fixture
 from riff.receipts import (
+    LiveHeuristicExtractor,
     ReceiptProcessSummary,
     ReceiptProcessor,
     ReceiptRepository,
@@ -164,3 +165,55 @@ def test_missing_receipt_fields_are_rejected():
     )
     with pytest.raises(ReceiptValidationError, match="missing fields"):
         validate_receipt_output(evidence, {}, "fixture-v1")
+
+
+def test_live_heuristic_extractor_emits_grounded_candidates():
+    evidence = EvidenceRecord(
+        evidence_id="live-evidence-1",
+        source_item_id="item-1",
+        source_id="source-1",
+        source_type=SourceType.TECHNICAL_WRITING,
+        source_name="live source",
+        canonical_url="https://example.com/live-1",
+        native_id="live-1",
+        title="Durable agent execution",
+        content_hash="a" * 64,
+        retrieved_at=datetime.now(timezone.utc),
+        published_at=None,
+        schema_version=1,
+        raw_content="Teams describe workflow recovery with Temporal and LangGraph, plus regression evaluation.",
+        snapshot_ref=None,
+        previous_evidence_id=None,
+    )
+
+    output = LiveHeuristicExtractor().extract(evidence)
+    validated = validate_receipt_output(evidence, output, LiveHeuristicExtractor.version)
+
+    assert validated.capability_candidates == ["durable execution", "evaluation"]
+    assert validated.technology_candidates == ["Temporal", "LangGraph"]
+    assert validated.relevant_spans[0]["excerpt"] == evidence.raw_content
+
+
+def test_live_heuristic_extractor_does_not_invent_candidates():
+    evidence = EvidenceRecord(
+        evidence_id="live-evidence-2",
+        source_item_id="item-2",
+        source_id="source-2",
+        source_type=SourceType.TECHNICAL_WRITING,
+        source_name="live source",
+        canonical_url="https://example.com/live-2",
+        native_id="live-2",
+        title="A product announcement",
+        content_hash="b" * 64,
+        retrieved_at=datetime.now(timezone.utc),
+        published_at=None,
+        schema_version=1,
+        raw_content="A short announcement with no reviewed capability vocabulary.",
+        snapshot_ref=None,
+        previous_evidence_id=None,
+    )
+
+    output = LiveHeuristicExtractor().extract(evidence)
+
+    assert output["capability_candidates"] == []
+    assert output["technology_candidates"] == []

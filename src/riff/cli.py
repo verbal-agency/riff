@@ -79,7 +79,7 @@ from .riff_evaluation import evaluate_fixture as evaluate_riff_fixture
 from .signals import SignalObservation, SignalRanker, SignalRepository
 from .receipt_evaluation import evaluate_labeled_fixture
 from .receipts import KeywordExtractor, ReceiptProcessor, ReceiptRepository
-from .worker import run_worker
+from .worker import WorkerConfigurationError, run_worker
 from .writing_ingestion import WritingIngestionRunner
 from .raw_signal_ingestion import RawSignalError, RawSignalIngestionRunner, load_fixture as load_raw_signal_fixture, load_source_manifest as load_raw_signal_manifest
 from .context_packet import ContextPacketError, ContextPacketRepository
@@ -91,6 +91,11 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("migrate", help="apply pending Postgres migrations")
     worker = subparsers.add_parser("worker", help="run one scheduled worker cycle")
     worker.add_argument("--fixture", help="run the deterministic daily pipeline fixture")
+    worker.add_argument("--live", action="store_true", help="collect approved enabled sources and run the live daily pipeline")
+    worker.add_argument("--replay-live", action="store_true", help="reprocess persisted LIVE evidence without fetching sources")
+    worker.add_argument("--since", dest="replay_since", help="lower-bound ISO timestamp for --replay-live")
+    worker.add_argument("--limit", dest="replay_limit", type=int, default=100, help="maximum persisted LIVE evidence items for --replay-live")
+    worker.add_argument("--job-source-id", help="select one enabled job source for --live")
     worker.add_argument("--date", dest="run_date")
     worker.add_argument("--policy-version")
     worker.add_argument("--resume", action="store_true")
@@ -833,7 +838,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "worker":
         from datetime import date
 
-        run_worker(settings, fixture_path=args.fixture, run_date=date.fromisoformat(args.run_date) if args.run_date else None, policy_version=args.policy_version, resume=args.resume)
+        try:
+            report = run_worker(
+                settings,
+                fixture_path=args.fixture,
+                live=args.live,
+                replay_live=args.replay_live,
+                run_date=date.fromisoformat(args.run_date) if args.run_date else None,
+                policy_version=args.policy_version,
+                replay_since=datetime.fromisoformat(args.replay_since) if args.replay_since else None,
+                replay_limit=args.replay_limit,
+                job_source_id=args.job_source_id,
+                resume=args.resume,
+                emit_event=False,
+            )
+        except (WorkerConfigurationError, ValueError) as exc:
+            raise SystemExit(f"worker configuration error: {exc}") from exc
+        print(json.dumps(report, sort_keys=True, default=str))
         return 0
     if args.command == "source":
         ingestion = IngestionRepository(settings.database_url)

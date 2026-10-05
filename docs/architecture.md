@@ -10,7 +10,7 @@ G00 establishes one Python application with three process entry points: the HTTP
 - **Migrations:** numbered SQL files applied by the in-process migration runner. Migrations are explicit and transactional; application startup never mutates schema.
 - **Validation/configuration:** standard-library dataclasses and URL validation for the foundation. Domain schemas can add a validation library when G01 requirements justify it.
 - **Tests:** pytest with HTTPX for API tests. Postgres tests are separately marked and require an explicitly configured database URL.
-- **Scheduling:** an external simple scheduler (cron, launchd, or equivalent) invokes the tested one-shot worker. No queue or workflow service is needed in v0.1.
+- **Scheduling:** an external simple scheduler (cron, launchd, or equivalent) invokes the tested one-shot worker. The worker requires an explicit fixture or live mode; no queue or workflow service is needed in v0.1.
 
 ## Boundaries
 
@@ -140,6 +140,22 @@ For local verification, `riff daily generate --file ...` seeds only the
 fixture's raw evidence and successful receipts, then runs the same persisted
 service used by the API. Repeating the command with the same date, fixture, and
 policy returns the existing run without provider calls or duplicate rows.
+
+G40 composes the reviewed source runners behind the same worker seam. `riff
+worker --fixture ...` is an offline replay; `riff worker --live` invokes only
+enabled database source configurations and then runs receipt extraction,
+capability normalization, profile assessment, signal ranking, and bounded daily
+publication. Live mode excludes fixture, test, quarantined, and unclassified
+evidence from the daily input by default and remains separate from the
+provider-backed reasoning boundary owned by G42.
+
+G43 adds a provider-free `LiveHeuristicExtractor` for live dogfooding while
+keeping `KeywordExtractor` as the empty-candidate smoke path for fixtures. It
+also adds `riff worker --replay-live`, which reprocesses bounded persisted
+`LIVE` evidence without fetching sources or advancing cursors. Replay retains
+origin and extractor-version provenance. Signal ranking uses the observation
+window rather than requiring publication timestamps to be after fetch time,
+and correlation records the underlying evidence IDs rather than receipt IDs.
 
 ## G09b source selection
 

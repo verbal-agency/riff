@@ -1,17 +1,16 @@
-import json
+import pytest
 
 from riff.config import Settings
-from riff.worker import run_worker
+from riff.worker import WorkerConfigurationError, run_worker
 
 
-def test_worker_emits_structured_completion_event(capsys):
+def test_worker_requires_an_explicit_mode():
     settings = Settings("postgresql://user:password@localhost:5432/riff", environment="test")
-    run_id = run_worker(settings)
-    captured = capsys.readouterr()
-    record = json.loads(captured.out)
-    assert record["message"] == "worker.completed"
-    assert record["fields"]["run_id"] == run_id
-    assert record["fields"]["status"] == "success"
-    assert record["fields"]["stages"] == []
-    assert "password" not in captured.out
-    assert "password" not in captured.err
+    with pytest.raises(WorkerConfigurationError, match="requires --fixture.*--live"):
+        run_worker(settings)
+
+
+def test_worker_rejects_ambiguous_modes():
+    settings = Settings("postgresql://user:password@localhost:5432/riff", environment="test")
+    with pytest.raises(WorkerConfigurationError, match="exactly one of --fixture, --live, or --replay-live"):
+        run_worker(settings, fixture_path="tests/fixtures/riffs/daily_inputs.json", live=True)

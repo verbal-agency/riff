@@ -13,7 +13,7 @@ uv sync --all-groups
 cp .env.example .env
 docker compose up -d postgres
 uv run riff migrate
-uv run riff worker
+uv run riff worker --fixture tests/fixtures/riffs/daily_inputs.json --resume
 uv run riff api --host 127.0.0.1 --port 8000
 ```
 
@@ -501,15 +501,27 @@ uv run riff daily generate --file tests/fixtures/riffs/daily_inputs.json
 
 The second invocation reports `cached: true` and reuses the same daily run.
 
-The complete durable funnel uses the same one-shot worker path and can be
-scheduled with a simple cron entry:
+The complete durable funnel has explicit offline and live modes. Fixture mode
+is deterministic and makes no network requests. Live mode invokes only enabled,
+reviewed source configurations and reports source outcomes; it is intentionally
+opt-in:
 
 ```sh
 uv run riff migrate
 uv run riff worker --fixture tests/fixtures/riffs/daily_inputs.json --resume
 # Example: 05:00 every day
 5 0 * * * cd /path/to/riff && uv run riff worker --fixture tests/fixtures/riffs/daily_inputs.json --resume
+# Live scheduling, after source terms/retention review:
+5 0 * * * cd /path/to/riff && uv run riff worker --live --resume
+# Replay already-collected LIVE evidence without making network requests:
+uv run riff worker --replay-live --date 2026-10-01 --since 2026-09-30T00:00:00+00:00 --limit 100 --resume
 ```
+
+The live worker uses a bounded, versioned heuristic extractor when no paid
+provider is configured. The replay path reruns that extractor and downstream
+normalization against persisted `LIVE` evidence only; it does not advance
+source cursors or refetch RSS, GitHub, or job sources. Use `--job-source-id`
+with `--live` when more than one enabled job source is eligible.
 
 Inspect a run with `GET /operations/{run_id}`. Reports distinguish `FAILED`
 from a valid `EMPTY` day and include per-stage counts, attempts, timings, and

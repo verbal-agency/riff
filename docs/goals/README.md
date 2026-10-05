@@ -77,7 +77,8 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G39](G39-riffing-context-optimization.md) | Optimize conversational riffing context and measure token/usefulness trade-offs | G23, G24a, G32, G36, G37, G38 |
 | [G40](G40-live-daily-worker-composition.md) | Compose approved live ingestion into an honest daily worker | G13, G21, G31, G34, G35, G38 |
 | [G41](G41-worker-readiness-observability-and-recovery.md) | Make daily worker runs observable, ready-checkable, and recoverable | G40, G30, G35 |
-| [G42](G42-production-reasoning-and-live-daily-publication.md) | Wire a replaceable reasoning provider into live daily publication | G40, G41, G39, G29, G23, G24a |
+| [G43](G43-live-evidence-yield-and-source-recovery.md) | Make live evidence produce useful recommendations | G40, G41, G05, G06, G21, G30 |
+| [G42](G42-production-reasoning-and-live-daily-publication.md) | Wire a replaceable reasoning provider into live daily publication | G40, G41, G43, G39, G29, G23, G24a |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -121,6 +122,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Bounded, measurable conversational context and retrieval efficiency | G39 |
 | Honest live ingestion and daily worker composition | G40 |
 | Worker readiness, observability, stale-run recovery, and exit semantics | G41 |
+| Live extraction yield, source recovery, and live-evidence replay | G43 |
 | Provider-backed, provenance-grounded live daily publication | G42 |
 
 ## Canonical project scenarios
@@ -231,11 +233,19 @@ complete: it optimizes which bounded slices reach the model and records token
 cost/usefulness measurement, with the connected human comparison still routed
 to `BL-G39-001`.
 
-G40 is the next implementation slice: compose the existing approved source
- runners into the daily worker and make live versus fixture execution explicit.
-G41 then hardens the worker's reports, readiness checks, stale-run recovery, and
- exit semantics. G42 connects a replaceable reasoning provider only after the
- live evidence and operational boundaries are trustworthy.
+G40 is complete: the existing approved source runners now compose behind an
+explicit fixture/live worker boundary, with origin-safe evidence selection and
+the existing receipt, capability, profile, signal, and publication stages. G41
+is the operational hardening slice for worker reports, readiness checks,
+stale-run recovery, and exit semantics. G43 is now complete: the live path has
+a reviewed-vocabulary extractor, origin-safe replay, a publication-date-aware
+signal window, real evidence IDs for correlation, and explicit job-source
+selection. The October 1 dogfood run then confirmed that source health remains
+an honest constraint: GitHub rate limits and RSS failures reduced coverage,
+while the surviving evidence did not clear the provenance threshold. G43
+resolves the extraction and replay failure chain; G42 can now connect a
+replaceable reasoning provider once G41's worker operational hardening is
+complete.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots
