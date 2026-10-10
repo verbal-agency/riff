@@ -13,7 +13,7 @@ import os
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from .capabilities import CapabilityRepository, DeterministicNormalizer, NormalizationService
 from .evidence import SourceType
@@ -94,7 +94,7 @@ class LiveSourceCollector:
         self.github_fetcher = github_fetcher or HttpGitHubFetcher(token=os.environ.get("GITHUB_TOKEN"))
         self.job_fetcher = job_fetcher or HttpJobFetcher()
 
-    def collect(self) -> LiveCollectionResult:
+    def collect(self, heartbeat: Callable[[], bool] | None = None) -> LiveCollectionResult:
         started_at = datetime.now(timezone.utc)
         ingestion = IngestionRepository(self.database_url)
         evidence = EvidenceRepository(self.database_url)
@@ -104,16 +104,22 @@ class LiveSourceCollector:
 
         writing = tuple(item for item in configured if item.source_type == SourceType.TECHNICAL_WRITING and item.enabled)
         if writing:
+            if heartbeat:
+                heartbeat()
             outcomes.append(self._writing(ingestion, evidence, [item.source_id for item in writing]))
         else:
             outcomes.append(SourceOutcome("TECHNICAL_WRITING", "SKIPPED", reason="NO_ENABLED_APPROVED_SOURCES"))
 
         github = tuple(item for item in configured if item.source_type == SourceType.GITHUB and item.enabled)
         if github:
+            if heartbeat:
+                heartbeat()
             outcomes.append(self._github(ingestion, evidence, [item.source_id for item in github]))
         else:
             outcomes.append(SourceOutcome("GITHUB", "SKIPPED", reason="NO_ENABLED_APPROVED_SOURCES"))
 
+        if heartbeat:
+            heartbeat()
         outcomes.append(self._jobs(ingestion, evidence, configured))
 
         evidence_ids = tuple(_live_evidence_since(self.database_url, started_at, tracked_source_ids))
@@ -176,10 +182,12 @@ def run_live_pipeline(
     """Run one live collection-to-publication cycle with durable stages."""
 
     repository = PipelineRepository(database_url)
-    run_id, claimed = repository.claim(run_date, policy_version, resume=resume)
+    mode = "live-replay" if replay_evidence_ids is not None else "live"
+    claim = repository.claim(run_date, policy_version, resume=resume, mode=mode)
+    run_id, claimed = claim
     if not claimed:
         report = repository.report(run_id)
-        report.update({"mode": "live", "noop": True, "reason": "already_running_or_terminal", "source_outcomes": []})
+        report.update({"noop": True, "reason": claim.reason})
         return report
 
     base_report = repository.report(run_id)
@@ -195,7 +203,7 @@ def run_live_pipeline(
     published_status = "EMPTY"
 
     for stage in STAGES:
-        if not repository.begin_stage(run_id, stage):
+        if not repository.begin_stage(run_id, stage, lease_owner=claim.lease_owner):
             continue
         started = datetime.now(timezone.utc)
         try:
@@ -206,13 +214,23 @@ def run_live_pipeline(
                     source_outcomes = (SourceOutcome("LIVE_REPLAY", "SUCCEEDED", source_ids, stored=len(evidence_ids)),)
                     counts = (len(evidence_ids), len(evidence_ids), 0)
                 else:
-                    collection = (collector or LiveSourceCollector(database_url, job_source_id=job_source_id)).collect()
+                    collection = (collector or LiveSourceCollector(database_url, job_source_id=job_source_id)).collect(
+                        heartbeat=lambda: repository.heartbeat(run_id, claim.lease_owner)
+                    )
                     source_outcomes = collection.outcomes
                     evidence_ids = collection.evidence_ids
                     source_ids = collection.source_ids
                     if collection.failure_count and not collection.success_count and evidence_ids == ():
                         raise LiveWorkerError("all enabled source collections failed")
                     counts = (collection.attempted_count, len(evidence_ids), collection.failure_count)
+                repository.set_report_context(
+                    run_id,
+                    {
+                        "source_outcomes": [item.to_dict() for item in source_outcomes],
+                        "origin_counts": {"LIVE": len(evidence_ids)},
+                        "live_evidence_count": len(evidence_ids),
+                    },
+                )
             elif stage == "RECEIPT":
                 receipt_summary = ReceiptProcessor(EvidenceRepository(database_url), ReceiptRepository(database_url), LiveHeuristicExtractor()).process(list(evidence_ids))
                 receipt_ids = tuple(_receipt_ids(database_url, evidence_ids))
@@ -245,18 +263,19 @@ def run_live_pipeline(
                 result = DailyRiffService(RiffRepository(database_url), DeterministicReasoningProvider(), policy_version=policy_version, max_candidates=5, max_riffs=3).generate(run_date, candidates)
                 published_status = "SUCCEEDED" if result.status == "COMPLETED" else "EMPTY"
                 counts = (len(candidates), len(result.riffs), 0)
-                repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], model_calls=result.provider_calls, duration_ms=_duration_ms(started))
+                repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], model_calls=result.provider_calls, duration_ms=_duration_ms(started), lease_owner=claim.lease_owner)
                 continue
-            repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], duration_ms=_duration_ms(started))
+            repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], duration_ms=_duration_ms(started), lease_owner=claim.lease_owner)
         except Exception as exc:
-            repository.fail_stage(run_id, stage, str(exc))
+            repository.set_report_context(run_id, {"source_outcomes": [item.to_dict() for item in source_outcomes], "origin_counts": {"LIVE": len(evidence_ids)}})
+            repository.fail_stage(run_id, stage, str(exc), lease_owner=claim.lease_owner)
             report = repository.report(run_id)
-            report.update({"mode": "live", "source_outcomes": [item.to_dict() for item in source_outcomes], "live_evidence_count": len(evidence_ids), "receipt_count": len(receipt_ids), "capability_mapping_count": capability_count, "candidate_count": len(candidates), "outcome_classification": _outcome_classification(len(evidence_ids), len(receipt_ids), capability_count, len(candidates), "FAILED")})
+            report.update({"receipt_count": len(receipt_ids), "capability_mapping_count": capability_count, "candidate_count": len(candidates), "evidence_outcome": _outcome_classification(len(evidence_ids), len(receipt_ids), capability_count, len(candidates), "FAILED")})
             return report
 
-    repository.complete_run(run_id, published_status)
+    repository.set_report_context(run_id, {"source_outcomes": [item.to_dict() for item in source_outcomes], "origin_counts": {"LIVE": len(evidence_ids)}, "live_evidence_count": len(evidence_ids), "receipt_count": len(receipt_ids), "capability_mapping_count": capability_count, "candidate_count": len(candidates), "evidence_outcome": _outcome_classification(len(evidence_ids), len(receipt_ids), capability_count, len(candidates), published_status)})
+    repository.complete_run(run_id, published_status, lease_owner=claim.lease_owner)
     report = repository.report(run_id)
-    report.update({"mode": "live", "source_outcomes": [item.to_dict() for item in source_outcomes], "live_evidence_count": len(evidence_ids), "receipt_count": len(receipt_ids), "capability_mapping_count": capability_count, "candidate_count": len(candidates), "outcome_classification": _outcome_classification(len(evidence_ids), len(receipt_ids), capability_count, len(candidates), published_status)})
     return report
 
 

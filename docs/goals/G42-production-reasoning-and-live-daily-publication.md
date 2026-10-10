@@ -24,6 +24,9 @@ not raw unrestricted source bodies or an unbounded conversation history.
   fingerprint completed calls so retries do not repeat paid work.
 - Record provider usage estimates/telemetry without persisting raw prompts or
   unrestricted model responses.
+- Consume G41's canonical worker report, readiness result, lease, and exit-code
+  contract. Provider work starts only after the run is ready, and provider
+  telemetry augments that report rather than creating parallel health state.
 - Treat provider timeout, invalid output, budget exhaustion, and insufficient
   evidence as explicit non-publication or valid-empty outcomes.
 - Provide one recorded provider-response end-to-end test and one explicitly
@@ -50,6 +53,9 @@ not raw unrestricted source bodies or an unbounded conversation history.
   provider results never publish an ungrounded Riff.
 - [ ] Repeating an identical run reuses durable results and does not repeat
   completed paid provider calls.
+- [ ] A provider timeout or invalid output is represented through G41's durable
+  run/stage and outcome contract; it cannot bypass an active lease or be hidden
+  by a successful terminal exit code.
 - [ ] Offline, Postgres, connector, and one connected human acceptance check
   cover grounding, uncertainty disclosure, redaction, and budget behavior.
 
@@ -59,3 +65,12 @@ not raw unrestricted source bodies or an unbounded conversation history.
 - Context/rendering and usage telemetry integration.
 - Recorded provider fixtures, failure fixtures, and Postgres assertions.
 - Updated operator documentation for local, connected, and cron execution.
+
+## Execution contract
+
+G42 extends the completed G41 run rather than wrapping it. It may add provider
+usage, cache, and reasoning-result fields to the canonical run report, but it
+must preserve G41's lease ownership, append-only recovery history, source
+readiness classification, and terminal exit-code behavior. Provider retries are
+stage-bound and fingerprinted; an active or non-stale run is never reclaimed to
+repeat a paid call.

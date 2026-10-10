@@ -139,6 +139,9 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
     def operation_report(run_id: str) -> dict[str, Any]:
         return dispatch("operation_report", {"run_id": run_id})
 
+    def operation_readiness() -> dict[str, Any]:
+        return dispatch("operation_readiness", {})
+
     def list_projects() -> dict[str, Any]:
         return dispatch("list_projects", {})
 
@@ -246,6 +249,7 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         "get_project": get_project,
         "export_project": export_project,
         "operation_report": operation_report,
+        "operation_readiness": operation_readiness,
         "list_projects": list_projects,
         "inspect_project": inspect_project,
         "match_riff_to_projects": match_riff_to_projects,

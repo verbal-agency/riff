@@ -11,6 +11,19 @@ from .config import Settings
 from .logging import configure_logging, event
 
 
+EXIT_CODES = {
+    "SUCCEEDED": 0,
+    "EMPTY": 0,
+    "STALE_RECOVERED": 0,
+    "FIXTURE_ONLY": 0,
+    "PARTIAL": 10,
+    "NOOP": 11,
+    "READINESS_FAILURE": 12,
+    "CONFIGURATION_ERROR": 13,
+    "FAILED": 14,
+}
+
+
 class WorkerConfigurationError(ValueError):
     """The worker was invoked without an explicit execution mode."""
 
@@ -79,3 +92,17 @@ def run_worker(
     if emit_event:
         event(logging.getLogger("riff.worker"), "worker.completed", **report)
     return report
+
+
+def worker_readiness(settings: Settings | None = None) -> dict[str, Any]:
+    """Read configured source readiness without fetching or changing state."""
+    effective = settings or Settings.from_env()
+    configure_logging(effective.log_level)
+    from .operations import PipelineRepository
+
+    return PipelineRepository(effective.database_url).readiness()
+
+
+def worker_exit_code(report: dict[str, Any]) -> int:
+    """Map the canonical report to the scheduler-facing documented code."""
+    return EXIT_CODES.get(str(report.get("outcome_classification") or report.get("status") or "FAILED"), 14)

@@ -79,6 +79,8 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G41](G41-worker-readiness-observability-and-recovery.md) | Make daily worker runs observable, ready-checkable, and recoverable | G40, G30, G35 |
 | [G43](G43-live-evidence-yield-and-source-recovery.md) | Make live evidence produce useful recommendations | G40, G41, G05, G06, G21, G30 |
 | [G42](G42-production-reasoning-and-live-daily-publication.md) | Wire a replaceable reasoning provider into live daily publication | G40, G41, G43, G39, G29, G23, G24a |
+| [G45](G45-live-intelligence-dogfood-and-evaluation.md) | Dogfood the complete live-intelligence loop and establish a usefulness gate | G29, G32, G39, G41, G42, G43 |
+| [G44](G44-unified-action-candidates-and-outcome-feedback.md) | Unify evidence-backed action candidates and learn from verified outcomes | G27, G28, G29, G32, G36, G37, G39, G42, G45 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.
 
@@ -124,6 +126,8 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Worker readiness, observability, stale-run recovery, and exit semantics | G41 |
 | Live extraction yield, source recovery, and live-evidence replay | G43 |
 | Provider-backed, provenance-grounded live daily publication | G42 |
+| Live usefulness evaluation, operator dogfooding, and defect routing | G45 |
+| Cross-source action candidates, canonical promotion, and verified-outcome feedback | G44 |
 
 ## Canonical project scenarios
 
@@ -162,6 +166,8 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-LIVE-DAILY-001` — An explicit live worker run collects approved sources, advances durable cursors, and publishes a provenance-qualified daily result or an honest empty result.
 - `SC-WORKER-OPERATIONS-001` — An operator can inspect source readiness, recover a stale run, and distinguish success, empty, failure, and no-op outcomes.
 - `SC-LIVE-RIFF-001` — A bounded replaceable provider turns live-qualified receipts into a grounded daily Riff without exposing unrestricted raw context or repeating completed paid calls.
+- `SC-LIVE-DOGFOOD-001` — The owner can repeatedly run, inspect, and discuss the live Riff loop; the system either provides a provenance-grounded useful result or honestly explains the bounded reason it cannot.
+- `SC-ACTION-LOOP-001` — Correlated evidence becomes a small set of transparent action candidates; a user-selected direction survives approval and verified outcomes improve later recommendations without authorizing execution.
 
 ## Current handoff
 
@@ -245,7 +251,15 @@ an honest constraint: GitHub rate limits and RSS failures reduced coverage,
 while the surviving evidence did not clear the provenance threshold. G43
 resolves the extraction and replay failure chain; G42 can now connect a
 replaceable reasoning provider once G41's worker operational hardening is
-complete.
+complete. G45 is the mandatory live-intelligence dogfood gate after G42: it
+tests whether repeated real evidence, grounded synthesis, natural follow-ups,
+and operator recovery are actually useful before more recommendation scope is
+added. It records honest empty and failure outcomes as findings, rather than
+lowering standards to force a recommendation. G44 follows only after that
+owner evaluation: it unifies the existing G27/G28/G36/G37 candidate
+representations, carries a selected direction through the canonical
+Exploration/PRD approvals, and lets verified external results inform later
+recommendations without making Riff an execution environment.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots

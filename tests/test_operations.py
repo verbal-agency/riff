@@ -10,6 +10,7 @@ from riff.config import Settings
 from riff.daily import load_fixture
 from riff.db import connection, migrate
 from riff.operations import DailyPipeline, PipelineRepository
+from riff.worker import worker_exit_code
 
 
 FIXTURE = "tests/fixtures/riffs/daily_inputs.json"
@@ -116,3 +117,51 @@ def test_claim_concurrency_guard_and_report_api(database_url):
     client = TestClient(create_app(Settings(database_url)))
     response = client.get(f"/operations/{run_id}")
     assert response.status_code == 200 and response.json()["status"] == "RUNNING"
+
+
+@pytest.mark.postgres
+def test_active_lease_rejects_then_stale_resume_reclaims_with_audit_history(database_url):
+    repository = PipelineRepository(database_url)
+    run_date = date(2026, 10, 2)
+    first = repository.claim(run_date, "g41-lease-v1", lease_seconds=60)
+    run_id, claimed = first
+    assert claimed is True and first.lease_owner
+    active = repository.claim(run_date, "g41-lease-v1", resume=True)
+    assert active.claimed is False and active.reason == "ACTIVE_LEASE"
+    with connection(database_url) as conn:
+        conn.execute("UPDATE pipeline_runs SET lease_expires_at = now() - interval '1 second' WHERE run_id = %s", (run_id,))
+    stale_without_resume = repository.claim(run_date, "g41-lease-v1")
+    assert stale_without_resume.claimed is False and stale_without_resume.reason == "STALE_RUN_REQUIRES_RESUME"
+    recovered = repository.claim(run_date, "g41-lease-v1", resume=True)
+    assert recovered.claimed is True and recovered.stale_recovered is True
+    report = repository.report(run_id)
+    assert report["lease"]["recovery_count"] == 1
+    assert any(item["event_type"] == "STALE_RECLAIMED" for item in report["events"])
+
+
+@pytest.mark.postgres
+def test_canonical_report_redacts_context_and_projects_readiness_across_api_and_adapter(database_url):
+    repository = PipelineRepository(database_url)
+    claim = repository.claim(date(2026, 10, 3), "g41-report-v1")
+    repository.set_report_context(
+        claim.run_id,
+        {"source_outcomes": [{"source_type": "TECHNICAL_WRITING", "status": "FAILED"}], "provider_token": "must-not-leak", "database_url": "postgresql://riff:secret@localhost/riff"},
+    )
+    report = repository.report(claim.run_id)
+    assert report["outcome_classification"] == "PARTIAL"
+    assert report["provider_token"] == "[REDACTED]"
+    assert "secret" not in report["database_url"]
+    client = TestClient(create_app(Settings(database_url)))
+    assert client.get(f"/operations/{claim.run_id}").json() == report
+    readiness = client.get("/operations/readiness")
+    assert readiness.status_code == 200 and readiness.json()["status"] in {"READY", "READINESS_FAILURE"}
+
+
+def test_worker_exit_code_contract_is_scheduler_safe():
+    assert worker_exit_code({"outcome_classification": "SUCCEEDED"}) == 0
+    assert worker_exit_code({"outcome_classification": "EMPTY"}) == 0
+    assert worker_exit_code({"outcome_classification": "PARTIAL"}) == 10
+    assert worker_exit_code({"outcome_classification": "NOOP"}) == 11
+    assert worker_exit_code({"outcome_classification": "READINESS_FAILURE"}) == 12
+    assert worker_exit_code({"outcome_classification": "CONFIGURATION_ERROR"}) == 13
+    assert worker_exit_code({"outcome_classification": "FAILED"}) == 14

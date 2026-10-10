@@ -299,6 +299,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except ProjectMapError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
+    @app.get("/operations/readiness", tags=["operations"])
+    def get_operation_readiness(
+        effective_settings: Settings = Depends(resolve_settings),
+    ) -> dict:
+        return PipelineRepository(effective_settings.database_url).readiness()
+
     @app.get("/operations/{run_id}", tags=["operations"])
     def get_operation(
         run_id: str,

@@ -44,6 +44,7 @@ TOOL_SCHEMAS: dict[str, dict[str, Any]] = {
     "get_project": {"description": "Read a generated project PRD and goals.", "required": ("project_id",)},
     "export_project": {"description": "Export a generated project as stable Markdown.", "required": ("project_id",)},
     "operation_report": {"description": "Read a durable daily pipeline run report.", "required": ("run_id",)},
+    "operation_readiness": {"description": "Read source readiness and remediation without fetching or changing source state.", "required": ()},
     "list_projects": {"description": "List bounded, approved GitHub project summaries.", "required": ()},
     "inspect_project": {"description": "Read one bounded GitHub project map and snapshot history.", "required": ("project_id",)},
     "match_riff_to_projects": {"description": "Match a Riff to existing projects with explainable dispositions.", "required": ("riff_id",)},
@@ -370,6 +371,9 @@ class RiffToolAdapter:
 
     def _operation_report(self, run_id: str) -> dict[str, Any]:
         return PipelineRepository(self.database_url).report(run_id)
+
+    def _operation_readiness(self, **kwargs: Any) -> dict[str, Any]:
+        return PipelineRepository(self.database_url).readiness()
 
     def _list_projects(self, **kwargs: Any) -> dict[str, Any]:
         limit = int(kwargs.get("limit", 5))

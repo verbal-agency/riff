@@ -79,7 +79,7 @@ from .riff_evaluation import evaluate_fixture as evaluate_riff_fixture
 from .signals import SignalObservation, SignalRanker, SignalRepository
 from .receipt_evaluation import evaluate_labeled_fixture
 from .receipts import KeywordExtractor, ReceiptProcessor, ReceiptRepository
-from .worker import WorkerConfigurationError, run_worker
+from .worker import WorkerConfigurationError, run_worker, worker_exit_code, worker_readiness
 from .writing_ingestion import WritingIngestionRunner
 from .raw_signal_ingestion import RawSignalError, RawSignalIngestionRunner, load_fixture as load_raw_signal_fixture, load_source_manifest as load_raw_signal_manifest
 from .context_packet import ContextPacketError, ContextPacketRepository
@@ -99,6 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
     worker.add_argument("--date", dest="run_date")
     worker.add_argument("--policy-version")
     worker.add_argument("--resume", action="store_true")
+    worker.add_argument("worker_action", nargs="?", choices=("readiness",), help="read-only worker operation")
     api = subparsers.add_parser("api", help="start the HTTP API")
     api.add_argument("--host", default="127.0.0.1")
     api.add_argument("--port", type=int, default=8000)
@@ -838,6 +839,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "worker":
         from datetime import date
 
+        if args.worker_action == "readiness":
+            try:
+                report = worker_readiness(settings)
+            except (WorkerConfigurationError, ValueError) as exc:
+                print(json.dumps({"outcome_classification": "CONFIGURATION_ERROR", "error": str(exc)}, sort_keys=True))
+                return 13
+            print(json.dumps(report, sort_keys=True, default=str))
+            return worker_exit_code(report)
         try:
             report = run_worker(
                 settings,
@@ -853,9 +862,10 @@ def main(argv: list[str] | None = None) -> int:
                 emit_event=False,
             )
         except (WorkerConfigurationError, ValueError) as exc:
-            raise SystemExit(f"worker configuration error: {exc}") from exc
+            print(json.dumps({"outcome_classification": "CONFIGURATION_ERROR", "error": str(exc)}, sort_keys=True))
+            return 13
         print(json.dumps(report, sort_keys=True, default=str))
-        return 0
+        return worker_exit_code(report)
     if args.command == "source":
         ingestion = IngestionRepository(settings.database_url)
         evidence = EvidenceRepository(settings.database_url)

@@ -68,7 +68,8 @@ def test_live_worker_composes_enabled_writing_source_and_surfaces_candidate(data
     assert report["status"] == "EMPTY"
     assert report["live_evidence_count"] == 2
     assert report["candidate_count"] >= 1
-    assert report["outcome_classification"] == "INSUFFICIENT_EVIDENCE"
+    assert report["outcome_classification"] == "EMPTY"
+    assert report["evidence_outcome"] == "INSUFFICIENT_EVIDENCE"
     assert any(item["source_type"] == "TECHNICAL_WRITING" and item["status"] == "SUCCEEDED" for item in report["source_outcomes"])
     assert [stage["status"] for stage in report["stages"]] == ["COMPLETE"] * 7
     with connection(database_url) as conn:
