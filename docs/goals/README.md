@@ -244,17 +244,16 @@ to `BL-G39-001`.
 G40 is complete: the existing approved source runners now compose behind an
 explicit fixture/live worker boundary, with origin-safe evidence selection and
 the existing receipt, capability, profile, signal, and publication stages. G41
-is the operational hardening slice for worker reports, readiness checks,
-stale-run recovery, and exit semantics. G43 is now complete: the live path has
-a reviewed-vocabulary extractor, origin-safe replay, a publication-date-aware
-signal window, real evidence IDs for correlation, and explicit job-source
-selection. The October 1 dogfood run then confirmed that source health remains
+is complete: worker reports, bounded readiness checks, stale-run recovery, and
+exit semantics are now covered by the canonical report contract.
+G43 is now complete: the live path has a reviewed-vocabulary extractor,
+origin-safe replay, a publication-date-aware signal window, real evidence IDs
+for correlation, and explicit job-source selection. The October 1 dogfood run then confirmed that source health remains
 an honest constraint: GitHub rate limits and RSS failures reduced coverage,
 while the surviving evidence did not clear the provenance threshold. G43
-resolves the extraction and replay failure chain; G42 can now connect a
-replaceable reasoning provider once G41's worker operational hardening is
-complete. G45 is the mandatory live-intelligence dogfood gate after G42: it
-tests whether repeated real evidence, grounded synthesis, natural follow-ups,
+resolves the extraction and replay failure chain; G42 is now the next eligible
+goal to connect a replaceable reasoning provider. G45 is the mandatory live-intelligence dogfood gate after G42: it tests whether
+repeated real evidence, grounded synthesis, natural follow-ups,
 and operator recovery are actually useful before more recommendation scope is
 added. It records honest empty and failure outcomes as findings, rather than
 lowering standards to force a recommendation. G44 follows only after that

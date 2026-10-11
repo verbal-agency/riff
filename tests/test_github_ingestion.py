@@ -247,10 +247,10 @@ def test_repository_rename_preserves_identity(repositories):
             "WHERE provider_repository_id = '4242' ORDER BY canonical_url"
         ).fetchall()
     assert tuple(_text(item) for item in row) == ("4242", "newco", "riff-runtime", "https://github.com/newco/riff-runtime")
-    assert {_text(item[0]) for item in aliases} == {
+    assert {
         "https://github.com/acme/riff-demo",
         "https://github.com/newco/riff-runtime",
-    }
+    } <= {_text(item[0]) for item in aliases}
 
 
 @pytest.mark.postgres

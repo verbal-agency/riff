@@ -1,6 +1,6 @@
 # G42 — Wire a replaceable reasoning provider into live daily publication
 
-**Status:** Queued
+**Status:** Ready
 **Depends on:** G40, G41, G39, G29, G23, G24a
 **Unlocks:** End-to-end live Riff dogfooding
 **Canonical scenario:** `SC-LIVE-RIFF-001`

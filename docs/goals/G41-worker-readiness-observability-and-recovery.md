@@ -1,6 +1,6 @@
 # G41 — Make daily worker runs observable, ready-checkable, and recoverable
 
-**Status:** In progress
+**Status:** Complete
 **Depends on:** G40, G30, G35
 **Unlocks:** Reliable unattended scheduling and operator iteration
 **Canonical scenario:** `SC-WORKER-OPERATIONS-001`
@@ -44,22 +44,22 @@ work.
 
 ## Acceptance criteria
 
-- [ ] Every worker invocation emits a stable machine-readable report and a
+- [x] Every worker invocation emits a stable machine-readable report and a
   meaningful exit code; no successful report has zero stages unless it is an
   explicitly classified no-op.
-- [ ] A report includes its outcome classification, remediation, mode, policy
+- [x] A report includes its outcome classification, remediation, mode, policy
   versions, source outcomes, stage attempts/counts/durations, origin counts,
   and any available provider usage without exposing secrets, raw prompts, or
   unrestricted source bodies.
-- [ ] Readiness reports identify at least one usable source, or fail clearly
+- [x] Readiness reports identify at least one usable source, or fail clearly
   with source-specific remediation rather than publishing unsupported Riffs.
-- [ ] A deliberately abandoned run becomes reclaimable after the configured
+- [x] A deliberately abandoned run becomes reclaimable after the configured
   lease interval; `--resume` cannot reclaim a non-stale run, and concurrent
   attempts remain safe and inspectable.
-- [ ] Reports distinguish valid empty, partial, failed, stale-recovered, and
+- [x] Reports distinguish valid empty, partial, failed, stale-recovered, and
   fixture-only outcomes and include source/stage counts.
-- [ ] API/ChatGPT read operations and terminal output agree on the same report.
-- [ ] Offline and Postgres tests cover restart, lease expiry, concurrent runs,
+- [x] API/ChatGPT read operations and terminal output agree on the same report.
+- [x] Offline and Postgres tests cover restart, lease expiry, concurrent runs,
   mixed source health, exit codes, and report redaction.
 
 ## Deliverables
@@ -124,6 +124,20 @@ work.
 4. Verify terminal, adapter, and MCP surfaces produce the same redacted report.
 5. Record an operator scenario: begin a run, simulate abandonment, inspect
    readiness, resume it, and confirm the final report says `STALE_RECOVERED`.
+
+## Verification evidence
+
+- Focused Postgres operations, worker, live-worker, adapter, API, and MCP
+  suites pass, including lease, readiness, report, and recovery coverage.
+- The connector acceptance test passes end to end with natural handles for the
+  exploration, experiment, and generated project; internal UUIDs remain an
+  implementation detail.
+- GitHub rename and live-worker regressions pass against the shared local
+  database. The rename assertion preserves the expected aliases without
+  assuming unrelated local aliases do not exist.
+- Operator checks verified migrations, bounded readiness output, fixture-worker
+  reporting, and lease configuration. Reports expose stage/source/origin
+  counts, remediation, and fixture/live classification without secrets.
 
 G42 must consume this report and lease contract rather than creating parallel
 provider health or retry state.
