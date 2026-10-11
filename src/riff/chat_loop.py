@@ -209,7 +209,7 @@ class ConversationContext:
                 self._observe_items("riff", value, "Riff")
             elif field in {"candidates", "execution_candidates"}:
                 self._observe_items("candidate", value, "candidate")
-            elif field in {"experiments", "experiment_options"}:
+            elif field in {"experiments", "experiment_options", "possible_experiments"}:
                 self._observe_items("experiment", value, "experiment")
             elif field in {"projects", "recommendations"}:
                 self._observe_items(field.rstrip("s"), value, field.rstrip("s"))

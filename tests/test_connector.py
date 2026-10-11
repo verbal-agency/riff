@@ -133,17 +133,20 @@ class _PromoteModel:
         if self.step == 4:
             return ModelResponse(tool_calls=(ModelToolCall("explore", "create_exploration", {"riff_id": self.riff_id, "confirmation_token": "model-token"}),))
         if self.step == 5:
-            payload = json.loads(messages[-1]["content"])["result"]
-            self.exploration_id = payload["exploration_id"]
-            self.experiment_id = payload["possible_experiments"][0]["experiment_id"]
+            tool_payload = json.loads(messages[-1]["content"])
+            assert "data" in tool_payload, tool_payload
+            assert isinstance(tool_payload["data"], dict)
+            self.exploration_id = "the exploration"
+            self.experiment_id = "the top experiment"
             return ModelResponse(tool_calls=(ModelToolCall("select", "select_experiment", {"exploration_id": self.exploration_id, "experiment_id": self.experiment_id, "confirmation_token": "model-token"}),))
         if self.step == 6:
             return ModelResponse(tool_calls=(ModelToolCall("approve", "approve_prd", {"exploration_id": self.exploration_id, "reason": "User approves this project.", "confirmation_token": "model-token"}),))
         if self.step == 7:
             return ModelResponse(tool_calls=(ModelToolCall("generate", "generate_prd", {"exploration_id": self.exploration_id}),))
         if self.step == 8:
-            payload = json.loads(messages[-1]["content"])["result"]
-            self.project_id = payload["project_id"]
+            rendered = json.loads(messages[-1]["content"])
+            assert isinstance(rendered.get("data"), dict)
+            self.project_id = "the project"
             return ModelResponse(tool_calls=(ModelToolCall("export", "export_project", {"project_id": self.project_id}),))
         return ModelResponse(content="The evidence was inspected, approved, and exported with durable Riff IDs.")
 
@@ -186,10 +189,15 @@ def test_http_connector_runs_read_promote_export_against_persisted_postgres(pers
         ).run("Inspect today's Riff, approve a bounded exploration, and export the project.")
         assert result.status == "SUCCEEDED"
         assert [item.name for item in result.trace] == ["daily_riffs", "investigate_riff", "record_decision", "create_exploration", "select_experiment", "approve_prd", "generate_prd", "export_project"]
-        assert model.exploration_id and model.project_id
+        assert model.exploration_id == "the exploration" and model.project_id == "the project"
         assert result.trace[1].result["result"].get("profile_slice") is None
-        assert result.trace[-1].result["result"]["project_id"] == model.project_id
-        assert adapter.call("get_project", {"project_id": model.project_id})["result"]["project_id"] == model.project_id
+        assert "result" in result.trace[-4].result, result.trace[-4].result
+        assert "result" in result.trace[-3].result, result.trace[-3].result
+        assert "result" in result.trace[-2].result, result.trace[-2].result
+        assert "result" in result.trace[-1].result, result.trace[-1].result
+        project_id = result.trace[-1].result["result"]["project_id"]
+        assert project_id
+        assert adapter.call("get_project", {"project_id": project_id})["result"]["project_id"] == project_id
     with connection(database_url) as conn:
         assert conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0] == 1
         assert conn.execute("SELECT COUNT(*) FROM prd_approvals").fetchone()[0] == 1
