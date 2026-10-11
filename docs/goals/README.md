@@ -79,7 +79,9 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G41](G41-worker-readiness-observability-and-recovery.md) | Make daily worker runs observable, ready-checkable, and recoverable | G40, G30, G35 |
 | [G43](G43-live-evidence-yield-and-source-recovery.md) | Make live evidence produce useful recommendations | G40, G41, G05, G06, G21, G30 |
 | [G42](G42-production-reasoning-and-live-daily-publication.md) | Wire a replaceable reasoning provider into live daily publication | G40, G41, G43, G39, G29, G23, G24a |
-| [G45](G45-live-intelligence-dogfood-and-evaluation.md) | Dogfood the complete live-intelligence loop and establish a usefulness gate | G29, G32, G39, G41, G42, G43 |
+| [G45](G45-live-intelligence-dogfood-and-evaluation.md) | Dogfood the complete live-intelligence loop and establish a usefulness gate | G29, G32, G39, G41, G42, G43, G46, G47 |
+| [G46](G46-live-job-source-provisioning.md) | Provision a compliant live job source and accumulate job-market history | G21, G40, G41, G43, G35 |
+| [G47](G47-demand-and-frontier-capability-ranking.md) | Separate demand and frontier evidence in capability ranking | G08, G29, G43, G46 |
 | [G44](G44-unified-action-candidates-and-outcome-feedback.md) | Unify evidence-backed action candidates and learn from verified outcomes | G27, G28, G29, G32, G36, G37, G39, G42, G45 |
 
 G03 and G04 may be implemented in either order. All other goals should normally follow the table.

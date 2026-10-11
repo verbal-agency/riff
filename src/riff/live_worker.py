@@ -24,7 +24,7 @@ from .ingestion_repository import CollectionSummary, IngestionRepository, RunSta
 from .job_collection import JobCollectionRunner
 from .job_fetch import HttpJobFetcher
 from .job_source_policy import JobPolicyError, JobSourcePolicy, load_policy
-from .operations import PipelineError, PipelineRepository, STAGES
+from .operations import DEFAULT_LEASE_SECONDS, PipelineError, PipelineRepository, STAGES
 from .profile import ProfileRepository
 from .receipts import LiveHeuristicExtractor, ReceiptProcessor, ReceiptRepository
 from .riffs import CandidateContext, DailyRiffService, DeterministicReasoningProvider, RiffRepository
@@ -178,12 +178,13 @@ def run_live_pipeline(
     job_source_id: str | None = None,
     replay_evidence_ids: tuple[str, ...] | None = None,
     replay_since: datetime | None = None,
+    lease_seconds: int = DEFAULT_LEASE_SECONDS,
 ) -> dict[str, Any]:
     """Run one live collection-to-publication cycle with durable stages."""
 
     repository = PipelineRepository(database_url)
     mode = "live-replay" if replay_evidence_ids is not None else "live"
-    claim = repository.claim(run_date, policy_version, resume=resume, mode=mode)
+    claim = repository.claim(run_date, policy_version, resume=resume, mode=mode, lease_seconds=lease_seconds)
     run_id, claimed = claim
     if not claimed:
         report = repository.report(run_id)
@@ -203,7 +204,7 @@ def run_live_pipeline(
     published_status = "EMPTY"
 
     for stage in STAGES:
-        if not repository.begin_stage(run_id, stage, lease_owner=claim.lease_owner):
+        if not repository.begin_stage(run_id, stage, lease_owner=claim.lease_owner, lease_seconds=lease_seconds):
             continue
         started = datetime.now(timezone.utc)
         try:
@@ -215,7 +216,7 @@ def run_live_pipeline(
                     counts = (len(evidence_ids), len(evidence_ids), 0)
                 else:
                     collection = (collector or LiveSourceCollector(database_url, job_source_id=job_source_id)).collect(
-                        heartbeat=lambda: repository.heartbeat(run_id, claim.lease_owner)
+                        heartbeat=lambda: repository.heartbeat(run_id, claim.lease_owner, lease_seconds=lease_seconds)
                     )
                     source_outcomes = collection.outcomes
                     evidence_ids = collection.evidence_ids
@@ -263,9 +264,9 @@ def run_live_pipeline(
                 result = DailyRiffService(RiffRepository(database_url), DeterministicReasoningProvider(), policy_version=policy_version, max_candidates=5, max_riffs=3).generate(run_date, candidates)
                 published_status = "SUCCEEDED" if result.status == "COMPLETED" else "EMPTY"
                 counts = (len(candidates), len(result.riffs), 0)
-                repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], model_calls=result.provider_calls, duration_ms=_duration_ms(started), lease_owner=claim.lease_owner)
+                repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], model_calls=result.provider_calls, duration_ms=_duration_ms(started), lease_owner=claim.lease_owner, lease_seconds=lease_seconds)
                 continue
-            repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], duration_ms=_duration_ms(started), lease_owner=claim.lease_owner)
+            repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], duration_ms=_duration_ms(started), lease_owner=claim.lease_owner, lease_seconds=lease_seconds)
         except Exception as exc:
             repository.set_report_context(run_id, {"source_outcomes": [item.to_dict() for item in source_outcomes], "origin_counts": {"LIVE": len(evidence_ids)}})
             repository.fail_stage(run_id, stage, str(exc), lease_owner=claim.lease_owner)

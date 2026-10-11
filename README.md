@@ -13,6 +13,7 @@ uv sync --all-groups
 cp .env.example .env
 docker compose up -d postgres
 uv run riff migrate
+uv run riff worker readiness
 uv run riff worker --fixture tests/fixtures/riffs/daily_inputs.json --resume
 uv run riff api --host 127.0.0.1 --port 8000
 ```
@@ -516,6 +517,15 @@ uv run riff worker --fixture tests/fixtures/riffs/daily_inputs.json --resume
 # Replay already-collected LIVE evidence without making network requests:
 uv run riff worker --replay-live --date 2026-10-01 --since 2026-09-30T00:00:00+00:00 --limit 100 --resume
 ```
+
+`riff worker readiness` is read-only: it lists a bounded source inventory and
+marks each source as usable, empty, failed, disabled, pending review, stale, or
+fixture-only. It does not enable sources or fetch data. The worker emits one
+canonical JSON report and exits `0` for success or a valid empty result, `10`
+for partial collection, `11` for a safe no-op, `12` for readiness failure,
+`13` for configuration errors, and `14` for operational failure. Set
+`RIFF_WORKER_LEASE_SECONDS` to a bounded value between 1 and 86400 (default:
+900) when an environment needs a shorter or longer recovery window.
 
 The live worker uses a bounded, versioned heuristic extractor when no paid
 provider is configured. The replay path reruns that extractor and downstream

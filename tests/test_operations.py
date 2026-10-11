@@ -9,8 +9,8 @@ from riff.api import create_app
 from riff.config import Settings
 from riff.daily import load_fixture
 from riff.db import connection, migrate
-from riff.operations import DailyPipeline, PipelineRepository
-from riff.worker import worker_exit_code
+from riff.operations import DailyPipeline, PipelineRepository, _is_fixture_source
+from riff.worker import run_worker, worker_exit_code
 
 
 FIXTURE = "tests/fixtures/riffs/daily_inputs.json"
@@ -140,6 +140,19 @@ def test_active_lease_rejects_then_stale_resume_reclaims_with_audit_history(data
 
 
 @pytest.mark.postgres
+def test_worker_applies_the_configured_lease_duration(database_url):
+    report = run_worker(
+        Settings(database_url, worker_lease_seconds=45),
+        fixture_path=FIXTURE,
+        run_date=date(2026, 10, 4),
+        policy_version="g41-configured-lease-v1",
+        emit_event=False,
+    )
+    claimed = next(item for item in report["events"] if item["event_type"] == "CLAIMED")
+    assert claimed["detail"]["lease_seconds"] == 45
+
+
+@pytest.mark.postgres
 def test_canonical_report_redacts_context_and_projects_readiness_across_api_and_adapter(database_url):
     repository = PipelineRepository(database_url)
     claim = repository.claim(date(2026, 10, 3), "g41-report-v1")
@@ -155,6 +168,9 @@ def test_canonical_report_redacts_context_and_projects_readiness_across_api_and_
     assert client.get(f"/operations/{claim.run_id}").json() == report
     readiness = client.get("/operations/readiness")
     assert readiness.status_code == 200 and readiness.json()["status"] in {"READY", "READINESS_FAILURE"}
+    readiness_payload = readiness.json()
+    assert len(readiness_payload["sources"]) <= 50
+    assert readiness_payload["source_count"] == len(readiness_payload["sources"]) + readiness_payload["omitted_source_count"]
 
 
 def test_worker_exit_code_contract_is_scheduler_safe():
@@ -165,3 +181,15 @@ def test_worker_exit_code_contract_is_scheduler_safe():
     assert worker_exit_code({"outcome_classification": "READINESS_FAILURE"}) == 12
     assert worker_exit_code({"outcome_classification": "CONFIGURATION_ERROR"}) == 13
     assert worker_exit_code({"outcome_classification": "FAILED"}) == 14
+
+
+@pytest.mark.parametrize(
+    ("source_id", "source_name", "origin", "expected"),
+    [
+        ("fixture-github", "GitHub fixture", "UNCLASSIFIED", True),
+        ("github-discovered-1-test-abc", "Discovered repository", "UNCLASSIFIED", True),
+        ("reviewed-rss", "Engineering blog", "LIVE", False),
+    ],
+)
+def test_readiness_quarantines_explicit_and_legacy_fixture_sources(source_id, source_name, origin, expected):
+    assert _is_fixture_source(source_id, source_name, origin) is expected

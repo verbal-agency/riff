@@ -1,7 +1,7 @@
 # G45 — Dogfood live intelligence and establish a usefulness gate
 
 **Status:** Queued
-**Depends on:** G29, G32, G39, G41, G42, G43
+**Depends on:** G29, G32, G39, G41, G42, G43, G46, G47
 **Unlocks:** G44 and expansion of unattended live operation
 **Canonical scenario:** `SC-LIVE-DOGFOOD-001`
 

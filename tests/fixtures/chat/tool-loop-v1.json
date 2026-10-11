@@ -84,6 +84,11 @@
       "required": ["run_id"]
     },
     {
+      "name": "operation_readiness",
+      "description": "Read bounded source readiness without collecting or changing sources.",
+      "required": []
+    },
+    {
       "name": "list_projects",
       "description": "List bounded, approved GitHub project summaries.",
       "required": []

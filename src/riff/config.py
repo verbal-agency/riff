@@ -20,6 +20,7 @@ class Settings:
     adapter_token: str | None = None
     mcp_allowed_hosts: tuple[str, ...] = ()
     mcp_allowed_origins: tuple[str, ...] = ()
+    worker_lease_seconds: int = 15 * 60
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "Settings":
@@ -38,6 +39,13 @@ class Settings:
             )
 
         environment = source.get("RIFF_ENV", "development").strip() or "development"
+        raw_worker_lease_seconds = source.get("RIFF_WORKER_LEASE_SECONDS", "900").strip()
+        try:
+            worker_lease_seconds = int(raw_worker_lease_seconds)
+        except ValueError as exc:
+            raise ConfigurationError("RIFF_WORKER_LEASE_SECONDS must be an integer between 1 and 86400") from exc
+        if not 1 <= worker_lease_seconds <= 86_400:
+            raise ConfigurationError("RIFF_WORKER_LEASE_SECONDS must be between 1 and 86400")
         log_level = source.get("RIFF_LOG_LEVEL", "INFO").strip().upper() or "INFO"
         adapter_token = source.get("RIFF_ADAPTER_TOKEN", "").strip() or None
         allowed_hosts = tuple(item.strip() for item in source.get("RIFF_MCP_ALLOWED_HOSTS", "").split(",") if item.strip())
@@ -49,4 +57,5 @@ class Settings:
             adapter_token=adapter_token,
             mcp_allowed_hosts=allowed_hosts,
             mcp_allowed_origins=allowed_origins,
+            worker_lease_seconds=worker_lease_seconds,
         )

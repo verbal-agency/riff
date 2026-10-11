@@ -129,7 +129,14 @@ class PipelineRepository:
             )
             return result.rowcount == 1
 
-    def begin_stage(self, run_id: str, stage_name: str, *, lease_owner: str | None = None) -> bool:
+    def begin_stage(
+        self,
+        run_id: str,
+        stage_name: str,
+        *,
+        lease_owner: str | None = None,
+        lease_seconds: int = DEFAULT_LEASE_SECONDS,
+    ) -> bool:
         with connection(self.database_url) as conn:
             row = conn.execute("SELECT status FROM pipeline_stages WHERE run_id = %s AND stage_name = %s FOR UPDATE", (run_id, stage_name)).fetchone()
             if row is None:
@@ -139,15 +146,15 @@ class PipelineRepository:
             conn.execute("UPDATE pipeline_stages SET status = 'RUNNING', attempt_count = attempt_count + 1, started_at = now(), error = NULL WHERE run_id = %s AND stage_name = %s", (run_id, stage_name))
             predicate = "run_id = %s" + (" AND lease_owner = %s" if lease_owner else "")
             params: list[Any] = [stage_name, run_id] + ([lease_owner] if lease_owner else [])
-            result = conn.execute("UPDATE pipeline_runs SET current_stage = %s, heartbeat_at = now(), lease_expires_at = now() + (%s * interval '1 second'), updated_at = now() WHERE " + predicate, [stage_name, DEFAULT_LEASE_SECONDS, *params[1:]])
+            result = conn.execute("UPDATE pipeline_runs SET current_stage = %s, heartbeat_at = now(), lease_expires_at = now() + (%s * interval '1 second'), updated_at = now() WHERE " + predicate, [stage_name, lease_seconds, *params[1:]])
             if result.rowcount != 1:
                 raise PipelineError("pipeline lease is no longer held")
             return True
 
-    def finish_stage(self, run_id: str, stage_name: str, *, input_count: int, output_count: int, error_count: int = 0, model_calls: int = 0, token_count: int = 0, cost_estimate: float = 0.0, duration_ms: int = 0, lease_owner: str | None = None) -> None:
+    def finish_stage(self, run_id: str, stage_name: str, *, input_count: int, output_count: int, error_count: int = 0, model_calls: int = 0, token_count: int = 0, cost_estimate: float = 0.0, duration_ms: int = 0, lease_owner: str | None = None, lease_seconds: int = DEFAULT_LEASE_SECONDS) -> None:
         with connection(self.database_url) as conn:
             conn.execute("UPDATE pipeline_stages SET status = 'COMPLETE', input_count = %s, output_count = %s, error_count = %s, model_calls = %s, token_count = %s, cost_estimate = %s, duration_ms = %s, completed_at = now() WHERE run_id = %s AND stage_name = %s", (input_count, output_count, error_count, model_calls, token_count, cost_estimate, duration_ms, run_id, stage_name))
-            self._heartbeat_in_connection(conn, run_id, lease_owner)
+            self._heartbeat_in_connection(conn, run_id, lease_owner, lease_seconds=lease_seconds)
 
     def fail_stage(self, run_id: str, stage_name: str, message: str, *, lease_owner: str | None = None) -> None:
         with connection(self.database_url) as conn:
@@ -171,9 +178,9 @@ class PipelineRepository:
             )
 
     @staticmethod
-    def _heartbeat_in_connection(conn, run_id: str, lease_owner: str | None) -> None:
+    def _heartbeat_in_connection(conn, run_id: str, lease_owner: str | None, *, lease_seconds: int = DEFAULT_LEASE_SECONDS) -> None:
         clauses = ["run_id = %s", "status = 'RUNNING'"]
-        params: list[Any] = [DEFAULT_LEASE_SECONDS, run_id]
+        params: list[Any] = [lease_seconds, run_id]
         if lease_owner:
             clauses.append("lease_owner = %s")
             params.append(lease_owner)
@@ -199,47 +206,67 @@ class PipelineRepository:
         result["remediation"] = _remediation(result["outcome_classification"], result)
         return result
 
-    def readiness(self) -> dict[str, Any]:
+    def readiness(self, *, limit: int = 50) -> dict[str, Any]:
         """Return source readiness without fetching, enabling, or mutating sources."""
+        if not 1 <= limit <= 200:
+            raise PipelineError("readiness limit must be between 1 and 200")
         with connection(self.database_url) as conn:
+            total = conn.execute("SELECT count(*) FROM sources s JOIN ingestion_source_configs c ON c.source_id = s.source_id").fetchone()
             rows = conn.execute(
                 """SELECT s.source_id, s.source_type, s.name, c.enabled, COALESCE(s.data_origin, 'UNCLASSIFIED'),
-                          c.metadata, latest.status, latest.finished_at,
+                          c.metadata, latest.status, latest.started_at, latest.finished_at,
                           COALESCE(latest.stored_count, 0), COALESCE(latest.failure_count, 0)
                    FROM sources s JOIN ingestion_source_configs c ON c.source_id = s.source_id
                    LEFT JOIN LATERAL (
-                       SELECT cr.status, cr.finished_at,
+                       SELECT cr.status, cr.started_at, cr.finished_at,
                               count(*) FILTER (WHERE cir.outcome = 'STORED') AS stored_count,
                               count(*) FILTER (WHERE cir.outcome IN ('FAILED_TRANSIENT', 'FAILED_PERMANENT')) AS failure_count
                        FROM collection_runs cr LEFT JOIN collection_item_results cir ON cir.run_id = cr.run_id
                        WHERE cr.source_ids ? s.source_id
                        GROUP BY cr.run_id ORDER BY cr.started_at DESC LIMIT 1
-                   ) latest ON TRUE ORDER BY s.source_type, s.name"""
+                   ) latest ON TRUE ORDER BY s.source_type, s.name LIMIT %s""",
+                (limit,),
             ).fetchall()
         sources = []
         for row in rows:
             metadata = dict(row[5] or {})
-            if not bool(row[3]):
-                state, remediation = "DISABLED", "Enable only after explicit source review."
-            elif str(row[4]) in {"FIXTURE", "TEST"}:
+            if _is_fixture_source(str(row[0]), str(row[2]), str(row[4])):
                 state, remediation = "FIXTURE_ONLY", "Configure a reviewed LIVE source before live publication."
+            elif not bool(row[3]):
+                state, remediation = "DISABLED", "Enable only after explicit source review."
             elif str(metadata.get("review_status", "")).upper() in {"PENDING", "PENDING_REVIEW"}:
                 state, remediation = "PENDING_REVIEW", "Complete source review before enabling collection."
             elif row[6] is None:
                 state, remediation = "NEVER_COLLECTED", "Run an explicit live collection after checking the source endpoint."
             elif str(row[6]) == "FAILED":
                 state, remediation = "FAILED", "Inspect the latest collection error and retry only after correcting the source issue."
-            elif int(row[7] or 0) == 0:
+            elif str(row[6]) == "RUNNING" and row[7] and row[7] < datetime.now(timezone.utc) - timedelta(minutes=15):
+                state, remediation = "STALE", "The source collection appears abandoned; inspect its run before resuming the worker."
+            elif int(row[9] or 0) == 0:
                 state, remediation = "EMPTY", "The source is reachable but yielded no new items; check again on its normal cadence."
             else:
                 state, remediation = "USABLE", "Ready for bounded collection."
-            sources.append({"source_id": str(row[0]), "source_type": str(row[1]), "name": str(row[2]), "state": state, "latest_collection_status": row[6], "latest_finished_at": row[7].isoformat() if row[7] else None, "stored_count": int(row[8]), "failure_count": int(row[9]), "remediation": remediation})
+            sources.append({"source_id": str(row[0]), "source_type": str(row[1]), "name": str(row[2]), "state": state, "latest_collection_status": row[6], "latest_finished_at": row[8].isoformat() if row[8] else None, "stored_count": int(row[9]), "failure_count": int(row[10]), "remediation": remediation})
         usable = sum(1 for item in sources if item["state"] == "USABLE")
-        return {"status": "READY" if usable else "READINESS_FAILURE", "usable_source_count": usable, "sources": sources, "remediation": "At least one reviewed LIVE source is usable." if not usable else "Run the worker in an explicit mode."}
+        total_count = int(total[0]) if total else len(sources)
+        return {"status": "READY" if usable else "READINESS_FAILURE", "usable_source_count": usable, "source_count": total_count, "omitted_source_count": max(0, total_count - len(sources)), "sources": sources, "remediation": "At least one reviewed LIVE source is usable." if not usable else "Run the worker in an explicit mode."}
 
 
 _SENSITIVE_KEY = re.compile(r"(?:password|secret|token|authorization|api[_-]?key)", re.IGNORECASE)
 _URL_CREDENTIALS = re.compile(r"(postgres(?:ql)?://[^:/@]+:)[^@/]+@", re.IGNORECASE)
+
+
+def _is_fixture_source(source_id: str, source_name: str, data_origin: str) -> bool:
+    """Quarantine explicit and legacy fixture/test sources from live readiness."""
+    if data_origin.upper() in {"FIXTURE", "TEST"}:
+        return True
+    normalized_id = source_id.lower()
+    normalized_name = source_name.lower()
+    return (
+        normalized_id.startswith("fixture-")
+        or "-test-" in normalized_id
+        or normalized_name.startswith("fixture")
+    )
 
 
 def _redact(value: Any) -> Any:
@@ -299,13 +326,13 @@ class DailyPipeline:
         self.max_riffs = max_riffs
         self.repository = PipelineRepository(database_url)
 
-    def run(self, fixture_path: str | Path | DailyFixture, *, run_date: date | None = None, policy_version: str | None = None, fail_stage: str | None = None, resume: bool = False) -> dict[str, Any]:
+    def run(self, fixture_path: str | Path | DailyFixture, *, run_date: date | None = None, policy_version: str | None = None, fail_stage: str | None = None, resume: bool = False, lease_seconds: int = DEFAULT_LEASE_SECONDS) -> dict[str, Any]:
         fixture_hint = load_fixture(fixture_path, run_date=run_date, policy_version=policy_version) if isinstance(fixture_path, (str, Path)) else fixture_path
         if run_date is not None or policy_version is not None:
             from dataclasses import replace
 
             fixture_hint = replace(fixture_hint, run_date=run_date or fixture_hint.run_date, policy_version=policy_version or fixture_hint.policy_version)
-        claim = self.repository.claim(fixture_hint.run_date, fixture_hint.policy_version, resume=resume, mode="fixture")
+        claim = self.repository.claim(fixture_hint.run_date, fixture_hint.policy_version, resume=resume, mode="fixture", lease_seconds=lease_seconds)
         run_id, claimed = claim
         if not claimed:
             report = self.repository.report(run_id)
@@ -316,7 +343,7 @@ class DailyPipeline:
         selected = tuple(sorted(fixture_hint.candidates, key=lambda item: (-item.score, item.candidate_id))[: self.max_candidates])
         published_status = "EMPTY"
         for stage in STAGES:
-            if not self.repository.begin_stage(run_id, stage, lease_owner=claim.lease_owner):
+            if not self.repository.begin_stage(run_id, stage, lease_owner=claim.lease_owner, lease_seconds=lease_seconds):
                 continue
             started = time.monotonic()
             try:
@@ -352,9 +379,9 @@ class DailyPipeline:
                     result = DailyRiffService(RiffRepository(self.database_url), DeterministicReasoningProvider(), policy_version=bounded.policy_version, max_candidates=self.max_deep_analyses, max_riffs=self.max_riffs).generate(bounded.run_date, bounded.candidates)
                     published_status = "SUCCEEDED" if result.status == "COMPLETED" else "EMPTY"
                     counts = (len(bounded.candidates), len(result.riffs))
-                    self.repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], model_calls=result.provider_calls, duration_ms=int((time.monotonic() - started) * 1000), lease_owner=claim.lease_owner)
+                    self.repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], model_calls=result.provider_calls, duration_ms=int((time.monotonic() - started) * 1000), lease_owner=claim.lease_owner, lease_seconds=lease_seconds)
                     continue
-                self.repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], duration_ms=int((time.monotonic() - started) * 1000), lease_owner=claim.lease_owner)
+                self.repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], duration_ms=int((time.monotonic() - started) * 1000), lease_owner=claim.lease_owner, lease_seconds=lease_seconds)
             except Exception as exc:
                 self.repository.fail_stage(run_id, stage, str(exc), lease_owner=claim.lease_owner)
                 return self.repository.report(run_id)

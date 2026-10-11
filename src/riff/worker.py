@@ -61,7 +61,13 @@ def run_worker(
     if fixture_path is not None:
         from .operations import DailyPipeline
 
-        report = DailyPipeline(effective.database_url).run(fixture_path, run_date=run_date, policy_version=policy_version, resume=resume)
+        report = DailyPipeline(effective.database_url).run(
+            fixture_path,
+            run_date=run_date,
+            policy_version=policy_version,
+            resume=resume,
+            lease_seconds=effective.worker_lease_seconds,
+        )
         report = {**report, "mode": "fixture"}
     elif live:
         from .live_worker import run_live_pipeline
@@ -73,6 +79,7 @@ def run_worker(
             policy_version=policy_version or "riff-live-v1",
             resume=resume,
             job_source_id=job_source_id,
+            lease_seconds=effective.worker_lease_seconds,
         )
         report = {**report, "mode": "live"}
     else:
@@ -87,6 +94,7 @@ def run_worker(
             resume=resume,
             replay_evidence_ids=evidence_ids,
             replay_since=replay_since,
+            lease_seconds=effective.worker_lease_seconds,
         )
         report = {**report, "mode": "live-replay"}
     if emit_event:
