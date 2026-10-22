@@ -8,6 +8,7 @@ import pytest
 from riff.db import connection, migrate
 from riff.evidence import EvidenceSubmission, SourceType
 from riff.evidence_repository import EvidenceRepository
+from riff.data_governance import approve_live_source
 from riff.github_ingestion import GitHubResponse
 from riff.ingestion import FeedResponse
 from riff.ingestion_repository import IngestionRepository
@@ -46,8 +47,9 @@ def test_live_worker_composes_enabled_writing_source_and_surfaces_candidate(data
     run_date = date(2099, 1, 1)
     evidence = EvidenceRepository(database_url)
     ingestion = IngestionRepository(database_url)
-    source = evidence.create_source(SourceType.TECHNICAL_WRITING, "G40 live writing fixture", source_id=source_id)
+    source = evidence.create_source(SourceType.TECHNICAL_WRITING, "G40 approved live writing", canonical_root="https://example.com", source_id=source_id)
     ingestion.configure_source(source.source_id, "https://example.com/feed.xml", enabled=True)
+    approve_live_source(database_url, source_id=source_id, owner="g40-test")
     collector = LiveSourceCollector(
         database_url,
         source_ids=[source_id],
@@ -100,8 +102,9 @@ def test_live_replay_reuses_persisted_evidence_without_collecting(database_url):
     source_id = f"g43-live-replay-source-{uuid.uuid4().hex[:10]}"
     evidence = EvidenceRepository(database_url)
     ingestion = IngestionRepository(database_url)
-    source = evidence.create_source(SourceType.TECHNICAL_WRITING, "G43 live replay fixture", source_id=source_id)
+    source = evidence.create_source(SourceType.TECHNICAL_WRITING, "G43 approved live replay", canonical_root="https://example.com", source_id=source_id)
     ingestion.configure_source(source.source_id, "https://example.com/replay.xml", enabled=True)
+    approve_live_source(database_url, source_id=source_id, owner="g43-test")
     collector = LiveSourceCollector(
         database_url,
         source_ids=[source_id],
@@ -126,6 +129,56 @@ def test_live_replay_reuses_persisted_evidence_without_collecting(database_url):
 
 
 @pytest.mark.postgres
+def test_live_replay_requires_two_independent_roots_for_publication(database_url):
+    evidence = EvidenceRepository(database_url)
+    source = evidence.create_source(SourceType.TECHNICAL_WRITING, "G48 single-root live source", canonical_root="https://single-root.example")
+    ingestion = IngestionRepository(database_url)
+    ingestion.configure_source(source.source_id, "https://single-root.example/feed", enabled=True)
+    approve_live_source(database_url, source_id=source.source_id, owner="g48-test")
+    result = evidence.ingest(
+        EvidenceSubmission(
+            source_id=source.source_id,
+            canonical_url="https://single-root.example/durable-agent-execution",
+            native_id="g48-single-root",
+            title="Durable agent execution",
+            published_at=datetime(2026, 10, 2, 12, tzinfo=timezone.utc),
+            raw_content="Teams demonstrate resumable workflow recovery with durable execution and evaluation.",
+            data_origin="LIVE",
+            origin_run_id="g48-recorded-live",
+            origin_policy_version="g48-test-v1",
+        )
+    )
+    second = evidence.ingest(
+        EvidenceSubmission(
+            source_id=source.source_id,
+            canonical_url="https://single-root.example/recovery",
+            native_id="g48-single-root-second",
+            title="Workflow recovery",
+            published_at=datetime(2026, 10, 2, 13, tzinfo=timezone.utc),
+            raw_content="Teams demonstrate resumable workflow recovery with durable execution and evaluation.",
+            data_origin="LIVE",
+            origin_run_id="g48-recorded-live",
+            origin_policy_version="g48-test-v1",
+        )
+    )
+
+    report = run_live_pipeline(
+        database_url,
+        run_date=date(2026, 10, 2),
+        policy_version=f"g48-single-root-{uuid.uuid4().hex[:10]}",
+        replay_evidence_ids=(result.evidence_id, second.evidence_id),
+        replay_since=datetime(2026, 10, 2, tzinfo=timezone.utc),
+    )
+
+    assert report["status"] == "EMPTY"
+    assert report["candidate_count"] >= 1
+    assert report["outcome_classification"] in {"EMPTY", "INSUFFICIENT_EVIDENCE"}
+    assert report["publication_gate"]["required_independent_roots"] == 2
+    assert report["publication_gate"]["empty_reason"]
+    assert report["stages"][-1]["output_count"] == 0
+
+
+@pytest.mark.postgres
 def test_live_replay_publishes_when_recent_evidence_is_independent(database_url):
     evidence = EvidenceRepository(database_url)
     evidence_ids = []
@@ -134,6 +187,9 @@ def test_live_replay_publishes_when_recent_evidence_is_independent(database_url)
         (SourceType.GITHUB, "G43 GitHub evidence", "https://github.example"),
     ):
         source = evidence.create_source(source_type, name, canonical_root=root)
+        ingestion = IngestionRepository(database_url)
+        ingestion.configure_source(source.source_id, f"{root}/feed", enabled=True)
+        approve_live_source(database_url, source_id=source.source_id, owner="g43-test")
         result = evidence.ingest(
             EvidenceSubmission(
                 source_id=source.source_id,

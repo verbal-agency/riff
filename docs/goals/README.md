@@ -78,6 +78,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G40](G40-live-daily-worker-composition.md) | Compose approved live ingestion into an honest daily worker | G13, G21, G31, G34, G35, G38 |
 | [G41](G41-worker-readiness-observability-and-recovery.md) | Make daily worker runs observable, ready-checkable, and recoverable | G40, G30, G35 |
 | [G43](G43-live-evidence-yield-and-source-recovery.md) | Make live evidence produce useful recommendations | G40, G41, G05, G06, G21, G30 |
+| [G48](G48-provenance-safe-live-signal-recovery.md) | Restore provenance-safe live signal ingestion and recovery | G30, G31, G35, G40, G41, G43 |
 | [G42](G42-production-reasoning-and-live-daily-publication.md) | Wire a replaceable reasoning provider into live daily publication | G40, G41, G43, G39, G29, G23, G24a |
 | [G45](G45-live-intelligence-dogfood-and-evaluation.md) | Dogfood the complete live-intelligence loop and establish a usefulness gate | G29, G32, G39, G41, G42, G43, G46, G47 |
 | [G46](G46-live-job-source-provisioning.md) | Provision a compliant live job source and accumulate job-market history | G21, G40, G41, G43, G35 |
@@ -251,8 +252,7 @@ origin-safe replay, a publication-date-aware signal window, real evidence IDs
 for correlation, and explicit job-source selection. The October 1 dogfood run then confirmed that source health remains
 an honest constraint: GitHub rate limits and RSS failures reduced coverage,
 while the surviving evidence did not clear the provenance threshold. G43
-resolves the extraction and replay failure chain; G42 is now the next eligible
-goal to connect a replaceable reasoning provider. G45 is the mandatory live-intelligence dogfood gate after G42: it tests whether
+resolves the extraction and replay failure chain; G42 is in progress: the replaceable provider seam, bounded telemetry, and recorded live-shaped replay are implemented; its connected-provider smoke check remains the final acceptance step. G48 is in progress: it closes the source-level provenance trust gap, quarantines unsafe legacy rows without deletion, and adds the audit/health/approval operator path. Its remaining acceptance work is source- or collection-run-scoped replay, collection-run origin propagation, reason-coded audit output, and safe classification/disablement of known test sources before the reviewed-source live run can count as clean. G45 is the mandatory live-intelligence dogfood gate after G42: it tests whether
 repeated real evidence, grounded synthesis, natural follow-ups,
 and operator recovery are actually useful before more recommendation scope is
 added. It records honest empty and failure outcomes as findings, rather than

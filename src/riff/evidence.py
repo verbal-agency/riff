@@ -47,6 +47,31 @@ _TRACKING_PARAMETER_NAMES = {
     "referrer",
 }
 
+_FIXTURE_MARKERS = ("fixture", "synthetic", "recorded-test", "test-fixture")
+_TEST_SOURCE_MARKERS = ("-test-", "test-source", "g27-", "g40-", "g42-", "g43-", "g48-", "github-discovered-4242")
+
+
+def is_fixture_source(*values: str | None) -> bool:
+    """Return whether a source identity carries an explicit fixture marker."""
+
+    return any(
+        marker in value.casefold()
+        for value in values
+        if value
+        for marker in _FIXTURE_MARKERS
+    )
+
+
+def is_test_source(*values: str | None) -> bool:
+    """Return whether a source identity is an explicit generated/test source."""
+
+    return any(
+        marker in value.casefold()
+        for value in values
+        if value
+        for marker in _TEST_SOURCE_MARKERS
+    )
+
 
 def canonicalize_url(url: str) -> str:
     """Normalize a source URL without removing meaningful application parameters."""

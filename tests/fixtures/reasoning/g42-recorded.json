@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "provider_version": "recorded-g42-v1",
+  "model": "recorded-reviewer-v1",
+  "responses": {
+    "default": {
+      "observation": "Independent evidence describes resumable agent workflows.",
+      "hypothesis": "This may indicate a durable change around durable-agent-execution.",
+      "why_now": "The bounded live evidence set contains a recent, traceable signal worth testing.",
+      "why_it_matters": "Durable execution can make multi-step agent work recoverable after interruption.",
+      "user_relevance": "The current profile should demonstrate the capability with a small measured artifact.",
+      "underlying_capability": "durable-agent-execution",
+      "recommendation": "Build a small restartable workflow and publish the recovery trace and regression test.",
+      "confidence": 0.72,
+      "strongest_counterargument": "The evidence may reflect a temporary vendor release cycle rather than durable demand.",
+      "alternative_explanation": "A narrow set of workflow-engine announcements may be concentrating attention.",
+      "falsification_conditions": [
+        "Independent sources stop reporting resumable execution over the next review window.",
+        "A restart experiment fails to reproduce a recovery benefit."
+      ],
+      "associated_technologies": ["Temporal", "LangGraph"],
+      "supporting_receipt_ids": ["$context"],
+      "counter_receipt_ids": [],
+      "citations": [
+        {
+          "receipt_id": "$context",
+          "claim_type": "OBSERVATION",
+          "statement": "Independent teams describe resumable workflow recovery."
+        }
+      ]
+    }
+  }
+}

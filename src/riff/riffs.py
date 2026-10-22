@@ -33,6 +33,10 @@ class RiffValidationError(ValueError):
     """A provider result or publication request violates the Riff contract."""
 
 
+class ReasoningProviderError(RuntimeError):
+    """A provider could not complete a bounded reasoning call."""
+
+
 class ReasoningProvider(Protocol):
     version: str
 
@@ -130,6 +134,7 @@ class DailyResult:
     empty_reason: str | None
     riffs: tuple[PublishedRiff, ...]
     provider_calls: int = 0
+    provider_metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)
@@ -351,11 +356,12 @@ def validate_draft(output: Mapping[str, Any], context: RiffContext, eligible_rec
 
 
 class DailyRiffService:
-    def __init__(self, repository: RiffRepository, provider: ReasoningProvider, *, policy_version: str = "riff-policy-v1", max_candidates: int = 5, max_riffs: int = 3, quality_threshold: float = 0.5):
-        if not 1 <= max_candidates <= 20 or not 1 <= max_riffs <= 3 or not 0 <= quality_threshold <= 1:
+    def __init__(self, repository: RiffRepository, provider: ReasoningProvider, *, policy_version: str = "riff-policy-v1", max_candidates: int = 5, max_riffs: int = 3, quality_threshold: float = 0.5, min_independent_roots: int = 0):
+        if not 1 <= max_candidates <= 20 or not 1 <= max_riffs <= 3 or not 0 <= quality_threshold <= 1 or not 0 <= min_independent_roots <= 20:
             raise RiffValidationError("invalid generation bounds")
         self.repository, self.provider, self.policy_version = repository, provider, policy_version
         self.max_candidates, self.max_riffs, self.quality_threshold = max_candidates, max_riffs, quality_threshold
+        self.min_independent_roots = min_independent_roots
         self.assembler = RiffContextAssembler(repository)
 
     def generate(self, run_date: date, candidates: Sequence[CandidateContext]) -> DailyResult:
@@ -363,8 +369,9 @@ class DailyRiffService:
         fingerprint = _fingerprint(run_date, self.policy_version, selected)
         cached = self.repository.existing_run(fingerprint)
         if cached:
-            return cached
+            return replace(cached, provider_calls=0, provider_metadata=_provider_telemetry(self.provider, fingerprint))
         contexts, drafts, rejected = [], [], 0
+        publication_blockers: list[str] = []
         for candidate in selected:
             try:
                 context = self.assembler.assemble(candidate)
@@ -374,15 +381,29 @@ class DailyRiffService:
                 counter_items = [item for item in context.receipt_summaries if item["receipt_id"] in draft.counter_receipt_ids]
                 quality = assess_provenance(support_items, counter_items, candidate_score=context.score, generated_confidence=draft.confidence)
                 draft = replace(draft, candidate_score=context.score, evidence_quality=quality.evidence_quality, epistemic_confidence=quality.epistemic_confidence, confidence_policy_version=quality.policy_version, provenance_summary=quality.to_dict())
+                independent_root_count = int(quality.summary.get("independent_root_count", 0))
+                if independent_root_count < self.min_independent_roots:
+                    rejected += 1
+                    publication_blockers.append(
+                        f"{context.capability_id}: requires {self.min_independent_roots} independent provenance roots, observed {independent_root_count}"
+                    )
+                    continue
                 if len(drafts) < self.max_riffs:
                     drafts.append((len(drafts) + 1, draft, "PUBLISHED"))
+            except ReasoningProviderError:
+                raise
             except (RiffValidationError, RuntimeError):
                 rejected += 1
         status = "COMPLETED" if drafts else "EMPTY"
-        reason = None if drafts else ("No candidate met the quality threshold." if not selected else "No candidate produced a publication-ready, evidence-backed Riff.")
-        result = DailyResult(str(uuid.uuid4()), run_date, self.policy_version, fingerprint, status, reason, tuple(_published_preview(result_id := "", result_run := "", rank, draft) for rank, draft, _ in drafts), provider_calls=len(selected))
+        reason = None if drafts else ("No candidate met the quality threshold." if not selected else ("Insufficient independent provenance: " + "; ".join(publication_blockers) if publication_blockers else "No candidate produced a publication-ready, evidence-backed Riff."))
+        result = DailyResult(str(uuid.uuid4()), run_date, self.policy_version, fingerprint, status, reason, tuple(_published_preview(result_id := "", result_run := "", rank, draft) for rank, draft, _ in drafts), provider_calls=len(selected), provider_metadata=_provider_telemetry(self.provider, fingerprint))
         saved = self.repository.save_run(result, contexts, drafts, rejected=rejected)
-        return replace(saved, provider_calls=len(selected))
+        return replace(saved, provider_calls=len(selected), provider_metadata=_provider_telemetry(self.provider, fingerprint))
+
+
+def _provider_telemetry(provider: Any, input_fingerprint: str) -> dict[str, Any]:
+    telemetry = provider.telemetry(input_fingerprint=input_fingerprint) if callable(getattr(provider, "telemetry", None)) else {}
+    return dict(telemetry) if isinstance(telemetry, Mapping) else {}
 
 
 def _published_preview(_riff_id: str, _run_id: str, rank: int, draft: RiffDraft) -> PublishedRiff:

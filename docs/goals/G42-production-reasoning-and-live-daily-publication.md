@@ -1,6 +1,6 @@
 # G42 — Wire a replaceable reasoning provider into live daily publication
 
-**Status:** Ready
+**Status:** In progress
 **Depends on:** G40, G41, G39, G29, G23, G24a
 **Unlocks:** End-to-end live Riff dogfooding
 **Canonical scenario:** `SC-LIVE-RIFF-001`
@@ -43,21 +43,33 @@ not raw unrestricted source bodies or an unbounded conversation history.
 
 ## Acceptance criteria
 
-- [ ] A live-shaped run with a recorded provider response produces a persisted,
+- [x] A live-shaped run with a recorded provider response produces a persisted,
   provenance-linked Riff or an explicit valid-empty result.
-- [ ] Provider selection, model version, context-policy version, input
+- [x] Provider selection, model version, context-policy version, input
   fingerprint, usage, and cost estimate are visible in the run report.
-- [ ] Fixture/test evidence cannot raise live confidence or appear as live
+- [x] Fixture/test evidence cannot raise live confidence or appear as live
   support without an explicit audit/include mode.
-- [ ] Invalid, unsupported, over-budget, timed-out, or insufficient-evidence
+- [x] Invalid, unsupported, over-budget, timed-out, or insufficient-evidence
   provider results never publish an ungrounded Riff.
-- [ ] Repeating an identical run reuses durable results and does not repeat
+- [x] Repeating an identical run reuses durable results and does not repeat
   completed paid provider calls.
-- [ ] A provider timeout or invalid output is represented through G41's durable
+- [x] A provider timeout or invalid output is represented through G41's durable
   run/stage and outcome contract; it cannot bypass an active lease or be hidden
   by a successful terminal exit code.
 - [ ] Offline, Postgres, connector, and one connected human acceptance check
   cover grounding, uncertainty disclosure, redaction, and budget behavior.
+
+## Verification evidence
+
+- `tests/test_reasoning.py`: provider selection, recorded-fixture, cache, budget, and configuration checks pass.
+- `tests/test_g42_reasoning.py`: a Postgres live-shaped run uses the recorded provider fixture and exposes provider, model, context-policy, input-fingerprint, usage, and cost telemetry in the canonical report.
+- `tests/test_operations.py`, `tests/test_connector.py`, and `tests/test_live_worker.py`: 28 operational, connector, lease, readiness, and replay regressions pass.
+- `README.md` and `.env.example` document deterministic local operation, bounded recorded replay, and the explicit live-provider smoke command without committing credentials or raw prompts.
+- 2026-10-11 controlled smoke: `gpt-4o-mini` accepted the bounded G42 context and returned a publication-shaped structured draft with the expected receipt citation; one API call, 156 estimated input tokens, and 391 estimated output tokens. The worker replay path was also exercised, but its selected live evidence was below the publication quality threshold and correctly produced `VALID_EMPTY` without making a provider call.
+
+## Open acceptance blocker
+
+- [ ] The connected ChatGPT/MCP human acceptance check still needs to be performed: retrieve the smoke result, inspect the uncertainty/provenance, and confirm the operator experience. The real provider smoke is complete; the worker correctly avoids paid calls when the evidence gate is `INSUFFICIENT_EVIDENCE`.
 
 ## Deliverables
 

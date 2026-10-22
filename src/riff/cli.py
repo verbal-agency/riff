@@ -71,7 +71,7 @@ from .provenance import (
     reconcile_stale_collection_runs,
     source_coverage_report,
 )
-from .data_governance import GovernanceError, backfill_known_fixtures, cleanup_apply, cleanup_preview, origin_report, quarantine, retention_apply, retention_preview
+from .data_governance import (GovernanceError, approve_live_source, backfill_known_fixtures, cleanup_apply, cleanup_preview, live_source_health_report, origin_audit, origin_report, quarantine, repair_origins, retention_apply, retention_preview)
 from .profile_evaluation import evaluate_fixture as evaluate_profile_fixture
 from .signal_evaluation import evaluate_fixture as evaluate_signal_fixture
 from .source_manifest import load_manifest
@@ -95,6 +95,8 @@ def build_parser() -> argparse.ArgumentParser:
     worker.add_argument("--replay-live", action="store_true", help="reprocess persisted LIVE evidence without fetching sources")
     worker.add_argument("--since", dest="replay_since", help="lower-bound ISO timestamp for --replay-live")
     worker.add_argument("--limit", dest="replay_limit", type=int, default=100, help="maximum persisted LIVE evidence items for --replay-live")
+    worker.add_argument("--replay-source-id", action="append", default=[], help="scope --replay-live to this source (repeatable)")
+    worker.add_argument("--collection-run-id", help="scope --replay-live to evidence recorded by one collection run")
     worker.add_argument("--job-source-id", help="select one enabled job source for --live")
     worker.add_argument("--date", dest="run_date")
     worker.add_argument("--policy-version")
@@ -424,6 +426,16 @@ def build_parser() -> argparse.ArgumentParser:
     quality_origins = quality_subparsers.add_parser("origins", help="show persisted data origins")
     quality_origins.add_argument("--include-non-live", action="store_true")
     quality_origins.add_argument("--limit", type=int, default=100)
+    quality_audit = quality_subparsers.add_parser("audit", help="show provenance anomalies and untrusted live evidence")
+    quality_audit.add_argument("--limit", type=int, default=100)
+    quality_health = quality_subparsers.add_parser("live-sources", help="show source review and trusted-live health")
+    quality_health.add_argument("--limit", type=int, default=100)
+    quality_approve = quality_subparsers.add_parser("approve-live-source", help="approve one configured source for trusted live signals")
+    quality_approve.add_argument("--source-id", required=True)
+    quality_approve.add_argument("--owner", required=True)
+    quality_repair_origins = quality_subparsers.add_parser("repair-origins", help="classify fixtures and quarantine unsafe LIVE evidence")
+    quality_repair_origins.add_argument("--limit", type=int, default=5000)
+    quality_repair_origins.add_argument("--confirm", required=True, help="type REPAIR_ORIGINS to apply the non-destructive repair")
     quality_cleanup = quality_subparsers.add_parser("cleanup", help="preview or apply owner-scoped fixture/test cleanup")
     quality_cleanup.add_argument("--origin", choices=["FIXTURE", "TEST"], required=True)
     quality_cleanup.add_argument("--owner", required=True)
@@ -740,6 +752,20 @@ def main(argv: list[str] | None = None) -> int:
             if args.quality_command == "origins":
                 print(json.dumps(origin_report(database_url, include_non_live=args.include_non_live, limit=args.limit), sort_keys=True, default=str))
                 return 0
+            if args.quality_command == "audit":
+                print(json.dumps(origin_audit(database_url, limit=args.limit), sort_keys=True, default=str))
+                return 0
+            if args.quality_command == "live-sources":
+                print(json.dumps(live_source_health_report(database_url, limit=args.limit), sort_keys=True, default=str))
+                return 0
+            if args.quality_command == "approve-live-source":
+                print(json.dumps(approve_live_source(database_url, source_id=args.source_id, owner=args.owner), sort_keys=True, default=str))
+                return 0
+            if args.quality_command == "repair-origins":
+                if args.confirm != "REPAIR_ORIGINS":
+                    raise GovernanceError("repair-origins requires confirmation REPAIR_ORIGINS")
+                print(json.dumps(repair_origins(database_url, limit=args.limit), sort_keys=True, default=str))
+                return 0
             if args.quality_command == "backfill-origins":
                 print(json.dumps(backfill_known_fixtures(database_url, owner=args.owner), sort_keys=True, default=str))
                 return 0
@@ -857,6 +883,8 @@ def main(argv: list[str] | None = None) -> int:
                 policy_version=args.policy_version,
                 replay_since=datetime.fromisoformat(args.replay_since) if args.replay_since else None,
                 replay_limit=args.replay_limit,
+                replay_source_ids=args.replay_source_id,
+                replay_collection_run_id=args.collection_run_id,
                 job_source_id=args.job_source_id,
                 resume=args.resume,
                 emit_event=False,

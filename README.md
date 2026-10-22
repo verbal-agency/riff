@@ -23,6 +23,25 @@ The API exposes:
 - `GET /health/live` — process liveness; no database connection.
 - `GET /health/ready` — database readiness; returns HTTP 503 until Postgres is reachable.
 
+## Live reasoning and publication
+
+The worker keeps reasoning provider-neutral. The default deterministic provider is safe for local checks; a reviewed response fixture exercises the same bounded live publication path without sending source bodies or prompts to a model:
+
+```sh
+RIFF_REASONING_PROVIDER=recorded RIFF_REASONING_FIXTURE=tests/fixtures/reasoning/g42-recorded.json uv run riff worker --replay-live --date 2026-10-01
+```
+
+For an explicitly authorized live-provider smoke, export the local `.env` first (Riff does not source it automatically), then bound the run to one model call:
+
+```sh
+set -a; source .env; set +a
+RIFF_REASONING_PROVIDER=openai RIFF_REASONING_MODEL=gpt-4o-mini RIFF_REASONING_MAX_CALLS=1 uv run riff worker --replay-live --limit 20 --date 2026-10-11 --policy-version riff-g42-openai-smoke-v1 --resume
+```
+
+Use `OPENAI_API_KEY` (or the local legacy spelling `OPEN_AI_API_KEY`) in `.env`; never commit the value. The live adapter uses the Responses API with strict structured output, sends only the bounded Riff context, and keeps the deterministic validation/publication gates in force.
+
+The canonical worker report exposes provider, model, context-policy version, input fingerprint, calls, token estimates, cost estimate, and whether the result was published or valid-empty. `RIFF_REASONING_MAX_CALLS`, token, timeout, and cost settings are bounded; provider failures are recorded through the existing durable stage and lease contract. A connected model provider remains an explicit operator configuration and is not required by normal tests.
+
 ## Curated writing collection
 
 Edit [config/technical_sources.json](config/technical_sources.json) to add permitted RSS/Atom sources, then sync and collect them without changing application code:
@@ -86,6 +105,10 @@ G35 labels persisted records as `LIVE`, `FIXTURE`, `TEST`, `QUARANTINED`, or
 ```sh
 uv run riff data-quality origins --include-non-live --limit 100
 uv run riff data-quality backfill-origins
+uv run riff data-quality audit --limit 100
+uv run riff data-quality live-sources --limit 100
+uv run riff data-quality approve-live-source --source-id <source-id> --owner <operator>
+uv run riff data-quality repair-origins --limit 5000 --confirm REPAIR_ORIGINS
 uv run riff data-quality cleanup --origin FIXTURE --owner legacy-project-fixture
 uv run riff data-quality cleanup --origin FIXTURE --owner legacy-project-fixture --apply --confirm CLEANUP
 uv run riff data-quality retention --older-than-days 90

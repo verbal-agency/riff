@@ -38,6 +38,8 @@ def run_worker(
     policy_version: str | None = None,
     replay_since=None,
     replay_limit: int = 100,
+    replay_source_ids: list[str] | None = None,
+    replay_collection_run_id: str | None = None,
     job_source_id: str | None = None,
     resume: bool = False,
     emit_event: bool = True,
@@ -55,6 +57,10 @@ def run_worker(
         raise WorkerConfigurationError("worker requires --fixture for offline replay, --live for approved source collection, or --replay-live for stored LIVE evidence")
     if replay_limit < 1 or replay_limit > 500:
         raise WorkerConfigurationError("--limit must be between 1 and 500 for --replay-live")
+    if (replay_source_ids or replay_collection_run_id) and not replay_live:
+        raise WorkerConfigurationError("replay scope options require --replay-live")
+    if replay_source_ids and replay_collection_run_id:
+        raise WorkerConfigurationError("choose either --replay-source-id or --collection-run-id")
 
     effective = settings or Settings.from_env()
     configure_logging(effective.log_level)
@@ -71,6 +77,7 @@ def run_worker(
         report = {**report, "mode": "fixture"}
     elif live:
         from .live_worker import run_live_pipeline
+        from .reasoning import build_reasoning_provider
 
         effective_date = run_date or date.today()
         report = run_live_pipeline(
@@ -80,13 +87,21 @@ def run_worker(
             resume=resume,
             job_source_id=job_source_id,
             lease_seconds=effective.worker_lease_seconds,
+            reasoning_provider=build_reasoning_provider(effective),
         )
         report = {**report, "mode": "live"}
     else:
         from .live_worker import _live_evidence_ids, run_live_pipeline
+        from .reasoning import build_reasoning_provider
 
         effective_date = run_date or date.today()
-        evidence_ids = tuple(_live_evidence_ids(effective.database_url, since=replay_since, limit=replay_limit))
+        evidence_ids = tuple(_live_evidence_ids(
+            effective.database_url,
+            since=replay_since,
+            limit=replay_limit,
+            source_ids=replay_source_ids,
+            collection_run_id=replay_collection_run_id,
+        ))
         report = run_live_pipeline(
             effective.database_url,
             run_date=effective_date,
@@ -95,8 +110,17 @@ def run_worker(
             replay_evidence_ids=evidence_ids,
             replay_since=replay_since,
             lease_seconds=effective.worker_lease_seconds,
+            reasoning_provider=build_reasoning_provider(effective),
         )
-        report = {**report, "mode": "live-replay"}
+        report = {
+            **report,
+            "mode": "live-replay",
+            "replay_scope": {
+                "source_ids": list(replay_source_ids or []),
+                "collection_run_id": replay_collection_run_id,
+                "selected_evidence_count": len(evidence_ids),
+            },
+        }
     if emit_event:
         event(logging.getLogger("riff.worker"), "worker.completed", **report)
     return report

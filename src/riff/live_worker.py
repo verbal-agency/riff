@@ -27,7 +27,7 @@ from .job_source_policy import JobPolicyError, JobSourcePolicy, load_policy
 from .operations import DEFAULT_LEASE_SECONDS, PipelineError, PipelineRepository, STAGES
 from .profile import ProfileRepository
 from .receipts import LiveHeuristicExtractor, ReceiptProcessor, ReceiptRepository
-from .riffs import CandidateContext, DailyRiffService, DeterministicReasoningProvider, RiffRepository
+from .riffs import CandidateContext, DailyRiffService, DeterministicReasoningProvider, ReasoningProvider, RiffRepository
 from .signals import SignalObservation, SignalRanker, SignalRepository
 
 
@@ -179,6 +179,7 @@ def run_live_pipeline(
     replay_evidence_ids: tuple[str, ...] | None = None,
     replay_since: datetime | None = None,
     lease_seconds: int = DEFAULT_LEASE_SECONDS,
+    reasoning_provider: ReasoningProvider | None = None,
 ) -> dict[str, Any]:
     """Run one live collection-to-publication cycle with durable stages."""
 
@@ -261,10 +262,16 @@ def run_live_pipeline(
             elif stage == "RIFF":
                 counts = (len(candidates), len(candidates), 0)
             else:
-                result = DailyRiffService(RiffRepository(database_url), DeterministicReasoningProvider(), policy_version=policy_version, max_candidates=5, max_riffs=3).generate(run_date, candidates)
+                provider = reasoning_provider or DeterministicReasoningProvider()
+                result = DailyRiffService(RiffRepository(database_url), provider, policy_version=policy_version, max_candidates=5, max_riffs=3, min_independent_roots=2).generate(run_date, candidates)
                 published_status = "SUCCEEDED" if result.status == "COMPLETED" else "EMPTY"
+                reasoning = dict(result.provider_metadata)
+                reasoning.setdefault("provider", getattr(provider, "version", "unknown"))
+                reasoning["input_fingerprint"] = result.input_fingerprint
+                reasoning["outcome"] = "PUBLISHED" if result.status == "COMPLETED" else "VALID_EMPTY"
+                repository.set_report_context(run_id, {"reasoning": reasoning, "provider_gate": "READY" if candidates and evidence_ids else "INSUFFICIENT_EVIDENCE", "publication_gate": {"required_independent_roots": 2, "status": result.status, "empty_reason": result.empty_reason}})
                 counts = (len(candidates), len(result.riffs), 0)
-                repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], model_calls=result.provider_calls, duration_ms=_duration_ms(started), lease_owner=claim.lease_owner, lease_seconds=lease_seconds)
+                repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], model_calls=int(reasoning.get("calls", result.provider_calls)), token_count=int(reasoning.get("input_tokens", 0)) + int(reasoning.get("output_tokens", 0)), cost_estimate=float(reasoning.get("estimated_cost_usd", 0.0)), duration_ms=_duration_ms(started), lease_owner=claim.lease_owner, lease_seconds=lease_seconds)
                 continue
             repository.finish_stage(run_id, stage, input_count=counts[0], output_count=counts[1], error_count=counts[2], duration_ms=_duration_ms(started), lease_owner=claim.lease_owner, lease_seconds=lease_seconds)
         except Exception as exc:
@@ -309,14 +316,14 @@ def _live_evidence_since(database_url: str, since: datetime, source_ids: tuple[s
     with connection(database_url) as conn:
         if source_ids is not None and source_ids:
             rows = conn.execute(
-                "SELECT e.evidence_id FROM evidence_versions e JOIN source_items si ON si.source_item_id = e.source_item_id WHERE e.retrieved_at >= %s AND si.source_id = ANY(%s) AND COALESCE(e.data_origin, 'UNCLASSIFIED') = 'LIVE' ORDER BY e.retrieved_at, e.evidence_id",
+                "SELECT e.evidence_id FROM evidence_versions e JOIN source_items si ON si.source_item_id = e.source_item_id JOIN sources s ON s.source_id = si.source_id WHERE e.retrieved_at >= %s AND si.source_id = ANY(%s) AND COALESCE(e.data_origin, 'UNCLASSIFIED') = 'LIVE' AND COALESCE(si.data_origin, 'UNCLASSIFIED') = 'LIVE' AND COALESCE(s.data_origin, 'UNCLASSIFIED') = 'LIVE' AND s.enabled ORDER BY e.retrieved_at, e.evidence_id",
                 (since, list(source_ids)),
             ).fetchall()
         elif source_ids is not None:
             rows = []
         else:
             rows = conn.execute(
-                "SELECT e.evidence_id FROM evidence_versions e WHERE e.retrieved_at >= %s AND COALESCE(e.data_origin, 'UNCLASSIFIED') = 'LIVE' ORDER BY e.retrieved_at, e.evidence_id",
+                "SELECT e.evidence_id FROM evidence_versions e JOIN source_items si ON si.source_item_id = e.source_item_id JOIN sources s ON s.source_id = si.source_id WHERE e.retrieved_at >= %s AND COALESCE(e.data_origin, 'UNCLASSIFIED') = 'LIVE' AND COALESCE(si.data_origin, 'UNCLASSIFIED') = 'LIVE' AND COALESCE(s.data_origin, 'UNCLASSIFIED') = 'LIVE' AND s.enabled ORDER BY e.retrieved_at, e.evidence_id",
                 (since,),
             ).fetchall()
     return [str(row[0]) for row in rows]
@@ -328,25 +335,35 @@ def _live_evidence_ids(
     since: datetime | None = None,
     *,
     limit: int = 500,
+    source_ids: tuple[str, ...] | list[str] | None = None,
+    collection_run_id: str | None = None,
 ) -> list[str]:
     """Return only persisted LIVE evidence eligible for replay."""
 
     from .db import connection
 
-    clauses = ["COALESCE(data_origin, 'UNCLASSIFIED') = 'LIVE'"]
+    clauses = ["COALESCE(e.data_origin, 'UNCLASSIFIED') = 'LIVE'", "COALESCE(si.data_origin, 'UNCLASSIFIED') = 'LIVE'", "COALESCE(s.data_origin, 'UNCLASSIFIED') = 'LIVE'", "s.enabled"]
     params: list[Any] = []
     if evidence_ids is not None:
-        clauses.append("evidence_id = ANY(%s)")
+        clauses.append("e.evidence_id = ANY(%s)")
         params.append(list(evidence_ids))
     if since is not None:
-        clauses.append("retrieved_at >= %s")
+        clauses.append("e.retrieved_at >= %s")
         params.append(since)
+    if source_ids is not None:
+        if not source_ids:
+            return []
+        clauses.append("si.source_id = ANY(%s)")
+        params.append(list(source_ids))
+    if collection_run_id is not None:
+        clauses.append("EXISTS (SELECT 1 FROM collection_item_results cir WHERE cir.run_id = %s AND cir.evidence_id = e.evidence_id)")
+        params.append(collection_run_id)
     params.append(limit)
     with connection(database_url) as conn:
         rows = conn.execute(
-            "SELECT evidence_id FROM evidence_versions WHERE "
+            "SELECT e.evidence_id FROM evidence_versions e JOIN source_items si ON si.source_item_id = e.source_item_id JOIN sources s ON s.source_id = si.source_id WHERE "
             + " AND ".join(clauses)
-            + " ORDER BY retrieved_at, evidence_id LIMIT %s",
+            + " ORDER BY e.retrieved_at, e.evidence_id LIMIT %s",
             params,
         ).fetchall()
     return [str(row[0]) for row in rows]
@@ -420,6 +437,8 @@ def _observations(database_url: str, receipt_ids: tuple[str, ...], since: dateti
                WHERE m.receipt_id = ANY(%s) AND m.entity_type = 'CAPABILITY'
                  AND m.entity_id IS NOT NULL AND m.status IN ('ACCEPTED', 'PROPOSED')
                  AND r.status = 'SUCCEEDED' AND COALESCE(e.data_origin, 'UNCLASSIFIED') = 'LIVE'
+                 AND COALESCE(si.data_origin, 'UNCLASSIFIED') = 'LIVE'
+                 AND COALESCE(s.data_origin, 'UNCLASSIFIED') = 'LIVE' AND s.enabled
                  AND e.retrieved_at >= %s""",
             (list(receipt_ids), since),
         ).fetchall()

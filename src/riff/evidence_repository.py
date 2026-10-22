@@ -19,6 +19,7 @@ from .evidence import (
     RetrievalOutcome,
     Source,
     SourceType,
+    is_fixture_source,
 )
 
 
@@ -91,11 +92,22 @@ class EvidenceRepository:
             origin_owner = origin_owner or "retrieval-fixture"
         with connection(self.database_url) as conn:
             source = conn.execute(
-                "SELECT source_id FROM sources WHERE source_id = %s",
+                "SELECT source_id, name, canonical_root, COALESCE(data_origin, 'UNCLASSIFIED') FROM sources WHERE source_id = %s",
                 (item.source_id,),
             ).fetchone()
             if source is None:
                 raise EvidenceValidationError(f"unknown source_id: {item.source_id}")
+            source_id, source_name, source_root, source_origin = tuple(_as_text(value) for value in source)
+            if is_fixture_source(source_id, source_name, source_root):
+                data_origin = "FIXTURE"
+                origin_owner = origin_owner or "source-fixture"
+                conn.execute("UPDATE sources SET data_origin='FIXTURE', origin_owner=COALESCE(origin_owner,%s), origin_policy_version='g48-origin-v1' WHERE source_id=%s", (origin_owner, source_id))
+            elif data_origin == "LIVE" and source_origin != "LIVE":
+                # A source must be explicitly reviewed before a collector can
+                # create trusted live evidence. Preserve the row, but keep it
+                # out of publication until the source is approved.
+                data_origin = "QUARANTINED"
+                origin_owner = origin_owner or "origin-validator"
 
             by_native = None
             if item.native_id is not None:
@@ -120,22 +132,23 @@ class EvidenceRepository:
                 source_item_id = existing[0]
                 if existing[2] != item.canonical_url:
                     conn.execute(
-                        "UPDATE source_items SET canonical_url = %s, title = COALESCE(%s, title) "
-                        "WHERE source_item_id = %s",
-                        (item.canonical_url, item.title, source_item_id),
+                        "UPDATE source_items SET canonical_url = %s, title = COALESCE(%s, title), data_origin = %s, origin_owner = COALESCE(%s, origin_owner), origin_run_id = COALESCE(%s, origin_run_id), origin_policy_version = %s WHERE source_item_id = %s",
+                        (item.canonical_url, item.title, data_origin, origin_owner, item.origin_run_id, item.origin_policy_version, source_item_id),
                     )
                 elif item.title is not None:
                     conn.execute(
-                        "UPDATE source_items SET title = %s WHERE source_item_id = %s",
-                        (item.title, source_item_id),
+                        "UPDATE source_items SET title = %s, data_origin = %s, origin_owner = COALESCE(%s, origin_owner), origin_run_id = COALESCE(%s, origin_run_id), origin_policy_version = %s WHERE source_item_id = %s",
+                        (item.title, data_origin, origin_owner, item.origin_run_id, item.origin_policy_version, source_item_id),
                     )
+                conn.execute(
+                    "UPDATE source_items SET data_origin = %s, origin_owner = COALESCE(%s, origin_owner), origin_run_id = COALESCE(%s, origin_run_id), origin_policy_version = %s WHERE source_item_id = %s",
+                    (data_origin, origin_owner, item.origin_run_id, item.origin_policy_version, source_item_id),
+                )
             else:
                 proposed_source_item_id = _id()
                 insert_item = conn.execute(
-                    "INSERT INTO source_items "
-                    "(source_item_id, source_id, native_id, canonical_url, title) "
-                    "VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-                    (proposed_source_item_id, item.source_id, item.native_id, item.canonical_url, item.title),
+                    "INSERT INTO source_items (source_item_id, source_id, native_id, canonical_url, title, data_origin, origin_owner, origin_run_id, origin_policy_version) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
+                    (proposed_source_item_id, item.source_id, item.native_id, item.canonical_url, item.title, data_origin, origin_owner, item.origin_run_id, item.origin_policy_version),
                 )
                 if insert_item.rowcount:
                     source_item_id = proposed_source_item_id

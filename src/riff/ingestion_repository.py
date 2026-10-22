@@ -49,6 +49,9 @@ class CollectionRun:
     finished_at: datetime | None
     source_ids: list[str]
     policy_version: str
+    data_origin: str = "UNCLASSIFIED"
+    origin_owner: str | None = None
+    origin_reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +84,37 @@ def _text(value: Any) -> Any:
     if isinstance(value, (bytes, bytearray, memoryview)):
         return bytes(value).decode("utf-8")
     return value
+
+
+def resolve_collection_origin(conn, source_ids: Iterable[str]) -> tuple[str, str | None, str | None]:
+    """Resolve a run origin from its complete source set conservatively.
+
+    A run is LIVE only when every referenced source is approved LIVE. Mixed,
+    missing, or ownerless source metadata stays explicit and auditable rather
+    than being promoted by the presence of one trusted source.
+    """
+
+    ids = list(dict.fromkeys(str(value) for value in source_ids))
+    if not ids:
+        return "UNCLASSIFIED", None, "NO_SOURCES"
+    rows = conn.execute(
+        "SELECT source_id, COALESCE(data_origin, 'UNCLASSIFIED'), origin_owner FROM sources WHERE source_id = ANY(%s)",
+        (ids,),
+    ).fetchall()
+    found = {str(row[0]): (str(row[1]), str(row[2]).strip() if row[2] else None) for row in rows}
+    missing = sorted(set(ids) - set(found))
+    if missing:
+        return "UNCLASSIFIED", None, "SOURCE_NOT_FOUND:" + ",".join(missing)
+    origins = {value[0] for value in found.values()}
+    if len(origins) != 1:
+        return "UNCLASSIFIED", None, "MIXED_SOURCE_ORIGINS:" + ",".join(sorted(origins))
+    origin = next(iter(origins))
+    owners = {value[1] for value in found.values()}
+    if None in owners or "" in owners:
+        return "UNCLASSIFIED", None, "MISSING_SOURCE_OWNER"
+    if len(owners) == 1:
+        return origin, next(iter(owners)), None
+    return origin, "mixed", "MULTIPLE_SOURCE_OWNERS"
 
 
 class IngestionRepository:
@@ -197,12 +231,15 @@ class IngestionRepository:
         run_id = _id()
         started_at = datetime.now(timezone.utc)
         with connection(self.database_url) as conn:
+            data_origin, origin_owner, origin_reason = resolve_collection_origin(conn, source_ids)
             conn.execute(
                 "INSERT INTO collection_runs "
-                "(run_id, started_at, status, source_ids, policy_version) VALUES (%s, %s, %s, %s, %s)",
-                (run_id, started_at, RunStatus.RUNNING, Jsonb(source_ids), policy_version),
+                "(run_id, started_at, status, source_ids, policy_version, data_origin, origin_owner, origin_run_id, origin_policy_version, origin_reason) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (run_id, started_at, RunStatus.RUNNING, Jsonb(source_ids), policy_version,
+                 data_origin, origin_owner, run_id, policy_version, origin_reason),
             )
-        return CollectionRun(run_id, RunStatus.RUNNING, started_at, None, source_ids, policy_version)
+        return CollectionRun(run_id, RunStatus.RUNNING, started_at, None, source_ids, policy_version, data_origin, origin_owner, origin_reason)
 
     def finish_run(self, run_id: str, status: str, *, finished_at: datetime | None = None) -> None:
         if status not in {RunStatus.SUCCEEDED, RunStatus.PARTIAL, RunStatus.FAILED}:

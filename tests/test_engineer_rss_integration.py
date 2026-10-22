@@ -172,7 +172,7 @@ def test_approved_three_source_projection_and_collection(repositories):
         summary = WritingIngestionRunner(ingestion, evidence, FixtureFetcher(fixture_by_engineer[selection["engineer_source_id"]])).run(source_ids=[source.source_id])
         assert summary.stored >= 1
 
-    coverage = engineer_source_coverage_report(database_url)
+    coverage = engineer_source_coverage_report(database_url, include_non_live=True)
     by_engineer = {item["engineer_source_id"]: item for item in coverage["engineer_sources"]}
     for engineer_source_id in fixture_by_engineer:
         item = by_engineer[engineer_source_id]
@@ -239,7 +239,7 @@ def test_engineer_metadata_survives_rss_ingestion(repositories):
     assert {item["engineer_source_id"] for item in values} == {"engineer-simon-willison"}
     assert {item["attribution_disposition"] for item in values} == {"PERSONAL_MATCH", "CO_AUTHORED"}
     assert configured.metadata["person_id"] == "simon-willison"
-    coverage = engineer_source_coverage_report(database_url)
+    coverage = engineer_source_coverage_report(database_url, include_non_live=True)
     simon = next(item for item in coverage["engineer_sources"] if item["engineer_source_id"] == "engineer-simon-willison")
     assert simon["evidence_count"] >= 2
     source_coverage = simon["sources"][source.source_id]

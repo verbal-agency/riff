@@ -52,6 +52,36 @@ def test_daily_result_is_bounded_to_three_and_rerun_is_idempotent():
     assert len(repository.saved) == 1
 
 
+
+def test_live_publication_gate_rejects_single_provenance_root():
+    repository = FakeRepository()
+    service = DailyRiffService(repository, DeterministicReasoningProvider(), min_independent_roots=2)
+
+    class SameRootAssembler(FakeAssembler):
+        def assemble(self, candidate):
+            context = RiffContext(
+                candidate.candidate_id, candidate.capability_id, candidate.score,
+                candidate.classification, candidate.observation, candidate.receipt_ids,
+                tuple({
+                    "receipt_id": item,
+                    "summary": f"summary {item}",
+                    "canonical_url": f"https://one.example/{item}",
+                    "title": "Sourced report",
+                    "content_hash": f"hash-{item}",
+                    "source_metadata": {"canonical_root": "https://one.example", "source_type": "TECHNICAL_WRITING"},
+                } for item in candidate.receipt_ids),
+                candidate.profile_slice, candidate.decision_ids, candidate.profile_state,
+                candidate.associated_technologies,
+            )
+            return context
+
+    service.assembler = SameRootAssembler()
+    candidate_context = CandidateContext("c1", "cap-1", 0.9, "TREND_CANDIDATE", "Observation", ("r1", "r2"))
+    result = service.generate(date(2026, 9, 14), [candidate_context])
+    assert result.status == "EMPTY"
+    assert "independent provenance roots" in result.empty_reason
+
+
 def test_published_riff_has_required_fields():
     repository = FakeRepository()
     service = DailyRiffService(repository, DeterministicReasoningProvider())
