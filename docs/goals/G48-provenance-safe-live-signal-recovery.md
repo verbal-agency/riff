@@ -1,6 +1,6 @@
 # G48 — Restore provenance-safe live signal ingestion
 
-**Status:** In Progress
+**Status:** Complete
 **Depends on:** G30, G31, G35, G40, G41, G43
 **Unlocks:** Trustworthy live dogfooding, calibrated publication, and G45 evaluation
 **Canonical scenario:** `SC-LIVE-TRUST-001`
@@ -89,23 +89,23 @@ select evidence by verified origin and source eligibility rather than by a
 - [x] Unclassified or quarantined evidence is excluded from live candidate
   generation and publication, while remaining available to diagnostics and
   fixture replay.
-- [ ] A reviewed live-source registry records eligibility, canonical root,
+- [x] A reviewed live-source registry records eligibility, canonical root,
   owner, fetch policy, and the latest health outcome; disabled, unreviewed,
   failed, and never-collected sources are visibly distinct.
-- [ ] Replay accepts an explicit source or collection-run boundary, and the
+- [x] Replay accepts an explicit source or collection-run boundary, and the
   report proves that no unrelated same-day evidence was included.
-- [ ] `collection_runs` receives the resolved origin, owner, and policy
+- [x] `collection_runs` receives the resolved origin, owner, and policy
   metadata from its source set; mixed or unresolved origins are recorded with
   an explicit reason rather than silently appearing as ordinary runs.
-- [ ] Audit output distinguishes disabled-source history from actual
+- [x] Audit output distinguishes disabled-source history from actual
   provenance mismatches and missing approvals, with stable reason codes and
   actionable remediation.
-- [ ] Known test/generated source identities are classified as test-owned and
+- [x] Known test/generated source identities are classified as test-owned and
   disabled from live readiness through a non-destructive, auditable operation.
 - [x] The source-health report shows usable evidence yield and origin mix per
   source, not only collection-run counts, and one failed source cannot erase
   evidence from healthy sources.
-- [ ] A bounded, source- or run-scoped clean live run either produces a
+- [x] A bounded, source- or run-scoped clean live run either produces a
   candidate whose receipts link
   to verified external URLs from at least two independent roots, or returns an
   explicit insufficient-evidence/empty result with the blocking reasons.
@@ -141,12 +141,30 @@ select evidence by verified origin and source eligibility rather than by a
 - data-quality repair-origins --confirm REPAIR_ORIGINS performs only metadata
   reclassification and quarantine; it never deletes evidence.
 
-The remaining work is to make the validation boundary explicit: review and
-approve a small set of real sources, scope replay to those sources or their
-collection run, carry origin metadata onto the run record, distinguish audit
-failure reasons, and quarantine/disable known test identities. The current
-database audit is a recovery baseline, not proof that the existing source
-registry is already trustworthy.
+The validation boundary is now explicit and exercised: approved sources expose
+owner, canonical root, fetch policy, and latest health; replay can be scoped to a
+source or collection run; collection runs carry resolved origin and policy
+metadata; audit output uses stable reason codes; known test identities are
+classified and disabled; and a deterministic source-scoped replay records an
+honest insufficient-evidence result when one provenance root cannot satisfy the
+publication gate. The shared development database still contains random
+UUID-named rows created by older integration tests; because those identities are
+not safely distinguishable after the fact, that cleanup is routed to
+`BL-G48-001` rather than handled by destructive deletion in this goal.
+
+See `docs/reports/g48-provenance-safe-live-signal-recovery.md` for the command
+transcript and verification evidence.
+
+## Completion evidence
+
+- Focused G48/live-worker verification: `13 passed`.
+- Full suite: `282 passed, 2 warnings` using the PostgreSQL-backed test command.
+- Non-destructive origin repair audit: `eda1a63f-c6a2-422f-bd3d-1d4ff3f2efbc`.
+- Clean source-scoped replay: run `b1ba6f51-1179-5242-a8ff-9e9299867f94`; three
+  LIVE receipts from `writing-engineer-simon-willison`, one provenance root, and
+  an explicit `EMPTY` result because publication requires two independent roots.
+- Replay ranking uses the run date as its signal-window end, so repeated replay
+  of the same inputs is stable instead of drifting with wall-clock time.
 
 ## Execution contract
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
@@ -254,7 +254,11 @@ def run_live_pipeline(
                     # dropping valid newly collected evidence at the lower
                     # bound; recency is still calculated from published_at.
                     signal_window_start = min(item.observed_at for item in observations)
-                    ranked = SignalRanker(SignalRepository(database_url)).rank(observations, window_start=signal_window_start, window_end=datetime.now(timezone.utc))
+                    # Use the requested run date as the ranking boundary so a
+                    # replay remains stable instead of changing score as wall
+                    # clock time advances.
+                    signal_window_end = datetime.combine(run_date, time.max, tzinfo=timezone.utc)
+                    ranked = SignalRanker(SignalRepository(database_url)).rank(observations, window_start=signal_window_start, window_end=signal_window_end)
                     candidates = tuple(_candidates(database_url, ranked.candidates, receipt_ids))
                     counts = (len(observations), len(candidates), 0)
                 else:

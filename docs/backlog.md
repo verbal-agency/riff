@@ -98,3 +98,23 @@ goal only when the next development slice is selected.
   contract without changing G40's worker scope.
 - **Destination:** Backlog; this is not required for live source composition.
 - **Priority:** Medium.
+
+## BL-G48-001 — Isolate random-UUID integration fixtures from the operator database
+
+- **Source:** G48 audit and the 2026-10-26 full PostgreSQL verification.
+- **Gap:** The non-destructive repair correctly classified known fixture/test
+  identities, but older integration tests also created random UUID-named sources,
+  evidence, retrievals, and collection runs in the shared development database.
+  Those rows remain `UNCLASSIFIED` or look live because their original ownership
+  metadata is unavailable; safely guessing would risk quarantining real data.
+- **Why it matters:** Shared-database replay and source-health reports remain
+  noisy, which can hide the difference between a genuinely empty source and a
+  test-created source. It also makes repeated operator validation less
+  reproducible.
+- **Next step:** Prefer an isolated Postgres database for integration tests; as a
+  compatibility fallback, require test-owned origin metadata at creation and
+  provide a preview-first cleanup for rows with an explicit test owner. Add a
+  regression check that no test-owned row can enter the trusted live lane.
+- **Destination:** Test infrastructure/data-governance hardening before the G45
+  live-intelligence dogfood gate.
+- **Priority:** High.

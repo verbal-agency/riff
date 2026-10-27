@@ -13,7 +13,7 @@ from riff.data_governance import (
 from riff.db import connection, migrate
 from riff.evidence import EvidenceSubmission, SourceType
 from riff.evidence_repository import EvidenceRepository
-from riff.ingestion_repository import IngestionRepository
+from riff.ingestion_repository import IngestionRepository, RunStatus
 from riff.live_worker import _live_evidence_ids
 
 
@@ -137,6 +137,48 @@ def test_health_report_exposes_review_required_sources(database_url):
     assert row["state"] == "REVIEW_REQUIRED"
     audit = origin_audit(database_url, limit=500)
     assert any(item["source_id"] == source.source_id for item in audit["anomalies"]["unreviewed_sources"])
+
+
+@pytest.mark.postgres
+def test_health_report_exposes_metadata_and_distinguishes_failed_and_never_collected(database_url):
+    evidence = EvidenceRepository(database_url)
+    ingestion = IngestionRepository(database_url)
+    failed_source = evidence.create_source(
+        SourceType.TECHNICAL_WRITING,
+        "G48 failed health source",
+        canonical_root="https://failed-health.example",
+        source_id=f"g48-failed-health-{uuid.uuid4().hex[:8]}",
+    )
+    never_source = evidence.create_source(
+        SourceType.TECHNICAL_WRITING,
+        "G48 never collected source",
+        canonical_root="https://never-health.example",
+        source_id=f"g48-never-health-{uuid.uuid4().hex[:8]}",
+    )
+    for source, endpoint in (
+        (failed_source, "https://failed-health.example/feed.xml"),
+        (never_source, "https://never-health.example/feed.xml"),
+    ):
+        ingestion.configure_source(source.source_id, endpoint, enabled=True, cursor_kind="published_at")
+        approve_live_source(database_url, source_id=source.source_id, owner="g48-health-owner")
+    run = ingestion.start_run([failed_source.source_id], "g48-health-policy-v1")
+    ingestion.finish_run(run.run_id, RunStatus.FAILED)
+
+    report = live_source_health_report(database_url, limit=500)
+    failed = next(item for item in report["sources"] if item["source_id"] == failed_source.source_id)
+    never = next(item for item in report["sources"] if item["source_id"] == never_source.source_id)
+    assert failed["state"] == "FAILED"
+    assert failed["owner"] == "g48-health-owner"
+    assert failed["canonical_root"] == "https://failed-health.example/"
+    assert failed["fetch_policy"] == {
+        "endpoint": "https://failed-health.example/feed.xml",
+        "config_version": 1,
+        "cursor_kind": "published_at",
+    }
+    assert failed["latest_health"]["status"] == "FAILED"
+    assert failed["latest_health"]["policy_version"] == "g48-health-policy-v1"
+    assert never["state"] == "NEVER_COLLECTED"
+    assert never["latest_health"] is None
 
 
 @pytest.mark.postgres

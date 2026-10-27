@@ -319,17 +319,20 @@ def origin_audit(database_url: str, *, limit: int = 100) -> dict[str, Any]:
 
 
 def live_source_health_report(database_url: str, *, limit: int = 100) -> dict[str, Any]:
-    """Describe whether each configured source can contribute trusted live data."""
+    'Describe whether each configured source can contribute trusted live data.'
 
     if not 1 <= limit <= 500:
-        raise GovernanceError("limit must be between 1 and 500")
-    from .evidence import is_fixture_source, is_test_source
+        raise GovernanceError('limit must be between 1 and 500')
+    from .evidence import is_fixture_source
 
     with connection(database_url) as conn:
         rows = conn.execute(
-            """SELECT s.source_id, s.source_type, s.name, s.canonical_root,
+            '''SELECT s.source_id, s.source_type, s.name, s.canonical_root,
                       s.enabled, COALESCE(s.data_origin,'UNCLASSIFIED'),
-                      c.enabled, c.endpoint,
+                      s.origin_owner, c.enabled, c.endpoint,
+                      c.config_version, c.cursor_kind,
+                      latest.run_id, latest.status, latest.policy_version,
+                      latest.started_at, latest.finished_at, latest.origin_reason,
                       count(DISTINCT CASE WHEN COALESCE(e.data_origin,'UNCLASSIFIED')='LIVE'
                                            AND COALESCE(si.data_origin,'UNCLASSIFIED')='LIVE'
                                            AND COALESCE(s.data_origin,'UNCLASSIFIED')='LIVE'
@@ -340,41 +343,82 @@ def live_source_health_report(database_url: str, *, limit: int = 100) -> dict[st
                LEFT JOIN ingestion_source_configs c ON c.source_id=s.source_id
                LEFT JOIN source_items si ON si.source_id=s.source_id
                LEFT JOIN evidence_versions e ON e.source_item_id=si.source_item_id
+               LEFT JOIN LATERAL (
+                   SELECT cr.run_id, cr.status, cr.policy_version, cr.started_at,
+                          cr.finished_at, cr.origin_reason
+                   FROM collection_runs cr
+                   WHERE EXISTS (
+                       SELECT 1
+                       FROM jsonb_array_elements_text(cr.source_ids) AS source_ref(source_id)
+                       WHERE source_ref.source_id = s.source_id
+                   )
+                   ORDER BY cr.started_at DESC, cr.run_id DESC
+                   LIMIT 1
+               ) latest ON TRUE
                GROUP BY s.source_id, s.source_type, s.name, s.canonical_root,
-                        s.enabled, s.data_origin, c.enabled, c.endpoint
-               ORDER BY s.name LIMIT %s""",
+                        s.enabled, s.data_origin, s.origin_owner, c.enabled,
+                        c.endpoint, c.config_version, c.cursor_kind,
+                        latest.run_id, latest.status, latest.policy_version,
+                        latest.started_at, latest.finished_at, latest.origin_reason
+               ORDER BY s.name LIMIT %s''',
             (limit,),
         ).fetchall()
     sources = []
     for row in rows:
-        sid, stype, name, root, enabled, origin, config_enabled, endpoint, trusted_count, evidence_count = row
+        (sid, stype, name, root, enabled, origin, owner, config_enabled, endpoint,
+         config_version, cursor_kind, latest_run_id, latest_status,
+         latest_policy_version, latest_started_at, latest_finished_at,
+         latest_origin_reason, trusted_count, evidence_count) = row
         fixture = is_fixture_source(_text(sid), _text(name), _text(root))
-        if fixture or _text(origin) in {"FIXTURE", "TEST", "QUARANTINED"}:
-            state = "FIXTURE_ONLY"
+        if fixture or _text(origin) in {'FIXTURE', 'TEST', 'QUARANTINED'}:
+            state = 'FIXTURE_ONLY'
         elif not enabled or config_enabled is not True:
-            state = "DISABLED"
-        elif _text(origin) != "LIVE":
-            state = "REVIEW_REQUIRED"
+            state = 'DISABLED'
+        elif _text(origin) != 'LIVE':
+            state = 'REVIEW_REQUIRED'
         elif not endpoint:
-            state = "UNCONFIGURED"
+            state = 'UNCONFIGURED'
+        elif latest_status == 'FAILED':
+            state = 'FAILED'
+        elif latest_status == 'PARTIAL':
+            state = 'PARTIAL'
+        elif latest_status == 'RUNNING':
+            state = 'RUNNING'
+        elif latest_status is None:
+            state = 'NEVER_COLLECTED'
         elif int(trusted_count) == 0:
-            state = "EMPTY"
+            state = 'EMPTY'
         else:
-            state = "USABLE"
+            state = 'USABLE'
         sources.append({
-            "source_id": _text(sid), "source_type": _text(stype), "name": _text(name),
-            "data_origin": _text(origin), "enabled": bool(enabled),
-            "config_enabled": config_enabled is True, "state": state,
-            "trusted_live_evidence_count": int(trusted_count),
-            "evidence_count": int(evidence_count),
+            'source_id': _text(sid), 'source_type': _text(stype), 'name': _text(name),
+            'canonical_root': _text(root) or None,
+            'owner': _text(owner) or None,
+            'data_origin': _text(origin), 'enabled': bool(enabled),
+            'config_enabled': config_enabled is True, 'state': state,
+            'fetch_policy': {
+                'endpoint': _text(endpoint) or None,
+                'config_version': int(config_version) if config_version is not None else None,
+                'cursor_kind': _text(cursor_kind) or None,
+            },
+            'latest_health': {
+                'run_id': _text(latest_run_id) or None,
+                'status': _text(latest_status) or None,
+                'policy_version': _text(latest_policy_version) or None,
+                'started_at': latest_started_at,
+                'finished_at': latest_finished_at,
+                'origin_reason': _text(latest_origin_reason) or None,
+            } if latest_run_id else None,
+            'trusted_live_evidence_count': int(trusted_count),
+            'evidence_count': int(evidence_count),
         })
     return {
-        "source_count": len(sources),
-        "state_counts": {
-            state: sum(1 for item in sources if item["state"] == state)
-            for state in sorted({item["state"] for item in sources})
+        'source_count': len(sources),
+        'state_counts': {
+            state: sum(1 for item in sources if item['state'] == state)
+            for state in sorted({item['state'] for item in sources})
         },
-        "sources": sources,
+        'sources': sources,
     }
 
 

@@ -79,6 +79,7 @@ If a goal conflicts with the PRD, stop and surface the conflict instead of silen
 | [G41](G41-worker-readiness-observability-and-recovery.md) | Make daily worker runs observable, ready-checkable, and recoverable | G40, G30, G35 |
 | [G43](G43-live-evidence-yield-and-source-recovery.md) | Make live evidence produce useful recommendations | G40, G41, G05, G06, G21, G30 |
 | [G48](G48-provenance-safe-live-signal-recovery.md) | Restore provenance-safe live signal ingestion and recovery | G30, G31, G35, G40, G41, G43 |
+| [G49](G49-repository-legibility-and-organization.md) | Organize the repository for legibility and safe navigation | G42, G48 |
 | [G42](G42-production-reasoning-and-live-daily-publication.md) | Wire a replaceable reasoning provider into live daily publication | G40, G41, G43, G39, G29, G23, G24a |
 | [G45](G45-live-intelligence-dogfood-and-evaluation.md) | Dogfood the complete live-intelligence loop and establish a usefulness gate | G29, G32, G39, G41, G42, G43, G46, G47 |
 | [G46](G46-live-job-source-provisioning.md) | Provision a compliant live job source and accumulate job-market history | G21, G40, G41, G43, G35 |
@@ -131,6 +132,7 @@ G03 and G04 may be implemented in either order. All other goals should normally 
 | Provider-backed, provenance-grounded live daily publication | G42 |
 | Live usefulness evaluation, operator dogfooding, and defect routing | G45 |
 | Cross-source action candidates, canonical promotion, and verified-outcome feedback | G44 |
+| Repository structure, package legibility, and maintainable navigation | G49 |
 
 ## Canonical project scenarios
 
@@ -171,6 +173,7 @@ These short IDs keep goal handoffs tied to project-level outcomes without duplic
 - `SC-LIVE-RIFF-001` — A bounded replaceable provider turns live-qualified receipts into a grounded daily Riff without exposing unrestricted raw context or repeating completed paid calls.
 - `SC-LIVE-DOGFOOD-001` — The owner can repeatedly run, inspect, and discuss the live Riff loop; the system either provides a provenance-grounded useful result or honestly explains the bounded reason it cannot.
 - `SC-ACTION-LOOP-001` — Correlated evidence becomes a small set of transparent action candidates; a user-selected direction survives approval and verified outcomes improve later recommendations without authorizing execution.
+- `SC-REPO-LEGIBILITY-001` — A contributor can navigate from a current goal to its implementation, tests, migrations, and operator commands through the repository map without relying on broad search or undocumented path knowledge.
 
 ## Current handoff
 
@@ -252,7 +255,7 @@ origin-safe replay, a publication-date-aware signal window, real evidence IDs
 for correlation, and explicit job-source selection. The October 1 dogfood run then confirmed that source health remains
 an honest constraint: GitHub rate limits and RSS failures reduced coverage,
 while the surviving evidence did not clear the provenance threshold. G43
-resolves the extraction and replay failure chain; G42 is in progress: the replaceable provider seam, bounded telemetry, and recorded live-shaped replay are implemented; its connected-provider smoke check remains the final acceptance step. G48 is in progress: it closes the source-level provenance trust gap, quarantines unsafe legacy rows without deletion, and adds the audit/health/approval operator path. Its remaining acceptance work is source- or collection-run-scoped replay, collection-run origin propagation, reason-coded audit output, and safe classification/disablement of known test sources before the reviewed-source live run can count as clean. G45 is the mandatory live-intelligence dogfood gate after G42: it tests whether
+resolves the extraction and replay failure chain; G42 is in progress: the replaceable provider seam, bounded telemetry, and recorded live-shaped replay are implemented; its connected-provider smoke check remains the final acceptance step. G48 is complete: it closes the source-level provenance trust gap, quarantines unsafe legacy rows without deletion, adds the audit/health/approval operator path, scopes replay, propagates collection-run provenance, classifies known test identities, and makes replay ranking deterministic. The 2026-10-26 Simon Willison source-scoped replay consumed three LIVE receipts but honestly returned EMPTY because one provenance root did not meet the two-root publication gate; broader random-UUID fixture isolation is routed to BL-G48-001. G45 is the mandatory live-intelligence dogfood gate after G42: it tests whether
 repeated real evidence, grounded synthesis, natural follow-ups,
 and operator recovery are actually useful before more recommendation scope is
 added. It records honest empty and failure outcomes as findings, rather than
@@ -261,6 +264,9 @@ owner evaluation: it unifies the existing G27/G28/G36/G37 candidate
 representations, carries a selected direction through the canonical
 Exploration/PRD approvals, and lets verified external results inform later
 recommendations without making Riff an execution environment.
+G49 is queued as a maintainability goal: it will make the current repository
+layout and package ownership easier to navigate without turning Riff into a
+speculative deep package hierarchy or changing product behavior.
 
 ```text
 G22 is complete. Keep live job sources disabled until terms/robots
