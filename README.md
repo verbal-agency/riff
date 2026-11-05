@@ -4,6 +4,16 @@ Riff is a personal capability-intelligence system for finding emerging applied-A
 
 The product requirements are in [Riff v0.1 Product Requirements Document.md](Riff%20v0.1%20Product%20Requirements%20Document.md). The implementation roadmap for 5.6 Luna is in [docs/goals/README.md](docs/goals/README.md).
 
+For copyable operator commands, expected outcomes, bounded provider runs, and ChatGPT MCP setup, use the [operator runbook](docs/operator-runbook.md).
+
+To start the local Postgres, migrations, readiness check, and API together:
+
+```sh
+./scripts/riff-up
+```
+
+The API stays in the foreground; stopping it does not stop Postgres. Ngrok and ChatGPT MCP setup remain separate because the public tunnel hostname must be allowlisted.
+
 ## G00 local setup
 
 Requirements: Python 3.10+, `uv`, Docker Desktop (or a local Postgres 14+ instance).
@@ -587,7 +597,7 @@ a running Riff instance. Start the API with an optional bearer token, then
 probe the catalog or replay the scripted model fixture over HTTP:
 
 ```sh
-export RIFF_ADAPTER_TOKEN=local-connector-only
+export RIFF_ADAPTER_TOKEN=local-only
 uv run riff api --host 127.0.0.1 --port 8000
 uv run riff connector probe --url http://127.0.0.1:8000 --token "$RIFF_ADAPTER_TOKEN"
 uv run riff chat replay --file tests/fixtures/chat/tool-loop-v1.json --scenario daily \

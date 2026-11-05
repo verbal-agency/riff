@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+if [[ ! -f .env ]]; then
+  echo "Missing .env; create it with: cp .env.example .env" >&2
+  exit 13
+fi
+
+set -a
+source .env
+set +a
+
+echo "Starting PostgreSQL..."
+docker compose up -d postgres
+
+echo "Applying migrations..."
+uv run riff migrate
+
+echo "Checking worker readiness..."
+uv run riff worker readiness
+
+echo "Starting Riff API on ${RIFF_API_HOST:-127.0.0.1}:${RIFF_API_PORT:-8000}"
+exec uv run riff api \
+  --host "${RIFF_API_HOST:-127.0.0.1}" \
+  --port "${RIFF_API_PORT:-8000}"

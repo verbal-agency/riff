@@ -64,8 +64,11 @@ not raw unrestricted source bodies or an unbounded conversation history.
 - `tests/test_reasoning.py`: provider selection, recorded-fixture, cache, budget, and configuration checks pass.
 - `tests/test_g42_reasoning.py`: a Postgres live-shaped run uses the recorded provider fixture and exposes provider, model, context-policy, input-fingerprint, usage, and cost telemetry in the canonical report.
 - `tests/test_operations.py`, `tests/test_connector.py`, and `tests/test_live_worker.py`: 28 operational, connector, lease, readiness, and replay regressions pass.
-- `README.md` and `.env.example` document deterministic local operation, bounded recorded replay, and the explicit live-provider smoke command without committing credentials or raw prompts.
+- `README.md`, `docs/operator-runbook.md`, and `.env.example` document deterministic local operation, bounded recorded replay, the explicit live-provider smoke command, API/MCP setup, and troubleshooting without committing credentials or raw prompts.
 - 2026-10-11 controlled smoke: `gpt-4o-mini` accepted the bounded G42 context and returned a publication-shaped structured draft with the expected receipt citation; one API call, 156 estimated input tokens, and 391 estimated output tokens. The worker replay path was also exercised, but its selected live evidence was below the publication quality threshold and correctly produced `VALID_EMPTY` without making a provider call.
+- 2026-10-26 automated acceptance: `tests/test_reasoning.py`, `tests/test_g42_reasoning.py`, `tests/test_connector.py`, and `tests/test_operations.py` passed **32 tests** against local Postgres with two known dependency deprecation warnings.
+
+See `docs/reports/g42-provider-verification.md` for the current-cycle evidence and the remaining connected-human check.
 
 ## Open acceptance blocker
 
