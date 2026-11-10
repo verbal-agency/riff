@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Install (or remove with --remove) a launchd job that runs the digest daily at 07:30.
+set -euo pipefail
+
+repo_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+target="$HOME/Library/LaunchAgents/com.riff.digest.plist"
+
+launchctl bootout "gui/$(id -u)/com.riff.digest" 2>/dev/null || true
+if [[ "${1:-}" == "--remove" ]]; then
+  rm -f "$target"
+  echo "Removed the daily digest job."
+  exit 0
+fi
+
+tool_path="$(dirname "$(command -v uv)"):$(dirname "$(command -v docker)"):/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
+mkdir -p "$(dirname "$target")"
+sed -e "s|__REPO__|$repo_root|g" -e "s|__HOME__|$HOME|g" -e "s|__PATH__|$tool_path|g" \
+  "$repo_root/scripts/com.riff.digest.plist" > "$target"
+launchctl bootstrap "gui/$(id -u)" "$target"
+echo "Installed: the digest runs daily at 07:30. Log: ~/Library/Logs/riff-digest.log"
+echo "Run it now with: launchctl kickstart gui/$(id -u)/com.riff.digest"

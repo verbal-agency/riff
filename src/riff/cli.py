@@ -450,6 +450,16 @@ def build_parser() -> argparse.ArgumentParser:
     quality_repair = quality_subparsers.add_parser("repair", help="backfill metadata, reconcile runs, and recalibrate Riffs")
     quality_repair.add_argument("--stale-after-seconds", type=int, default=3600)
     quality_repair.add_argument("--force-recalibrate", action="store_true")
+    digest = subparsers.add_parser("digest", help="read the real feeds and write a model-generated idea digest")
+    digest_subparsers = digest.add_subparsers(dest="digest_command", required=True)
+    digest_run = digest_subparsers.add_parser("run", help="collect feeds, take notes on new articles, and write ideas")
+    digest_run.add_argument("--days", type=int, default=7, help="how many days of articles to consider")
+    digest_run.add_argument("--date", dest="run_date", help="digest date (YYYY-MM-DD); defaults to today (UTC)")
+    digest_run.add_argument("--feeds", default="config/digest_feeds.json")
+    digest_run.add_argument("--profile", default="config/profile.md")
+    digest_run.add_argument("--out-dir", default="digests")
+    digest_run.add_argument("--no-collect", action="store_true", help="skip fetching and use articles already stored")
+    digest_subparsers.add_parser("show", help="print the latest digest as Markdown")
     return parser
 
 
@@ -851,6 +861,37 @@ def main(argv: list[str] | None = None) -> int:
         configure_logging(settings.log_level)
         applied = migrate(settings.database_url)
         event(logging.getLogger("riff.migrations"), "migrations.completed", applied=applied)
+        return 0
+    if args.command == "digest":
+        from datetime import date as _date
+
+        from . import digest as digest_module
+
+        if args.digest_command == "show":
+            latest = digest_module.latest_digest(settings.database_url)
+            if latest is None:
+                raise SystemExit("no digest yet; run: riff digest run")
+            print(latest["markdown"])
+            return 0
+        if not 1 <= args.days <= 60:
+            raise SystemExit("--days must be between 1 and 60")
+        try:
+            profile_path = Path(args.profile)
+            report = digest_module.run_digest(
+                settings.database_url,
+                call=digest_module.OpenAIJsonClient(settings.reasoning_api_key or "", base_url=settings.reasoning_base_url),
+                feeds=digest_module.load_feeds(args.feeds),
+                profile=profile_path.read_text(encoding="utf-8") if profile_path.exists() else "",
+                run_date=_date.fromisoformat(args.run_date) if args.run_date else None,
+                days=args.days,
+                do_collect=not args.no_collect,
+                note_model=os.environ.get("RIFF_DIGEST_NOTE_MODEL", digest_module.DEFAULT_NOTE_MODEL),
+                idea_model=os.environ.get("RIFF_DIGEST_IDEA_MODEL", digest_module.DEFAULT_IDEA_MODEL),
+                out_dir=args.out_dir,
+            )
+        except (OSError, ValueError, digest_module.DigestError) as exc:
+            raise SystemExit(f"digest error: {exc}") from exc
+        print(json.dumps(report, sort_keys=True, indent=2))
         return 0
     if args.command == "daily" and args.daily_command == "generate":
         from datetime import date

@@ -45,6 +45,7 @@ exports/local/
 reports/local/
 postgres-data/
 tmp/
+digests/
 
 # Logs and local databases
 *.log

@@ -14,6 +14,73 @@ To start the local Postgres, migrations, readiness check, and API together:
 
 The API stays in the foreground; stopping it does not stop Postgres. Ngrok and ChatGPT MCP setup remain separate because the public tunnel hostname must be allowlisted.
 
+## Idea digest (the short path)
+
+`riff digest run` is the quickest way to get something useful out of Riff. It
+fetches the feeds in [config/digest_feeds.json](config/digest_feeds.json), has a
+model read each new article in full and take notes, then makes one call over
+the whole window plus [config/profile.md](config/profile.md) to propose things
+worth building. Every idea must cite the articles it rests on; ideas that cite
+nothing real are dropped and ideas resting on one source are labelled.
+
+```sh
+./scripts/riff-digest            # starts Docker/Postgres if needed, then runs
+./scripts/riff-digest --days 14  # widen the window
+uv run riff digest show          # print the latest digest
+```
+
+The digest is written to `digests/<date>.md` (git-ignored), stored in the
+`digests` table, and served at `GET /digest/latest`. It needs `OPENAI_API_KEY`
+in `.env` and sends article text to that API. Notes are cached per article, so
+a normal daily run costs a handful of small calls plus one larger one. Override
+the models with `RIFF_DIGEST_NOTE_MODEL` and `RIFF_DIGEST_IDEA_MODEL`.
+
+To run it every morning at 07:30, install the launchd job (remove it with
+`--remove`):
+
+```sh
+./scripts/riff-schedule
+```
+
+### Riffing with the digest
+
+Start the API (`./scripts/riff-up`) and open <http://127.0.0.1:8000/riff>. Pick
+a collision, idea or theme (or just type) to open a thread. Each turn the model
+is handed a shelf of real articles: the ones the thread started from, plus ones
+found by searching the whole article store for what you just said. It replies,
+lists the articles it drew on, and offers three directions to go next.
+
+- **Wander** throws two articles picked at random into the conversation.
+- **Distill into a sketch** writes down what the thread arrived at, on the page
+  and in `digests/threads/`.
+- Threads you pull on are passed to the next `riff digest run`, which leans
+  toward them.
+
+Each turn is one model call (`RIFF_RIFF_MODEL`, default `gpt-5.5`). Threads are
+stored in `riff_threads` and `riff_messages`. The logic is in
+[src/riff/riffing.py](src/riff/riffing.py) and the page is
+[src/riff/static/riff.html](src/riff/static/riff.html).
+
+Edit `config/profile.md` to say what you are working on; the ideas are only as
+specific as that file. Add or remove feeds in `config/digest_feeds.json`.
+
+A site with no RSS feed can still be read: give its entry `"kind": "page"`, its
+index page as `endpoint`, and a `link_pattern` regex that its article URL paths
+must match. Riff lists the index, fetches up to 12 unseen articles per run, and
+takes each article's date from its metadata. Anthropic's news, research and
+alignment pages and Dario Amodei's site are read this way.
+
+GitHub pull requests can be watched too: give an entry `"kind": "prs"`, the
+repository URL as `endpoint`, and the PR numbers in `pulls`. Each run snapshots
+a watched PR only if it has changed (its description plus the discussion since
+the last snapshot), so a PR appears in a digest when it has new activity or is
+merged or closed. This uses the public GitHub API, two requests per changed PR;
+set `GITHUB_TOKEN` in `.env` if you watch enough to hit the anonymous limit of
+60 requests an hour.
+
+Postgres tests run in a separate `<database>_test` database (see
+[tests/conftest.py](tests/conftest.py)) and never write to the development one.
+
 ## G00 local setup
 
 Requirements: Python 3.10+, `uv`, Docker Desktop (or a local Postgres 14+ instance).

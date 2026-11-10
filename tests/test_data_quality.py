@@ -44,4 +44,5 @@ def test_data_quality_repair_is_idempotent_and_bounded():
     assert second["runs"]["reconciled"] == 0
     assert second["riffs"]["recalibrated"] == 0
     report = source_coverage_report(database_url, limit=3)
-    assert report["total"] >= report["returned"] == 3
+    # The bound must hold whether or not the database already has three sources.
+    assert report["returned"] == min(3, report["total"])
