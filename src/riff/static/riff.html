@@ -3,93 +3,143 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Riff</title>
+<title>Riff | Verbal Agency</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f6f3ec; --panel: #fffdf8; --ink: #1d1b16; --muted: #6f6a5e; --line: #e2dccd;
-    --accent: #b4401f; --accent-ink: #fff; --you: #ece6d6; --chip: #f0eadb;
+    --ink: #06122b; --paper: #eef2f4; --white: #fff; --pink: #ff3d8b; --pink-ink: #c4175f; --cyan: #5ee3f0;
+    --mint: #d1f1ed; --rose: #f3bcd5; --blue: #b0c5f7; --mist: #e5eaf7; --muted: #4a5568; --faint: #9fb0c8;
+    --display: Anton, Impact, "Arial Narrow Bold", sans-serif;
+    --mono: "JetBrains Mono", "Courier New", monospace;
+    --label: "Space Mono", "Courier New", monospace;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #16150f; --panel: #1f1d16; --ink: #ece7da; --muted: #9a9484; --line: #34312a;
-            --accent: #e8734f; --accent-ink: #1a0d08; --you: #2b2820; --chip: #29261e; }
-  }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; border-radius: 0; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14.5px/1.6 var(--mono); display: flex; flex-direction: column; }
   button { font: inherit; color: inherit; cursor: pointer; }
-  a { color: var(--accent); }
-  .app { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; height: 100vh; }
-  .side { border-right: 1px solid var(--line); overflow-y: auto; padding: 20px 16px 40px; }
-  .main { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
-  h1 { font: 600 22px/1.2 ui-serif, Georgia, serif; margin: 0 0 2px; letter-spacing: -0.01em; }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
-  h2 { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 22px 4px 8px; font-weight: 600; }
-  .card { display: block; width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
-  .card:hover, .card:focus-visible { border-color: var(--accent); outline: none; }
-  .card.active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
-  .card b { display: block; font: 600 15px/1.3 ui-serif, Georgia, serif; }
-  .card span { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
-  .card em { font-style: normal; color: var(--ink); }
-  .tag { font: 400 11px ui-sans-serif, system-ui, sans-serif; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 0 7px; margin-left: 6px; white-space: nowrap; }
-  .head { padding: 18px 28px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
-  .head h3 { font: 600 19px/1.25 ui-serif, Georgia, serif; margin: 0; flex: 1 1 260px; }
-  .head button { background: none; border: 1px solid var(--line); border-radius: 8px; padding: 5px 11px; font-size: 13px; }
-  .head button:hover { border-color: var(--accent); }
-  .talk { flex: 1; overflow-y: auto; padding: 22px 28px; }
-  .talk > * { max-width: 720px; }
-  .seed { color: var(--muted); font-size: 14px; border-left: 2px solid var(--line); padding-left: 12px; margin-bottom: 22px; }
-  .msg { margin-bottom: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .msg.you { background: var(--you); border-radius: 12px; padding: 9px 13px; width: fit-content; margin-left: auto; }
-  .msg.riff { font: 16px/1.6 ui-serif, Georgia, serif; }
-  .srcs { font: 12.5px/1.5 ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin-top: 8px; white-space: normal; }
-  .srcs a { display: block; color: var(--muted); text-decoration: none; }
-  .srcs a:hover { color: var(--accent); }
-  .chips { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; margin: 4px 0 22px; }
-  .chip { background: var(--chip); border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px; text-align: left; font-size: 14px; }
-  .chip:hover { border-color: var(--accent); }
-  .sketch { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 4px 18px 12px; margin-bottom: 22px; }
-  .sketch h4 { font: 600 18px ui-serif, Georgia, serif; margin: 14px 0 4px; }
-  .sketch h5 { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
-  .sketch p { margin: 4px 0; }
-  .wait { color: var(--muted); font-style: italic; }
-  .err { color: var(--accent); margin-bottom: 14px; }
-  form { display: flex; gap: 8px; padding: 12px 28px 18px; border-top: 1px solid var(--line); }
-  textarea { flex: 1; resize: none; font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 46px; max-height: 160px; }
-  textarea:focus { outline: none; border-color: var(--accent); }
-  form button { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 0 14px; }
-  form button.go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
-  button:disabled { opacity: 0.5; cursor: default; }
-  .empty { margin: auto; text-align: center; color: var(--muted); max-width: 380px; padding: 28px; }
-  .empty p { font: 17px/1.5 ui-serif, Georgia, serif; }
+  ::selection { background: var(--pink); color: var(--white); }
+
+  /* Site header */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 24px; flex-wrap: wrap; }
+  .mark { font: 700 13.6px var(--label); text-transform: uppercase; color: var(--ink); text-decoration: none; }
+  .top nav { display: flex; gap: 10px; flex-wrap: wrap; }
+  .top nav a { font: 700 13.6px var(--label); text-transform: uppercase; color: var(--ink); text-decoration: none; background: var(--paper);
+               border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 6px 14px; }
+  .top nav a:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+  .top nav a[aria-current] { background: var(--ink); color: var(--paper); box-shadow: 4px 4px 0 var(--pink); }
+
+  .app { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(320px, 440px) 1fr; }
+  .side { overflow-y: auto; padding: 14px 24px 48px; }
+  .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ink); color: var(--paper); border-top: 3px solid var(--ink); }
+
+  /* Left: the digest */
+  h1 { font: 400 64px/0.92 var(--display); text-transform: uppercase; letter-spacing: 0.004em; margin: 6px 0 12px; }
+  h1 i { font-style: normal; color: var(--pink); }
+  .bar { height: 8px; background: var(--pink); margin-bottom: 12px; }
+  .sub { font-size: 13.5px; margin-bottom: 8px; }
+  h2 { font: 700 12px var(--label); text-transform: uppercase; color: var(--pink-ink); margin: 26px 0 12px; }
+  h2::after, .kicker::after { content: ""; display: inline-block; width: 7px; height: 7px; background: currentColor; margin-left: 7px; }
+  .card { display: block; width: calc(100% - 6px); text-align: left; background: var(--mist); border: 3px solid var(--ink); padding: 12px 14px; margin-bottom: 14px;
+          box-shadow: 4px 4px 0 var(--ink); transition: transform 0.08s, box-shadow 0.08s; }
+  .card:nth-of-type(4n+1) { background: var(--mint); }
+  .card:nth-of-type(4n+2) { background: var(--rose); }
+  .card:nth-of-type(4n+3) { background: var(--blue); }
+  .card:hover, .card:focus-visible { box-shadow: 6px 6px 0 var(--pink); outline: none; }
+  .card:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--pink); }
+  .card.active { background: var(--ink); color: var(--paper); box-shadow: 6px 6px 0 var(--pink); }
+  .card b { display: block; font: 700 15px/1.35 var(--mono); }
+  .card span { display: block; font-size: 12.5px; line-height: 1.5; margin-top: 6px; opacity: 0.85; }
+  .tag { font: 700 10.5px var(--label); font-style: normal; text-transform: uppercase; border: 2px solid currentColor; padding: 0 5px; margin-left: 8px; white-space: nowrap; vertical-align: 1px; }
+
+  /* Right: the thread */
+  .head { padding: 22px 28px 16px; border-bottom: 3px solid var(--paper); display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .head > div { flex: 1 1 280px; min-width: 0; }
+  .kicker { font: 700 12px var(--label); text-transform: uppercase; color: var(--pink); margin-bottom: 6px; }
+  .head h3 { font: 400 34px/1 var(--display); text-transform: uppercase; letter-spacing: 0.004em; margin: 0; }
+  .head button, form button { font: 700 12.5px var(--label); text-transform: uppercase; background: var(--ink); color: var(--paper); border: 3px solid var(--paper); padding: 7px 13px; }
+  .head button:hover, form button:hover { background: var(--paper); color: var(--ink); }
+  .talk { flex: 1; overflow-y: auto; padding: 24px 28px; }
+  .talk > * { max-width: 740px; }
+  .seed { font-size: 13.5px; color: var(--faint); border-left: 3px solid var(--pink); padding-left: 12px; margin-bottom: 24px; }
+  .msg { margin-bottom: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.riff { font-size: 15px; line-height: 1.7; }
+  .msg.you { background: var(--paper); color: var(--ink); border: 3px solid var(--paper); box-shadow: 5px 5px 0 var(--pink); padding: 8px 13px; width: fit-content; max-width: 600px; margin-left: auto; margin-right: 6px; font-weight: 700; }
+  .srcs { font-size: 12px; line-height: 1.55; margin-top: 12px; white-space: normal; border-top: 1px solid #2a3a5c; padding-top: 8px; }
+  .srcs a { display: block; color: var(--cyan); text-decoration: none; }
+  .srcs a::before { content: "↗ "; }
+  .srcs a:hover { text-decoration: underline; }
+  .chips { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; margin: 0 0 26px; }
+  .chip { background: transparent; color: var(--paper); border: 2px solid var(--faint); padding: 7px 12px; text-align: left; font-size: 13.5px; line-height: 1.45; }
+  .chip::before { content: "→ "; color: var(--pink); font-weight: 700; }
+  .chip:hover { border-color: var(--cyan); background: var(--cyan); color: var(--ink); }
+  .chip:hover::before { color: var(--ink); }
+  .sketch { background: var(--paper); color: var(--ink); border: 3px solid var(--paper); box-shadow: 6px 6px 0 var(--pink); padding: 6px 20px 16px; margin: 6px 6px 26px 0; }
+  .sketch h4 { font: 400 30px/1 var(--display); text-transform: uppercase; margin: 16px 0 8px; }
+  .sketch h5 { font: 700 12px var(--label); text-transform: uppercase; color: var(--pink-ink); margin: 18px 0 4px; }
+  .sketch p { margin: 5px 0; }
+  .sketch a { color: var(--ink); }
+  .wait { color: var(--cyan); font: 700 12.5px var(--label); text-transform: uppercase; }
+  .wait::after { content: " ■"; animation: blink 0.9s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .wait::after { animation: none; } .card, .top nav a { transition: none; } }
+  .err { color: var(--pink); font-weight: 700; margin-bottom: 14px; }
+  form { display: flex; gap: 10px; padding: 14px 28px 20px; border-top: 3px solid var(--paper); align-items: stretch; }
+  textarea { flex: 1; resize: none; font: inherit; color: var(--ink); background: var(--white); border: 3px solid var(--paper); padding: 10px 12px; min-height: 48px; max-height: 160px; }
+  textarea:focus { outline: 3px solid var(--cyan); outline-offset: 0; }
+  form button.go { background: var(--cyan); color: var(--ink); border-color: var(--cyan); }
+  form button.go:hover { background: var(--pink); border-color: var(--pink); color: var(--white); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  .empty { margin: 7vh auto 0; max-width: 460px; padding: 12px; }
+  .empty p { font: 400 44px/0.98 var(--display); text-transform: uppercase; margin: 0 0 18px; }
+  .empty p::after { content: "."; color: var(--pink); }
+  .empty small { display: block; font-size: 14px; line-height: 1.6; color: var(--faint); }
+  .empty::after { content: ""; display: block; width: 150px; height: 22px; margin-top: 26px; background-image: radial-gradient(var(--faint) 1.5px, transparent 1.6px); background-size: 14px 14px; }
   .back { display: none; }
-  @media (max-width: 760px) {
+  @media (max-width: 800px) {
+    .top { padding: 12px 16px; }
     .app { grid-template-columns: 1fr; }
-    .side { border-right: 0; height: 100vh; }
     .main { display: none; }
     .app.open .side { display: none; }
     .app.open .main { display: flex; }
     .back { display: inline-block; }
+    .side { padding: 8px 16px 40px; }
     .head, .talk, form { padding-left: 16px; padding-right: 16px; }
+    h1 { font-size: 52px; }
+    .head h3 { font-size: 26px; }
   }
 </style>
 </head>
 <body>
+<header class="top">
+  <a class="mark" href="https://verbalagency.com/">Verbal Agency</a>
+  <nav>
+    <a href="https://verbalagency.com/notes/">Notes</a>
+    <a href="https://verbalagency.com/principles/">Principles</a>
+    <a href="https://verbalagency.com/#check">Check</a>
+    <a href="/riff" aria-current="page">Riff</a>
+    <a href="https://verbalagency.com/">Contact</a>
+  </nav>
+</header>
 <div class="app" id="app">
   <aside class="side">
-    <h1>Riff</h1>
+    <h1>Let it collide<i>.</i></h1>
+    <div class="bar"></div>
     <div class="sub" id="sub">Loading…</div>
     <div id="lists"></div>
   </aside>
   <section class="main">
     <div class="head" id="head" hidden>
-      <button class="back" id="back">← Digest</button>
-      <h3 id="title"></h3>
+      <div>
+        <button class="back" id="back">← Digest</button>
+        <div class="kicker">Riffing on</div>
+        <h3 id="title"></h3>
+      </div>
       <button id="distill" title="Write down what this conversation arrived at">Distill into a sketch</button>
     </div>
-    <div class="talk" id="talk">
-      <div class="empty"><p>Pick a collision or an idea and start pulling on it. Or just say something below.</p></div>
-    </div>
+    <div class="talk" id="talk"></div>
     <form id="form">
       <textarea id="box" rows="1" placeholder="Say something to start a riff from nothing…"></textarea>
       <button type="button" id="wander" title="Throw two unrelated articles into the conversation" hidden>Wander</button>
@@ -171,7 +221,7 @@ function renderThread() {
   talk.replaceChildren();
   if (!thread) {
     if (busy) talk.append(el("div", "wait", "Opening the thread…"));
-    else { const e = el("div", "empty"); e.append(el("p", null, "Pick a collision or an idea and start pulling on it. Or just say something below.")); talk.append(e); }
+    else { const e = el("div", "empty"); e.append(el("p", null, "Pull a thread"), el("small", null, "Pick a collision or an idea and start pulling on it. Or just say something below and see where it wanders.")); talk.append(e); }
     if (error) talk.append(el("div", "err", error));
     return;
   }

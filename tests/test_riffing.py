@@ -65,7 +65,7 @@ def test_riff_thread_searches_the_store_wanders_distills_and_feeds_the_digest(tm
     app.state.riff_call = call
     client = TestClient(app)
 
-    assert "<title>Riff</title>" in client.get("/riff").text
+    assert "<title>Riff | Verbal Agency</title>" in client.get("/riff").text
     state = client.get("/riff/api/state").json()
     assert state["digest"]["payload"]["collisions"][0]["title"] == "Clocks meet maps"
 
