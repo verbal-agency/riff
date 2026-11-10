@@ -64,6 +64,20 @@ stored in `riff_threads` and `riff_messages`. The logic is in
 Edit `config/profile.md` to say what you are working on; the ideas are only as
 specific as that file. Add or remove feeds in `config/digest_feeds.json`.
 
+A site with no RSS feed can still be read: give its entry `"kind": "page"`, its
+index page as `endpoint`, and a `link_pattern` regex that its article URL paths
+must match. Riff lists the index, fetches up to 12 unseen articles per run, and
+takes each article's date from its metadata. Anthropic's news, research and
+alignment pages and Dario Amodei's site are read this way.
+
+GitHub pull requests can be watched too: give an entry `"kind": "prs"`, the
+repository URL as `endpoint`, and the PR numbers in `pulls`. Each run snapshots
+a watched PR only if it has changed (its description plus the discussion since
+the last snapshot), so a PR appears in a digest when it has new activity or is
+merged or closed. This uses the public GitHub API, two requests per changed PR;
+set `GITHUB_TOKEN` in `.env` if you watch enough to hit the anonymous limit of
+60 requests an hour.
+
 Postgres tests run in a separate `<database>_test` database (see
 [tests/conftest.py](tests/conftest.py)) and never write to the development one.
 

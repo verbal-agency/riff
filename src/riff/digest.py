@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 import time
 import uuid
@@ -26,13 +27,13 @@ from datetime import date, datetime, time as dtime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 from psycopg.types.json import Jsonb
 
 from .db import connection
-from .evidence import SourceType
+from .evidence import EvidenceSubmission, SourceType, canonicalize_url
 from .evidence_repository import EvidenceRepository
 from .ingestion import HttpFeedFetcher
 from .ingestion_repository import IngestionRepository
@@ -50,6 +51,9 @@ USER_AGENT = "Riff/0.1 personal feed reader"
 EXCLUDED_ORIGINS = ("TEST", "FIXTURE")
 
 
+_GITHUB_REPO = re.compile(r"^https://github\.com/([\w.-]+)/([\w.-]+?)/?$")
+
+
 class DigestError(RuntimeError):
     """The digest could not be produced."""
 
@@ -60,6 +64,9 @@ class Feed:
     name: str
     endpoint: str
     max_items: int = DEFAULT_MAX_ITEMS_PER_FEED
+    kind: str = "rss"  # "rss"; "page" for a site with no feed (endpoint is its index page); "prs" for GitHub pull requests
+    link_pattern: str | None = None  # page only: regex an article's URL path must match
+    pulls: tuple[int, ...] = ()  # prs only: pull request numbers in the repository at endpoint
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +78,7 @@ class Article:
     url: str
     published_at: datetime
     text: str
+    fetch_full: bool = False  # a short RSS summary may be replaced by the article page
 
 
 @dataclass(slots=True)
@@ -96,7 +104,14 @@ def load_feeds(path: str | Path) -> list[Feed]:
         raise DigestError(f"{path} must contain schema_version 1 and a feeds list")
     feeds = []
     for entry in payload["feeds"]:
-        feeds.append(Feed(str(entry["source_id"]), str(entry["name"]), str(entry["endpoint"]), int(entry.get("max_items", DEFAULT_MAX_ITEMS_PER_FEED))))
+        feed = Feed(str(entry["source_id"]), str(entry["name"]), str(entry["endpoint"]), int(entry.get("max_items", DEFAULT_MAX_ITEMS_PER_FEED)), str(entry.get("kind", "rss")), entry.get("link_pattern"), tuple(int(number) for number in entry.get("pulls", [])))
+        if feed.kind not in {"rss", "page", "prs"} or (feed.kind == "page" and not feed.link_pattern):
+            raise DigestError(f"{feed.source_id}: kind must be rss, page with a link_pattern, or prs")
+        if feed.kind == "prs" and (not feed.pulls or not _GITHUB_REPO.match(feed.endpoint)):
+            raise DigestError(f"{feed.source_id}: prs needs pulls and an endpoint like https://github.com/owner/repo")
+        if feed.link_pattern:
+            re.compile(feed.link_pattern)
+        feeds.append(feed)
     if not feeds:
         raise DigestError(f"{path} lists no feeds")
     return feeds
@@ -135,23 +150,29 @@ def ensure_sources(database_url: str, feeds: Sequence[Feed]) -> None:
             )
 
 
-def collect(database_url: str, feeds: Sequence[Feed], fetcher=None) -> dict[str, Any]:
+def collect(database_url: str, feeds: Sequence[Feed], fetcher=None, page_fetcher: Callable[[str], str] | None = None, github_json: Callable[[str], Any] | None = None) -> dict[str, Any]:
     ensure_sources(database_url, feeds)
+    pages = collect_pages(database_url, [feed for feed in feeds if feed.kind == "page"], fetch=page_fetcher)
+    pulls = collect_pulls(database_url, [feed for feed in feeds if feed.kind == "prs"], get_json=github_json)
+    pages = {"stored": pages["stored"] + pulls["stored"], "failures": pages["failures"] + pulls["failures"]}
+    report = {"run_id": None, "status": "SUCCEEDED", "stored": pages["stored"], "duplicates": 0, "failed": len(pages["failures"]), "failures": list(pages["failures"])}
+    rss_ids = [feed.source_id for feed in feeds if feed.kind == "rss"]
+    if not rss_ids:  # an empty id list would mean "every source" to the runner
+        return report
     runner = WritingIngestionRunner(IngestionRepository(database_url), EvidenceRepository(database_url), fetcher or HttpFeedFetcher())
-    summary = runner.run(source_ids=[feed.source_id for feed in feeds], policy_version="digest-v1")
+    summary = runner.run(source_ids=rss_ids, policy_version="digest-v1")
     with connection(database_url) as conn:
         failures = conn.execute(
             "SELECT source_id, error_code, count(*) FROM collection_item_results WHERE run_id = %s AND error_code IS NOT NULL GROUP BY 1, 2 ORDER BY 1",
             (summary.run_id,),
         ).fetchall()
-    return {
-        "run_id": summary.run_id,
-        "status": str(getattr(summary.status, "value", summary.status)),
-        "stored": summary.stored,
-        "duplicates": summary.duplicates,
-        "failed": summary.failed_transient + summary.failed_permanent,
-        "failures": [{"source_id": str(a), "error": str(b), "count": int(c)} for a, b, c in failures],
-    }
+    report["run_id"] = summary.run_id
+    report["status"] = str(getattr(summary.status, "value", summary.status))
+    report["stored"] += summary.stored
+    report["duplicates"] = summary.duplicates
+    report["failed"] += summary.failed_transient + summary.failed_permanent
+    report["failures"] = [{"source_id": str(a), "error": str(b), "count": int(c)} for a, b, c in failures] + report["failures"]
+    return report
 
 
 class _TextExtractor(HTMLParser):
@@ -193,26 +214,182 @@ def html_to_text(raw: str) -> str:
     return re.sub(r"\n\s*\n+", "\n\n", text).strip()
 
 
-def fetch_article_text(url: str, *, timeout_seconds: float = 15.0, max_bytes: int = 3_000_000) -> str:
-    """Fetch the article page for feeds that only publish a one-line summary.
-
-    Sites that refuse automated readers are respected: the caller falls back
-    to whatever the feed itself provided.
-    """
+def fetch_page(url: str, *, timeout_seconds: float = 15.0, max_bytes: int = 3_000_000) -> str:
+    """Fetch one HTML or XML page, identifying honestly; "" when the site refuses or fails."""
 
     try:
         response = httpx.get(url, timeout=timeout_seconds, follow_redirects=True, headers={"User-Agent": USER_AGENT})
     except httpx.HTTPError:
         return ""
-    if response.status_code >= 400 or len(response.content) > max_bytes or "html" not in response.headers.get("content-type", "html"):
+    kind = response.headers.get("content-type", "html")
+    if response.status_code >= 400 or len(response.content) > max_bytes or not ("html" in kind or "xml" in kind):
         return ""
-    page = response.text
+    return response.text
+
+
+def main_block(page: str) -> str:
+    """The article part of a page: its largest <article>, else <main>, else everything."""
+
     for tag in ("article", "main"):
         blocks = re.findall(rf"<{tag}\b[^>]*>(.*?)</{tag}>", page, flags=re.S | re.I)
         if blocks:
-            page = max(blocks, key=len)
-            break
-    return html_to_text(page)
+            return max(blocks, key=len)
+    return page
+
+
+def fetch_article_text(url: str) -> str:
+    """Full text for feeds that only publish a one-line summary."""
+
+    return html_to_text(main_block(fetch_page(url)))
+
+
+_DATE_PATTERNS = (
+    r'article:published_time"\s+content="([^"]+)"',
+    r'"datePublished"\s*:\s*"([^"]+)"',
+    r'<time[^>]*dateTime="([^"]+)"',
+)
+_TEXT_DATE = re.compile(r"\b(January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (20\d\d)\b")
+_TEXT_MONTH = re.compile(r"\b(January|February|March|April|May|June|July|August|September|October|November|December) (20\d\d)\b")
+
+
+def published_date(page: str) -> datetime | None:
+    """Best-effort publication date from page metadata, then from visible text."""
+
+    for pattern in _DATE_PATTERNS:
+        match = re.search(pattern, page, flags=re.I)
+        if match:
+            try:
+                parsed = datetime.fromisoformat(match.group(1).strip().replace("Z", "+00:00"))
+                return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+    # Visible text near the top of the page: "August 28, 2026", else "August 2026".
+    # A date in the future is a deadline or an event, not a publication date.
+    text = html_to_text(page[:400_000])[:3000]
+    now = datetime.now(timezone.utc)
+    for pattern, layout in ((_TEXT_DATE, "%B %d %Y"), (_TEXT_MONTH, "%B %Y")):
+        for match in pattern.finditer(text):
+            try:
+                parsed = datetime.strptime(" ".join(match.groups()), layout).replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+            if parsed <= now:
+                return parsed
+    return None
+
+
+def page_title(page: str) -> str | None:
+    match = re.search(r'property="og:title"\s+content="([^"]+)"', page, flags=re.I) or re.search(r"<title[^>]*>([^<]+)</title>", page, flags=re.I)
+    if not match:
+        return None
+    title = html.unescape(match.group(1)).strip()
+    return re.sub(r"\s*[\\|]\s*Anthropic$", "", title) or None
+
+
+def page_links(index: str, feed: Feed) -> list[str]:
+    """Article URLs on an index page or sitemap, in page order (usually newest first)."""
+
+    base = urlsplit(feed.endpoint)
+    urls: list[str] = []
+    for raw in re.findall(r'href="([^"]+)"', index) + re.findall(r"<loc>([^<]+)</loc>", index):
+        parts = urlsplit(urljoin(feed.endpoint, html.unescape(raw.strip())))
+        if parts.netloc == base.netloc and parts.scheme in {"http", "https"} and re.search(feed.link_pattern or "", parts.path):
+            urls.append(f"{parts.scheme}://{parts.netloc}{parts.path}")
+    return list(dict.fromkeys(url for url in urls if url.rstrip("/") != feed.endpoint.rstrip("/")))
+
+
+def collect_pages(database_url: str, feeds: Sequence[Feed], *, fetch: Callable[[str], str] | None = None, max_new: int = 12, pause_seconds: float = 0.3) -> dict[str, Any]:
+    """Read sites that have no feed: list their index page, then fetch unseen articles."""
+
+    fetch = fetch or fetch_page
+    evidence = EvidenceRepository(database_url)
+    stored, failures = 0, []
+    for feed in feeds:
+        index = fetch(feed.endpoint)
+        links = page_links(index, feed) if index else []
+        if not links:
+            failures.append({"source_id": feed.source_id, "error": "INDEX_UNAVAILABLE" if not index else "NO_ARTICLE_LINKS", "count": 1})
+            continue
+        with connection(database_url) as conn:
+            known = {str(row[0]).rstrip("/") for row in conn.execute("SELECT canonical_url FROM source_items WHERE source_id = %s", (feed.source_id,)).fetchall()}
+        for url in [link for link in links if canonicalize_url(link).rstrip("/") not in known][:max_new]:
+            page = fetch(url)
+            block = main_block(page) if page else ""
+            if len(html_to_text(block)) < 200:
+                continue
+            result = evidence.ingest(EvidenceSubmission(
+                source_id=feed.source_id, canonical_url=url, native_id=url, title=page_title(page) or url,
+                published_at=published_date(page), raw_content=block[:400_000], retrieval_metadata={"adapter": "page_index"},
+            ))
+            stored += 1 if result.created else 0
+            if pause_seconds:
+                time.sleep(pause_seconds)
+    return {"stored": stored, "failures": failures}
+
+
+def github_json(url: str, *, timeout_seconds: float = 15.0) -> Any:
+    """GET one GitHub REST resource; None on any failure. Uses GITHUB_TOKEN when set."""
+
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json"}
+    if os.environ.get("GITHUB_TOKEN"):
+        headers["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
+    try:
+        response = httpx.get(url, timeout=timeout_seconds, headers=headers, follow_redirects=True)
+        return response.json() if response.status_code == 200 else None
+    except (httpx.HTTPError, ValueError):
+        return None
+
+
+def _pull_document(repo: str, pull: Mapping[str, Any], comments: Sequence[Mapping[str, Any]], *, since_last: bool) -> str:
+    state = "merged" if pull.get("merged_at") else ("draft, open" if pull.get("draft") else str(pull.get("state", "open")))
+    status = {
+        "merged": "This pull request has been MERGED: the change is now accepted.",
+        "closed": "This pull request was CLOSED without merging: the proposal was dropped or superseded.",
+    }.get(state, "This pull request is still OPEN: it is a proposal under discussion, not something that has shipped.")
+    parts = [
+        f"GitHub pull request #{pull.get('number')} in {repo}, opened by {(pull.get('user') or {}).get('login', 'unknown')} on {str(pull.get('created_at', ''))[:10]}.",
+        f"State: {state}. {status}",
+        "Description:\n" + str(pull.get("body") or "(no description)")[:9000],
+    ]
+    if comments:
+        parts.append("Discussion since the last check:" if since_last else "Most recent discussion:")
+        parts += [f"{(comment.get('user') or {}).get('login', 'unknown')} ({str(comment.get('created_at', ''))[:10]}): {str(comment.get('body') or '')[:1200]}" for comment in comments]
+    return "".join(f"<p>{html.escape(part)}</p>" for part in parts)
+
+
+def collect_pulls(database_url: str, feeds: Sequence[Feed], *, get_json: Callable[[str], Any] | None = None, max_comments: int = 15) -> dict[str, Any]:
+    """Snapshot watched pull requests; a new version is stored only when one has changed."""
+
+    get_json = get_json or github_json
+    evidence = EvidenceRepository(database_url)
+    stored, failures = 0, []
+    for feed in feeds:
+        owner, name = _GITHUB_REPO.match(feed.endpoint).groups()
+        repo = f"{owner}/{name}"
+        for number in feed.pulls:
+            url = f"https://github.com/{repo}/pull/{number}"
+            pull = get_json(f"https://api.github.com/repos/{repo}/pulls/{number}")
+            if not isinstance(pull, Mapping) or not pull.get("updated_at"):
+                failures.append({"source_id": feed.source_id, "error": f"PULL_UNAVAILABLE:{number}", "count": 1})
+                continue
+            updated = datetime.fromisoformat(str(pull["updated_at"]).replace("Z", "+00:00"))
+            with connection(database_url) as conn:
+                last = conn.execute(
+                    "SELECT max(e.published_at) FROM evidence_versions e JOIN source_items si ON si.source_item_id = e.source_item_id WHERE si.source_id = %s AND si.native_id = %s",
+                    (feed.source_id, url),
+                ).fetchone()[0]
+            if last is not None and last >= updated:
+                continue  # nothing has happened on this pull request since the last snapshot
+            since = f"&since={last.strftime('%Y-%m-%dT%H:%M:%SZ')}" if last else ""
+            comments = get_json(f"https://api.github.com/repos/{repo}/issues/{number}/comments?per_page=100{since}")
+            comments = [item for item in comments if isinstance(item, Mapping)][-max_comments:] if isinstance(comments, list) else []
+            result = evidence.ingest(EvidenceSubmission(
+                source_id=feed.source_id, canonical_url=url, native_id=url, title=f"PR #{number}: {pull.get('title', '')}".strip(),
+                published_at=updated, raw_content=_pull_document(repo, pull, comments, since_last=last is not None),
+                retrieval_metadata={"adapter": "github_pull_request", "state": pull.get("state"), "merged": bool(pull.get("merged_at"))},
+            ))
+            stored += 1 if result.created else 0
+    return {"stored": stored, "failures": failures}
 
 
 def window_articles(database_url: str, feeds: Sequence[Feed], since: datetime, until: datetime) -> list[Article]:
@@ -233,7 +410,8 @@ def window_articles(database_url: str, feeds: Sequence[Feed], since: datetime, u
                ORDER BY si.source_item_id, e.retrieved_at DESC""",
             ([f.source_id for f in feeds], since, until, list(EXCLUDED_ORIGINS), list(EXCLUDED_ORIGINS)),
         ).fetchall()
-    caps = {feed.source_id: feed.max_items for feed in feeds}
+    caps = {feed.source_id: max(feed.max_items, len(feed.pulls)) for feed in feeds}
+    rss = {feed.source_id for feed in feeds if feed.kind == "rss"}
     names = {feed.source_id: feed.name for feed in feeds}
     by_source: dict[str, list[Article]] = {}
     seen_urls: set[str] = set()
@@ -246,7 +424,7 @@ def window_articles(database_url: str, feeds: Sequence[Feed], since: datetime, u
         bucket = by_source.setdefault(str(source_id), [])
         if len(bucket) >= caps.get(str(source_id), DEFAULT_MAX_ITEMS_PER_FEED):
             continue
-        bucket.append(Article(str(evidence_id), str(source_id), names.get(str(source_id), str(source_name)), str(title or url), url, at, text))
+        bucket.append(Article(str(evidence_id), str(source_id), names.get(str(source_id), str(source_name)), str(title or url), url, at, text, str(source_id) in rss))
     articles = sorted((item for bucket in by_source.values() for item in bucket), key=lambda item: item.published_at, reverse=True)
     return articles[:MAX_ARTICLES]
 
@@ -398,7 +576,7 @@ def take_notes(database_url: str, articles: Sequence[Article], call: JsonCall, m
 
     def one(article: Article) -> tuple[Article, Mapping[str, Any] | None, str | None]:
         text = article.text
-        if len(text) < FULL_TEXT_BELOW_CHARS:
+        if article.fetch_full and len(text) < FULL_TEXT_BELOW_CHARS:
             fetched = fetch_text(article.url)
             if len(fetched) > len(text):
                 text = fetched
@@ -512,11 +690,13 @@ def run_digest(
     idea_model: str = DEFAULT_IDEA_MODEL,
     out_dir: str | Path | None = "digests",
     fetcher=None,
+    page_fetcher: Callable[[str], str] | None = None,
+    github_json: Callable[[str], Any] | None = None,
 ) -> dict[str, Any]:
     run_date = run_date or datetime.now(timezone.utc).date()
     until = datetime.combine(run_date, dtime.max, tzinfo=timezone.utc)
     since = datetime.combine(run_date - timedelta(days=days), dtime.min, tzinfo=timezone.utc)
-    collection = collect(database_url, feeds, fetcher) if do_collect else None
+    collection = collect(database_url, feeds, fetcher, page_fetcher, github_json) if do_collect else None
     articles = window_articles(database_url, feeds, since, until)
     notes, note_errors = take_notes(database_url, articles, call, note_model)
     articles = [article for article in articles if article.evidence_id in notes]

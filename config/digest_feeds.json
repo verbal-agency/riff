@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "note": "Feeds read by `riff digest run`. Add or remove entries freely; max_items caps how many recent items one feed contributes to a digest (default 10).",
+  "note": "Feeds read by `riff digest run`. Add or remove entries freely; max_items caps how many recent items one feed contributes to a digest (default 10). A site with no feed can be read with kind \"page\": endpoint is its index page and link_pattern is a regex its article URL paths must match. GitHub pull requests can be watched with kind \"prs\": endpoint is the repository URL and pulls lists the PR numbers; a PR shows up in a digest whenever it has new activity, or is merged or closed.",
   "feeds": [
     {
       "source_id": "writing-openai-news",
@@ -106,6 +106,124 @@
       "source_id": "writing-engineer-geoffrey-litt",
       "name": "Geoffrey Litt",
       "endpoint": "https://www.geoffreylitt.com/feed.xml"
+    },
+    {
+      "source_id": "writing-anthropic-news",
+      "name": "Anthropic News",
+      "endpoint": "https://www.anthropic.com/news",
+      "kind": "page",
+      "link_pattern": "^/news/[a-z0-9]+-[a-z0-9-]+$"
+    },
+    {
+      "source_id": "writing-anthropic-research",
+      "name": "Anthropic Research",
+      "endpoint": "https://www.anthropic.com/research",
+      "kind": "page",
+      "link_pattern": "^/research/[a-z0-9]+-[a-z0-9-]+$"
+    },
+    {
+      "source_id": "writing-anthropic-engineering",
+      "name": "Anthropic Engineering (unofficial feed)",
+      "endpoint": "https://znck.github.io/feeds/anthropic-engineering.xml"
+    },
+    {
+      "source_id": "writing-anthropic-alignment",
+      "name": "Anthropic Alignment Science",
+      "endpoint": "https://alignment.anthropic.com/",
+      "kind": "page",
+      "link_pattern": "^/20\\d\\d/[a-z0-9-]+/?$"
+    },
+    {
+      "source_id": "writing-transformer-circuits",
+      "name": "Transformer Circuits Thread",
+      "endpoint": "https://transformer-circuits.pub/feed.xml"
+    },
+    {
+      "source_id": "writing-dario-amodei",
+      "name": "Dario Amodei",
+      "endpoint": "https://darioamodei.com/",
+      "kind": "page",
+      "link_pattern": "^/(essay|post)/[a-z0-9-]+$"
+    },
+    {
+      "source_id": "writing-engineer-boris-cherny",
+      "name": "Boris Cherny",
+      "endpoint": "https://borischerny.com/feed.xml"
+    },
+    {
+      "source_id": "writing-engineer-erik-schluntz",
+      "name": "Erik Schluntz",
+      "endpoint": "https://www.erikschluntz.com/feed.xml"
+    },
+    {
+      "source_id": "writing-engineer-nicholas-carlini",
+      "name": "Nicholas Carlini",
+      "endpoint": "https://nicholas.carlini.com/writing/feed.xml"
+    },
+    {
+      "source_id": "writing-jack-clark-import-ai",
+      "name": "Jack Clark — Import AI",
+      "endpoint": "https://importai.substack.com/feed"
+    },
+    {
+      "source_id": "writing-jan-leike",
+      "name": "Jan Leike",
+      "endpoint": "https://aligned.substack.com/feed"
+    },
+    {
+      "source_id": "writing-amanda-askell",
+      "name": "Amanda Askell",
+      "endpoint": "https://askell.io/feed.xml"
+    },
+    {
+      "source_id": "github-prs-mcp-spec",
+      "name": "MCP specification pull requests",
+      "endpoint": "https://github.com/modelcontextprotocol/modelcontextprotocol",
+      "kind": "prs",
+      "pulls": [
+        3415,
+        2624,
+        1913,
+        1933,
+        1932,
+        2817
+      ]
+    },
+    {
+      "source_id": "github-prs-mcp-typescript-sdk",
+      "name": "MCP TypeScript SDK pull requests",
+      "endpoint": "https://github.com/modelcontextprotocol/typescript-sdk",
+      "kind": "prs",
+      "pulls": [
+        3066
+      ]
+    },
+    {
+      "source_id": "github-prs-langgraph",
+      "name": "LangGraph pull requests",
+      "endpoint": "https://github.com/langchain-ai/langgraph",
+      "kind": "prs",
+      "pulls": [
+        8838
+      ]
+    },
+    {
+      "source_id": "github-prs-temporal-python",
+      "name": "Temporal Python SDK pull requests",
+      "endpoint": "https://github.com/temporalio/sdk-python",
+      "kind": "prs",
+      "pulls": [
+        1979
+      ]
+    },
+    {
+      "source_id": "github-prs-pydantic-ai",
+      "name": "Pydantic AI pull requests",
+      "endpoint": "https://github.com/pydantic/pydantic-ai",
+      "kind": "prs",
+      "pulls": [
+        6041
+      ]
     }
   ]
 }
