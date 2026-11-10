@@ -64,6 +64,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         return {"status": "ok", "database": "ready"}
 
+    from .riff_api import build_router
+
+    app.state.riff_call = None  # tests may set a fake model call here
+    app.include_router(build_router(resolve_settings))
+
+    @app.get("/digest/latest", tags=["digest"])
+    def digest_latest(effective_settings: Settings = Depends(resolve_settings)) -> dict:
+        """Return the newest idea digest; this endpoint never calls a model."""
+        from .digest import latest_digest
+
+        result = latest_digest(effective_settings.database_url)
+        if result is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="no digest yet")
+        return result
+
     @app.get("/riffs/daily/{run_date}", tags=["riffs"])
     def daily_riffs(
         run_date: date,

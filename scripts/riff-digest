@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Fetch the feeds and write today's idea digest. Safe to run by hand or from launchd.
+set -euo pipefail
+
+repo_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+if [[ ! -f .env ]]; then
+  echo "Missing .env; create it with: cp .env.example .env" >&2
+  exit 13
+fi
+set -a
+source .env
+set +a
+
+if ! docker info >/dev/null 2>&1; then
+  echo "Starting Docker..."
+  open -ga Docker
+  for _ in $(seq 1 60); do
+    docker info >/dev/null 2>&1 && break
+    sleep 3
+  done
+fi
+
+docker compose up -d --wait postgres
+uv run riff migrate
+uv run riff digest run "$@"

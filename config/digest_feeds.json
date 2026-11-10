@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "note": "Feeds read by `riff digest run`. Add or remove entries freely; max_items caps how many recent items one feed contributes to a digest (default 10).",
+  "feeds": [
+    {
+      "source_id": "writing-openai-news",
+      "name": "OpenAI News",
+      "endpoint": "https://openai.com/news/rss.xml"
+    },
+    {
+      "source_id": "writing-google-deepmind",
+      "name": "Google DeepMind Blog",
+      "endpoint": "https://deepmind.google/blog/rss.xml"
+    },
+    {
+      "source_id": "writing-google-research",
+      "name": "Google Research Blog",
+      "endpoint": "https://research.google/blog/rss/"
+    },
+    {
+      "source_id": "writing-huggingface",
+      "name": "Hugging Face Blog",
+      "endpoint": "https://huggingface.co/blog/feed.xml"
+    },
+    {
+      "source_id": "writing-bair",
+      "name": "Berkeley AI Research Blog",
+      "endpoint": "https://bair.berkeley.edu/blog/feed.xml"
+    },
+    {
+      "source_id": "writing-engineer-simon-willison",
+      "name": "Simon Willison",
+      "endpoint": "https://simonwillison.net/atom/entries/"
+    },
+    {
+      "source_id": "writing-engineer-eugene-yan",
+      "name": "Eugene Yan",
+      "endpoint": "https://eugeneyan.com/rss/"
+    },
+    {
+      "source_id": "writing-engineer-lilian-weng",
+      "name": "Lilian Weng",
+      "endpoint": "https://lilianweng.github.io/index.xml"
+    },
+    {
+      "source_id": "writing-engineer-ethan-mollick",
+      "name": "Ethan Mollick",
+      "endpoint": "https://www.oneusefulthing.org/feed"
+    },
+    {
+      "source_id": "writing-engineer-nathan-lambert",
+      "name": "Nathan Lambert",
+      "endpoint": "https://www.interconnects.ai/feed"
+    },
+    {
+      "source_id": "writing-engineer-chris-olah",
+      "name": "Chris Olah",
+      "endpoint": "https://colah.github.io/rss.xml"
+    },
+    {
+      "source_id": "writing-engineer-evan-anders",
+      "name": "Evan Anders",
+      "endpoint": "https://evanhanders.blog/feed/"
+    },
+    {
+      "source_id": "writing-engineer-kevin-chen",
+      "name": "Kevin Chen",
+      "endpoint": "https://kevinchen.co/feed.xml"
+    },
+    {
+      "source_id": "writing-engineer-nishanth-kumar",
+      "name": "Nishanth J. Kumar",
+      "endpoint": "https://nishanthjkumar.com/feed.xml"
+    },
+    {
+      "source_id": "writing-engineer-praj-bhargava",
+      "name": "Praj Bhargava",
+      "endpoint": "https://prajjwal1.github.io/atom.xml"
+    },
+    {
+      "source_id": "writing-engineer-jeremy-howard",
+      "name": "Jeremy Howard",
+      "endpoint": "https://www.fast.ai/index.xml"
+    },
+    {
+      "source_id": "writing-engineer-julia-evans",
+      "name": "Julia Evans",
+      "endpoint": "https://jvns.ca/atom.xml"
+    },
+    {
+      "source_id": "writing-engineer-armin-ronacher",
+      "name": "Armin Ronacher",
+      "endpoint": "https://lucumr.pocoo.org/feed.atom"
+    },
+    {
+      "source_id": "writing-engineer-mario-zechner",
+      "name": "Mario Zechner",
+      "endpoint": "https://mariozechner.at/rss.xml"
+    },
+    {
+      "source_id": "writing-engineer-mitchell-hashimoto",
+      "name": "Mitchell Hashimoto",
+      "endpoint": "https://mitchellh.com/feed.xml"
+    },
+    {
+      "source_id": "writing-engineer-geoffrey-litt",
+      "name": "Geoffrey Litt",
+      "endpoint": "https://www.geoffreylitt.com/feed.xml"
+    }
+  ]
+}

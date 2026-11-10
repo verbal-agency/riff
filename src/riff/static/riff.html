@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riff</title>
+<style>
+  :root {
+    --bg: #f6f3ec; --panel: #fffdf8; --ink: #1d1b16; --muted: #6f6a5e; --line: #e2dccd;
+    --accent: #b4401f; --accent-ink: #fff; --you: #ece6d6; --chip: #f0eadb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #16150f; --panel: #1f1d16; --ink: #ece7da; --muted: #9a9484; --line: #34312a;
+            --accent: #e8734f; --accent-ink: #1a0d08; --you: #2b2820; --chip: #29261e; }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  a { color: var(--accent); }
+  .app { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; height: 100vh; }
+  .side { border-right: 1px solid var(--line); overflow-y: auto; padding: 20px 16px 40px; }
+  .main { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
+  h1 { font: 600 22px/1.2 ui-serif, Georgia, serif; margin: 0 0 2px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  h2 { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 22px 4px 8px; font-weight: 600; }
+  .card { display: block; width: 100%; text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; margin-bottom: 8px; }
+  .card:hover, .card:focus-visible { border-color: var(--accent); outline: none; }
+  .card.active { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+  .card b { display: block; font: 600 15px/1.3 ui-serif, Georgia, serif; }
+  .card span { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .card em { font-style: normal; color: var(--ink); }
+  .tag { font: 400 11px ui-sans-serif, system-ui, sans-serif; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 0 7px; margin-left: 6px; white-space: nowrap; }
+  .head { padding: 18px 28px 12px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .head h3 { font: 600 19px/1.25 ui-serif, Georgia, serif; margin: 0; flex: 1 1 260px; }
+  .head button { background: none; border: 1px solid var(--line); border-radius: 8px; padding: 5px 11px; font-size: 13px; }
+  .head button:hover { border-color: var(--accent); }
+  .talk { flex: 1; overflow-y: auto; padding: 22px 28px; }
+  .talk > * { max-width: 720px; }
+  .seed { color: var(--muted); font-size: 14px; border-left: 2px solid var(--line); padding-left: 12px; margin-bottom: 22px; }
+  .msg { margin-bottom: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.you { background: var(--you); border-radius: 12px; padding: 9px 13px; width: fit-content; margin-left: auto; }
+  .msg.riff { font: 16px/1.6 ui-serif, Georgia, serif; }
+  .srcs { font: 12.5px/1.5 ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin-top: 8px; white-space: normal; }
+  .srcs a { display: block; color: var(--muted); text-decoration: none; }
+  .srcs a:hover { color: var(--accent); }
+  .chips { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; margin: 4px 0 22px; }
+  .chip { background: var(--chip); border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px; text-align: left; font-size: 14px; }
+  .chip:hover { border-color: var(--accent); }
+  .sketch { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 4px 18px 12px; margin-bottom: 22px; }
+  .sketch h4 { font: 600 18px ui-serif, Georgia, serif; margin: 14px 0 4px; }
+  .sketch h5 { font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 16px 0 4px; }
+  .sketch p { margin: 4px 0; }
+  .wait { color: var(--muted); font-style: italic; }
+  .err { color: var(--accent); margin-bottom: 14px; }
+  form { display: flex; gap: 8px; padding: 12px 28px 18px; border-top: 1px solid var(--line); }
+  textarea { flex: 1; resize: none; font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; min-height: 46px; max-height: 160px; }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  form button { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 0 14px; }
+  form button.go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .empty { margin: auto; text-align: center; color: var(--muted); max-width: 380px; padding: 28px; }
+  .empty p { font: 17px/1.5 ui-serif, Georgia, serif; }
+  .back { display: none; }
+  @media (max-width: 760px) {
+    .app { grid-template-columns: 1fr; }
+    .side { border-right: 0; height: 100vh; }
+    .main { display: none; }
+    .app.open .side { display: none; }
+    .app.open .main { display: flex; }
+    .back { display: inline-block; }
+    .head, .talk, form { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <h1>Riff</h1>
+    <div class="sub" id="sub">Loading…</div>
+    <div id="lists"></div>
+  </aside>
+  <section class="main">
+    <div class="head" id="head" hidden>
+      <button class="back" id="back">← Digest</button>
+      <h3 id="title"></h3>
+      <button id="distill" title="Write down what this conversation arrived at">Distill into a sketch</button>
+    </div>
+    <div class="talk" id="talk">
+      <div class="empty"><p>Pick a collision or an idea and start pulling on it. Or just say something below.</p></div>
+    </div>
+    <form id="form">
+      <textarea id="box" rows="1" placeholder="Say something to start a riff from nothing…"></textarea>
+      <button type="button" id="wander" title="Throw two unrelated articles into the conversation" hidden>Wander</button>
+      <button class="go" id="send">Send</button>
+    </form>
+  </section>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+let digest = null, threads = [], thread = null, busy = false, error = null;
+
+async function api(path, body) {
+  const res = await fetch("/riff/api" + path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || ("Request failed (" + res.status + ")"));
+  return data;
+}
+
+function card(title, blurb, tag, onClick, active) {
+  const b = el("button", "card" + (active ? " active" : ""));
+  const head = el("b", null, title);
+  if (tag) head.append(el("i", "tag", tag));
+  b.append(head);
+  if (blurb) b.append(el("span", null, blurb));
+  b.onclick = onClick;
+  return b;
+}
+
+function renderSide() {
+  const box = $("lists");
+  box.replaceChildren();
+  if (threads.length) {
+    box.append(el("h2", null, "Your threads"));
+    threads.forEach((t) => box.append(card(t.title, null, t.distilled ? "sketched" : (t.your_turns ? t.your_turns + (t.your_turns === 1 ? " turn" : " turns") : "unanswered"), () => openThread(t.thread_id), thread && thread.thread_id === t.thread_id)));
+  }
+  if (!digest) {
+    $("sub").textContent = "No digest yet. Run ./scripts/riff-digest, or start from nothing.";
+    return;
+  }
+  const p = digest.payload;
+  $("sub").textContent = "Digest of " + digest.run_date + " · " + digest.article_count + " articles read";
+  const section = (label, kind, items, blurb) => {
+    if (!items || !items.length) return;
+    box.append(el("h2", null, label));
+    items.forEach((item, index) => box.append(card(item.title, blurb(item), item.single_source ? "single source" : null, () => start({ kind, index }))));
+  };
+  section("Collisions", "collision", p.collisions, (i) => i.question);
+  section("Ideas", "idea", p.ideas, (i) => i.pitch);
+  section("Themes", "theme", p.themes, (i) => i.what_is_happening);
+}
+
+function sources(list) {
+  const box = el("div", "srcs");
+  list.forEach((s) => { const a = el("a", null, s.source + " — " + s.title); a.href = s.url; a.target = "_blank"; a.rel = "noopener"; box.append(a); });
+  return box;
+}
+
+function sketch(markdown) {
+  const box = el("div", "sketch");
+  markdown.split("\n").forEach((line) => {
+    if (line.startsWith("# ")) box.append(el("h4", null, line.slice(2)));
+    else if (line.startsWith("## ")) box.append(el("h5", null, line.slice(3)));
+    else if (line.startsWith("- [")) {
+      const m = line.match(/^- \[(.*)\]\((.*)\)$/);
+      if (m) { const p = el("p"); const a = el("a", null, m[1]); a.href = m[2]; a.target = "_blank"; a.rel = "noopener"; p.append(a); box.append(p); }
+    } else if (line.trim()) box.append(el("p", null, line.replace(/\*\*/g, "")));
+  });
+  return box;
+}
+
+function renderThread() {
+  const talk = $("talk");
+  $("app").classList.toggle("open", !!thread || busy);
+  $("head").hidden = !thread;
+  $("wander").hidden = !thread;
+  $("box").placeholder = thread ? "Yes, and…" : "Say something to start a riff from nothing…";
+  ["send", "wander", "distill"].forEach((id) => ($(id).disabled = busy));
+  talk.replaceChildren();
+  if (!thread) {
+    if (busy) talk.append(el("div", "wait", "Opening the thread…"));
+    else { const e = el("div", "empty"); e.append(el("p", null, "Pick a collision or an idea and start pulling on it. Or just say something below.")); talk.append(e); }
+    if (error) talk.append(el("div", "err", error));
+    return;
+  }
+  $("title").textContent = thread.title;
+  $("distill").textContent = thread.sketch ? "Distill again" : "Distill into a sketch";
+  const seedText = thread.seed.question || thread.seed.pitch || thread.seed.what_is_happening;
+  if (seedText) talk.append(el("div", "seed", seedText));
+  thread.messages.forEach((m, i) => {
+    const node = el("div", "msg " + m.role, m.content);
+    if (m.sources.length) node.append(sources(m.sources));
+    talk.append(node);
+    if (m.role === "riff" && i === thread.messages.length - 1 && m.tangents.length && !busy) {
+      const chips = el("div", "chips");
+      m.tangents.forEach((t) => { const c = el("button", "chip", t); c.onclick = () => say(t); chips.append(c); });
+      talk.append(chips);
+    }
+  });
+  if (thread.sketch) talk.append(sketch(thread.sketch));
+  if (busy) talk.append(el("div", "wait", "Thinking…"));
+  if (error) talk.append(el("div", "err", error));
+  talk.scrollTop = talk.scrollHeight;
+}
+
+async function run(work) {
+  if (busy) return;
+  busy = true; error = null; renderThread();
+  try { await work(); } catch (e) { error = e.message; }
+  busy = false;
+  try { threads = (await api("/state")).threads; } catch (e) {}
+  renderSide(); renderThread();
+}
+
+const start = (body) => { thread = null; return run(async () => { thread = await api("/threads", body); }); };
+const openThread = (id) => run(async () => { thread = await api("/threads/" + id); });
+function say(text, wander) {
+  text = (text || "").trim();
+  if (!thread) return text ? start({ kind: "free", text }) : null;
+  if (!text && !wander) return;
+  if (text) thread.messages.push({ role: "you", content: text, sources: [], tangents: [] });
+  return run(async () => { thread = await api("/threads/" + thread.thread_id + "/messages", { text: text || null, wander: !!wander }); });
+}
+
+$("form").onsubmit = (e) => { e.preventDefault(); const text = $("box").value; $("box").value = ""; $("box").style.height = ""; say(text); };
+$("box").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("form").requestSubmit(); } };
+$("box").oninput = (e) => { e.target.style.height = ""; e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px"; };
+$("wander").onclick = () => { const text = $("box").value; $("box").value = ""; say(text, true); };
+$("distill").onclick = () => run(async () => { thread = await api("/threads/" + thread.thread_id + "/distill", {}); });
+$("back").onclick = () => { thread = null; error = null; renderSide(); renderThread(); };
+
+(async () => {
+  try { const s = await api("/state"); digest = s.digest; threads = s.threads; } catch (e) { $("sub").textContent = e.message; }
+  renderSide(); renderThread();
+})();
+</script>
+</body>
+</html>
