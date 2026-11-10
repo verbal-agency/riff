@@ -1,6 +1,70 @@
 # Riff operator runbook
 
-## Fast path: start the local stack
+## Simplest way to use Riff locally
+
+Two commands, each in its own terminal, from the repository root. Docker
+Desktop must be installed; both scripts read `.env` themselves.
+
+```sh
+./scripts/riff-digest
+```
+
+Starts Docker and Postgres if needed, fetches every source in
+`config/digest_feeds.json`, and writes today's digest to `digests/<date>.md`.
+It needs `OPENAI_API_KEY` in `.env`. Run it once a day, or install the daily
+07:30 job with `./scripts/riff-schedule` (`--remove` undoes it).
+
+```sh
+./scripts/riff-up
+```
+
+Starts the API and stays in the foreground. Then open
+<http://127.0.0.1:8000/riff> to read the digest and riff with it. Stop it with
+`Ctrl-C`.
+
+What to edit:
+
+- `config/profile.md` — who the digest is written for.
+- `config/digest_feeds.json` — RSS feeds, index pages for sites without feeds,
+  and GitHub pull requests to watch.
+
+If something looks wrong:
+
+- No digest on the page: run `./scripts/riff-digest` first.
+- `digest error: an OpenAI API key is required`: add `OPENAI_API_KEY` to `.env`.
+- A source is missing from the digest: the JSON printed by `riff-digest` lists
+  per-source failures under `collection.failures`.
+- `address already in use`: the API is already running; just open the page.
+
+### Riffing from an MCP client
+
+The same API serves MCP at `http://127.0.0.1:8000/mcp` (Streamable HTTP), so a
+client such as Claude or ChatGPT can riff with the digest directly. With
+`./scripts/riff-up` running, add it to Claude Code with:
+
+```sh
+claude mcp add --transport http riff http://127.0.0.1:8000/mcp
+```
+
+A client that is not on this machine needs a public HTTPS address and the
+hostname allowlisted; see "Connect ChatGPT Developer Mode through MCP" below.
+
+The digest tools call no model. The connected model does the riffing; Riff
+supplies the material and keeps the record:
+
+- `digest_latest`, `riff_profile` — what to riff on, and for whom.
+- `article_search`, `article_wander`, `article_read` — real articles, notes and
+  watched pull requests from the store.
+- `riff_threads`, `riff_thread` — read saved threads.
+- `riff_record`, `riff_sketch` — save an exchange or a sketch. Saved threads
+  appear on the `/riff` page and steer the next digest.
+
+`/mcp` also still serves the older worker tools described below.
+
+Everything from here down documents the original worker pipeline (fixtures,
+replay, provider smokes, ChatGPT MCP). You do not need it for the digest.
+
+## Start the local stack
 
 From the repository root, run this one command:
 

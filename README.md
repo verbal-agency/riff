@@ -56,7 +56,13 @@ lists the articles it drew on, and offers three directions to go next.
 - Threads you pull on are passed to the next `riff digest run`, which leans
   toward them.
 
-Each turn is one model call (`RIFF_RIFF_MODEL`, default `gpt-5.5`). Threads are
+The same material is available over MCP at `/mcp`, for riffing from Claude or
+ChatGPT instead of the page: `digest_latest`, `riff_profile`, `article_search`,
+`article_wander`, `article_read`, `riff_threads`, `riff_thread`, `riff_record`
+and `riff_sketch`. Those tools call no model; the connected model riffs and
+Riff keeps the record. See the [operator runbook](docs/operator-runbook.md).
+
+On the page, each turn is one model call (`RIFF_RIFF_MODEL`, default `gpt-5.5`). Threads are
 stored in `riff_threads` and `riff_messages`. The logic is in
 [src/riff/riffing.py](src/riff/riffing.py) and the page is
 [src/riff/static/riff.html](src/riff/static/riff.html).
