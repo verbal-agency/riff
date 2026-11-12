@@ -286,20 +286,89 @@ def distill(database_url: str, thread_id: str, *, call: JsonCall, model: str = D
     }, ensure_ascii=False)
     raw = call(model, SKETCH_SYSTEM, user, "riff_sketch", SKETCH_SCHEMA, 12000)
     title = str(raw.get("title", "")).strip() or thread["title"]
-    sources = shelf.cited(raw.get("sources"))
-    lines = [f"# {title}", "", f"Distilled {datetime.now(timezone.utc).date().isoformat()} from a riff that started at: {thread['title']}", "", str(raw.get("sketch", "")).strip(), ""]
+    return _store_sketch(database_url, thread, title, str(raw.get("sketch", "")), shelf.cited(raw.get("sources")), out_dir)
+
+
+def _store_sketch(database_url: str, thread: Mapping[str, Any], title: str, body: str, sources: Sequence[Mapping[str, Any]], out_dir: str | Path | None) -> dict[str, Any]:
+    lines = [f"# {title}", "", f"Distilled {datetime.now(timezone.utc).date().isoformat()} from a riff that started at: {thread['title']}", "", body.strip(), ""]
     if sources:
         lines += ["## Sources", ""] + [f"- [{source['source']} — {source['title']}]({source['url']})" for source in sources] + [""]
     sketch = "\n".join(lines)
     with connection(database_url) as conn:
-        conn.execute("UPDATE riff_threads SET sketch = %s, updated_at = now() WHERE thread_id = %s", (sketch, thread_id))
+        conn.execute("UPDATE riff_threads SET sketch = %s, updated_at = now() WHERE thread_id = %s", (sketch, thread["thread_id"]))
     path = None
     if out_dir is not None:
         slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60] or "sketch"
         path = Path(out_dir) / f"{datetime.now(timezone.utc).date().isoformat()}-{slug}.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(sketch, encoding="utf-8")
-    return get_thread(database_url, thread_id) | {"path": str(path) if path else None}
+    return get_thread(database_url, thread["thread_id"]) | {"path": str(path) if path else None}
+
+
+# --------------------------------------------------------------------------
+# For an outside model riffing over MCP: Riff supplies material and keeps the record
+# --------------------------------------------------------------------------
+
+def digest_for_reading(database_url: str) -> dict[str, Any]:
+    """The latest digest with each item's sources resolved to real articles."""
+
+    digest = latest_digest(database_url)
+    if digest is None:
+        raise RiffingError("no digest yet; run: riff digest run")
+    payload, keys = digest["payload"], digest["payload"].get("keys", {})
+
+    # Sources stay as keys into one shared article list: repeating each article
+    # under every item that cites it would double the size of the result.
+    sections = {name: [{field: value for field, value in item.items() if field not in {"independent_sources"}} for item in payload.get(name, [])] for name in ("collisions", "ideas", "themes")}
+    cited = {key for items in sections.values() for item in items for key in item.get("sources", [])}
+    return {"run_date": digest["run_date"], "articles_read": digest["article_count"], **sections, "articles": {key: keys[key] for key in sorted(cited, key=lambda key: int(key[1:])) if key in keys}}
+
+
+def read_article(database_url: str, evidence_id: str, *, max_chars: int = 12_000) -> dict[str, Any]:
+    with connection(database_url) as conn:
+        row = conn.execute(f"SELECT {_ARTICLE_COLUMNS}, e.raw_content {_ARTICLE_JOINS} WHERE e.evidence_id = %s", (evidence_id,)).fetchone()
+    if row is None:
+        raise RiffingError("unknown article")
+    text = html_to_text(str(row[7] or ""))
+    return {name: value for name, value in _item(row[:7]).items() if name != "excerpt"} | {"text": text[:max_chars], "truncated": len(text) > max_chars}
+
+
+def record_exchange(database_url: str, *, title: str, you_said: str, reply: str, evidence_ids: Sequence[str] = (), thread_id: str | None = None) -> dict[str, Any]:
+    """Save one exchange from a conversation held elsewhere, so it shows up in Riff and shapes the next digest."""
+
+    you_said, reply = you_said.strip(), reply.strip()
+    if not you_said or not reply:
+        raise RiffingError("both sides of the exchange are required")
+    if thread_id:
+        thread = get_thread(database_url, thread_id)
+    else:
+        if not title.strip():
+            raise RiffingError("a title is required to start a thread")
+        thread_id = str(uuid.uuid4())
+        with connection(database_url) as conn:
+            conn.execute("INSERT INTO riff_threads (thread_id, kind, title, seed) VALUES (%s, 'free', %s, %s)", (thread_id, title.strip()[:200], Jsonb({"kind": "free", "via": "mcp"})))
+        thread = get_thread(database_url, thread_id)
+    shelf = Shelf(thread["shelf"])
+    keys = [shelf.key_for(article) for article in articles_by_id(database_url, list(dict.fromkeys(evidence_ids)))]
+    with connection(database_url) as conn:
+        conn.execute("INSERT INTO riff_messages (thread_id, role, content) VALUES (%s, 'you', %s)", (thread_id, you_said[:4000]))
+        conn.execute("INSERT INTO riff_messages (thread_id, role, content, sources) VALUES (%s, 'riff', %s, %s)", (thread_id, reply[:8000], Jsonb(shelf.cited(keys))))
+        conn.execute("UPDATE riff_threads SET shelf = %s, updated_at = now() WHERE thread_id = %s", (Jsonb(shelf.entries), thread_id))
+    return {"thread_id": thread_id, "title": thread["title"], "exchanges": sum(1 for message in get_thread(database_url, thread_id)["messages"] if message["role"] == "you"), "sources_recorded": len(keys)}
+
+
+def save_sketch(database_url: str, thread_id: str, *, title: str, sketch: str, evidence_ids: Sequence[str] = (), out_dir: str | Path | None = "digests/threads") -> dict[str, Any]:
+    """Store a sketch written elsewhere against a thread."""
+
+    if not sketch.strip():
+        raise RiffingError("the sketch is empty")
+    thread = get_thread(database_url, thread_id)
+    shelf = Shelf(thread["shelf"])
+    keys = [shelf.key_for(article) for article in articles_by_id(database_url, list(dict.fromkeys(evidence_ids)))]
+    with connection(database_url) as conn:
+        conn.execute("UPDATE riff_threads SET shelf = %s WHERE thread_id = %s", (Jsonb(shelf.entries), thread_id))
+    saved = _store_sketch(database_url, thread, title.strip() or thread["title"], sketch, shelf.cited(keys), out_dir)
+    return {"thread_id": thread_id, "title": saved["title"], "path": saved["path"], "sources_recorded": len(keys)}
 
 
 def pulled_threads(database_url: str, *, days: int = 21, limit: int = 8) -> list[dict[str, Any]]:

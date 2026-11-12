@@ -92,6 +92,15 @@ def test_mcp_initialize_and_list_tools_expose_complete_catalog():
             "riff_execution_candidate",
             "compare_execution_candidates",
             "select_execution_direction",
+            "digest_latest",
+            "riff_profile",
+            "article_search",
+            "article_wander",
+            "article_read",
+            "riff_threads",
+            "riff_thread",
+            "riff_record",
+            "riff_sketch",
         }
         by_name = {item["name"]: item for item in tools}
         assert by_name["daily_riffs"]["annotations"]["readOnlyHint"] is True
@@ -99,6 +108,9 @@ def test_mcp_initialize_and_list_tools_expose_complete_catalog():
         assert "confirmation_token" in by_name["create_exploration"]["inputSchema"]["required"]
         assert by_name["github_account_status"]["annotations"]["readOnlyHint"] is True
         assert by_name["github_account_onboard"]["annotations"]["readOnlyHint"] is False
+        assert by_name["article_search"]["annotations"]["readOnlyHint"] is True
+        assert by_name["riff_record"]["annotations"]["readOnlyHint"] is False
+        assert by_name["riff_record"]["inputSchema"]["required"] == ["you_said", "reply"]
 
 
 def test_mcp_calls_reuse_adapter_and_missing_confirmation_is_non_mutating(monkeypatch):

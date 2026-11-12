@@ -289,6 +289,79 @@ def _register_tools(server: FastMCP, settings: Settings) -> None:
         )
 
 
+DIGEST_TOOLS: dict[str, tuple[str, bool]] = {
+    # name: (description, mutating)
+    "digest_latest": ("Read the latest idea digest: collisions (odd pairings of articles with the question each raises), ideas to build, and themes. Each item's sources are keys into the articles map, which gives the evidence_id, source, title and url of the real article. Start here.", False),
+    "riff_profile": ("Read the note describing who the digest is written for and what they want from an idea. Read it before riffing.", False),
+    "article_search": ("Search the whole store of collected articles, notes and watched pull requests for what was just said. Returns reading notes or excerpts with evidence_id, source, title and url. Use it every turn to bring in real material.", False),
+    "article_wander": ("Pull articles at random from the store. They are deliberately unrelated: force one into the idea and see what it does.", False),
+    "article_read": ("Read the text of one stored article by evidence_id, when a note or excerpt is not enough.", False),
+    "riff_threads": ("List saved riff threads, most recent first.", False),
+    "riff_thread": ("Read one saved riff thread: its exchanges, the articles each drew on, and its sketch if it has one.", False),
+    "riff_record": ("Save one exchange from this conversation into Riff: what the person said, your reply, and the evidence_ids you drew on. Omit thread_id to start a new thread (title required); pass it to continue one. Saved threads appear on the Riff page and steer the next digest. Only record when the person wants the conversation kept.", True),
+    "riff_sketch": ("Save a one-page Markdown sketch of what a thread arrived at. Suggested sections: What it is; What could not be done before; How it works; First hour; Open questions. Only save when the person asks for it.", True),
+}
+
+
+def _register_digest_tools(server: FastMCP, settings: Settings) -> None:
+    """Digest and riffing tools. No model is called here: the connected model does the riffing."""
+
+    import os
+    from pathlib import Path
+
+    from . import riffing
+    from .digest import load_feeds
+
+    database_url = settings.database_url
+
+    def source_ids() -> list[str]:
+        return [feed.source_id for feed in load_feeds(os.environ.get("RIFF_DIGEST_FEEDS", "config/digest_feeds.json"))]
+
+    def bounded(result: dict[str, Any]) -> dict[str, Any]:
+        if len(json.dumps(result, sort_keys=True, default=str)) > 30_000:
+            raise AdapterError("tool result exceeded the configured response bound")
+        return result
+
+    def digest_latest() -> dict[str, Any]:
+        return bounded(riffing.digest_for_reading(database_url))
+
+    def riff_profile() -> dict[str, Any]:
+        path = Path(os.environ.get("RIFF_PROFILE", "config/profile.md"))
+        return {"profile": path.read_text(encoding="utf-8")[:8000] if path.exists() else ""}
+
+    def article_search(query: str, limit: int = 5) -> dict[str, Any]:
+        return bounded({"articles": riffing.search_articles(database_url, source_ids(), query, limit=max(1, min(limit, 8)))})
+
+    def article_wander(count: int = 2) -> dict[str, Any]:
+        return bounded({"articles": riffing.stray_articles(database_url, source_ids(), limit=max(1, min(count, 4)))})
+
+    def article_read(evidence_id: str) -> dict[str, Any]:
+        return bounded(riffing.read_article(database_url, evidence_id))
+
+    def riff_threads() -> dict[str, Any]:
+        return {"threads": riffing.list_threads(database_url)}
+
+    def riff_thread(thread_id: str) -> dict[str, Any]:
+        thread = riffing.get_thread(database_url, thread_id)
+        return bounded({name: thread[name] for name in ("thread_id", "title", "kind", "messages", "sketch")})
+
+    def riff_record(you_said: str, reply: str, title: str = "", thread_id: str = "", evidence_ids: list[str] | None = None) -> dict[str, Any]:
+        return riffing.record_exchange(database_url, title=title, you_said=you_said, reply=reply, evidence_ids=evidence_ids or [], thread_id=thread_id or None)
+
+    def riff_sketch(thread_id: str, sketch: str, title: str = "", evidence_ids: list[str] | None = None) -> dict[str, Any]:
+        return riffing.save_sketch(database_url, thread_id, title=title, sketch=sketch, evidence_ids=evidence_ids or [])
+
+    for function in (digest_latest, riff_profile, article_search, article_wander, article_read, riff_threads, riff_thread, riff_record, riff_sketch):
+        description, mutating = DIGEST_TOOLS[function.__name__]
+        server.add_tool(
+            function,
+            name=function.__name__,
+            description=description,
+            annotations=ToolAnnotations(readOnlyHint=not mutating, destructiveHint=False, idempotentHint=not mutating, openWorldHint=False),
+            structured_output=True,
+        )
+
+
 def create_mcp_server(settings: Settings) -> FastMCP:
     """Build a stateless Streamable HTTP MCP server for one Riff config."""
 
@@ -298,7 +371,12 @@ def create_mcp_server(settings: Settings) -> FastMCP:
             "Riff is a bounded capability-intelligence system. Read tools are safe to repeat. "
             "Promotion tools require explicit user confirmation and durable Riff state; never invent IDs. "
             "Keep stable IDs and tool names internal to the conversation, use prior results to resolve follow-up "
-            "references, and ask for clarification rather than guessing an ambiguous or stale reference."
+            "references, and ask for clarification rather than guessing an ambiguous or stale reference.\n\n"
+            "To riff with the digest: read riff_profile and digest_latest, then riff the way two curious friends do at a "
+            "whiteboard. Build on what the person says rather than evaluating it; each turn use article_search to bring in "
+            "one real article they have not seen and say what it does to the idea; prefer the unexpected connection; when "
+            "asked to wander, call article_wander and force one of the strays in. Anything you say an article says must "
+            "come from these tools; your own speculation should read as yours. The digest and article tools call no model."
         ),
         streamable_http_path="/mcp",
         json_response=True,
@@ -312,6 +390,7 @@ def create_mcp_server(settings: Settings) -> FastMCP:
         ),
     )
     _register_tools(server, settings)
+    _register_digest_tools(server, settings)
     return server
 
 

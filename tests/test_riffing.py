@@ -96,3 +96,68 @@ def test_riff_thread_searches_the_store_wanders_distills_and_feeds_the_digest(tm
     assert mine["distilled_into_a_sketch"] is True
     run_digest(database_url, call=call, feeds=feeds[:2], profile="p", run_date=date(2026, 11, 5), days=7, out_dir=None, do_collect=False)
     assert f"what about {word}?" in next(user for name, user in reversed(seen) if name == "idea_digest")
+
+
+@pytest.mark.postgres
+def test_mcp_tools_supply_material_and_keep_the_record(tmp_path, monkeypatch):
+    database_url = os.environ.get("RIFF_DATABASE_URL")
+    if not database_url:
+        pytest.skip("set RIFF_DATABASE_URL to run Postgres integration tests")
+    from riff.mcp_server import create_service_app
+
+    word = f"axolotl{uuid.uuid4().hex[:6]}"
+    tags = [f"mcp-{uuid.uuid4().hex[:8]}" for _ in range(2)]
+    feeds = [Feed(tag, tag, f"https://{tag}.example/feed") for tag in tags]
+    titles = dict(zip(tags, ["Tides", f"On {word}"]))
+    bodies = dict(zip(tags, ["tide words " * 150, f"{word} regrows limbs " * 150]))
+
+    class Fetcher:
+        def fetch(self, endpoint):
+            tag = endpoint.split("//")[1].split(".")[0]
+            return FeedResponse(body=FEED.format(tag=tag, title=titles[tag], body=bodies[tag], day=3).encode(), fetched_at=datetime.now(timezone.utc), final_url=endpoint)
+
+    def call(model, system, user, name, schema, max_tokens):
+        if name == "article_note":
+            return {"summary": "s", "whats_new": "w", "claims": [], "techniques": [], "build_hooks": [], "substance": 2}
+        return {"collisions": [{"title": "Tides meet limbs", "what_they_share": "s", "question": "q?", "sources": ["A1", "A2"]}], "themes": [], "ideas": []}
+
+    run_digest(database_url, call=call, feeds=feeds, profile="p", run_date=date(2026, 11, 5), days=7, out_dir=None, fetcher=Fetcher())
+    feeds_file = tmp_path / "feeds.json"
+    feeds_file.write_text('{"schema_version": 1, "feeds": [%s]}' % ",".join('{"source_id": "%s", "name": "%s", "endpoint": "%s"}' % (f.source_id, f.name, f.endpoint) for f in feeds))
+    (tmp_path / "profile.md").write_text("Stay curious.")
+    monkeypatch.setenv("RIFF_DIGEST_FEEDS", str(feeds_file))
+    monkeypatch.setenv("RIFF_PROFILE", str(tmp_path / "profile.md"))
+    monkeypatch.chdir(tmp_path)
+
+    headers = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
+    with TestClient(create_service_app(Settings(database_url=database_url)), base_url="http://localhost:8000") as client:
+        def tool(name, **arguments):
+            result = client.post("/mcp", headers=headers, json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}}).json()["result"]
+            return result["isError"], result.get("structuredContent")
+
+        assert tool("riff_profile")[1]["profile"] == "Stay curious."
+        latest = tool("digest_latest")[1]
+        collision = latest["collisions"][0]
+        assert collision["title"] == "Tides meet limbs" and {latest["articles"][key]["title"] for key in collision["sources"]} == set(titles.values())
+
+        found = tool("article_search", query=f"does {word} matter")[1]["articles"]
+        assert [article["title"] for article in found] == [f"On {word}"] and "note" in found[0]
+        evidence_id = found[0]["evidence_id"]
+        assert word in tool("article_read", evidence_id=evidence_id)[1]["text"]
+        assert all(article["stray"] for article in tool("article_wander", count=2)[1]["articles"])
+
+        assert tool("riff_record", you_said="hi", reply="")[0] is True  # both sides are required
+        saved = tool("riff_record", title="Limb tides", you_said=f"what if {word} kept time?", reply="Then the tide table is a body.", evidence_ids=[evidence_id, "not-real"])[1]
+        assert saved["exchanges"] == 1 and saved["sources_recorded"] == 1
+        again = tool("riff_record", thread_id=saved["thread_id"], you_said="go on", reply="A clock that regrows.")[1]
+        assert again["exchanges"] == 2 and again["title"] == "Limb tides"
+
+        sketched = tool("riff_sketch", thread_id=saved["thread_id"], title="Regrowing Clock", sketch="## What it is\\nA clock.", evidence_ids=[evidence_id])[1]
+        assert (tmp_path / sketched["path"]).read_text().startswith("# Regrowing Clock")
+        thread = tool("riff_thread", thread_id=saved["thread_id"])[1]
+        assert [message["role"] for message in thread["messages"]] == ["you", "riff", "you", "riff"]
+        assert thread["messages"][1]["sources"][0]["title"] == f"On {word}" and f"[mcp-" in thread["sketch"]
+        assert tool("riff_threads")[1]["threads"][0]["distilled"] is True
+
+    # What was said over MCP reaches the next digest like any other thread.
+    assert any(f"what if {word} kept time?" in item["they_said"] for item in riffing.pulled_threads(database_url))
